@@ -226,6 +226,7 @@
 
   html {
     color-scheme: dark;
+    scroll-behavior: smooth;
   }
 }
 
@@ -314,12 +315,12 @@
     background: radial-gradient(circle at center, hsl(var(--primary) / 0.15) 0%, transparent 70%);
   }
 
-  @keyframes float {
+  @keyframes subtle-float {
     0%, 100% {
       transform: translateY(0px);
     }
     50% {
-      transform: translateY(-20px);
+      transform: translateY(-6px);
     }
   }
 
@@ -332,11 +333,17 @@
     }
   }
 
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
+  .animate-subtle-float {
+    animation: subtle-float 8s ease-in-out infinite;
+    will-change: transform;
   }
 
   .animate-marquee {
-    animation: marquee 30s linear infinite;
+    animation: marquee 40s linear infinite;
+    will-change: transform;
+  }
+
+  .glassmorphism {
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
 }

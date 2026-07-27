@@ -113,7 +113,7 @@ export function Hero() {
             transition={{ delay: 0.4, duration: 0.8 }}
             className="relative"
           >
-            <div className="relative animate-float">
+            <div className="relative animate-subtle-float">
               {/* Main Dashboard Card */}
               <div className="glassmorphism rounded-2xl p-6 shadow-2xl">
                 {/* Dashboard Header */}

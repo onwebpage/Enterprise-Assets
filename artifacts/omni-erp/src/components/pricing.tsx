@@ -134,7 +134,7 @@ export function Pricing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1, duration: 0.6 }}
-              whileHover={{ scale: 1.02, y: -5 }}
+              whileHover={{ y: -4 }}
               className={`relative ${plan.featured ? 'md:-mt-4' : ''}`}
             >
               {plan.featured && (

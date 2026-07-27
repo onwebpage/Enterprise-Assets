@@ -169,7 +169,7 @@ export function AISection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 + index * 0.1, duration: 0.6 }}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ y: -3 }}
                 className="glassmorphism rounded-xl p-6 hover:bg-white/10 transition-all duration-300 group"
               >
                 <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-accent/20 to-primary/20 group-hover:from-accent group-hover:to-primary flex items-center justify-center mb-4 transition-all duration-300">

@@ -5,8 +5,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { read, access } from 'fs';
-import { only } from 'node:test';
 
 const faqs = [
   {

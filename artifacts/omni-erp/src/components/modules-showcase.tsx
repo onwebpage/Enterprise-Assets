@@ -61,7 +61,7 @@ export function ModulesShowcase() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.03, duration: 0.6 }}
-              whileHover={{ scale: 1.05, y: -5 }}
+              whileHover={{ y: -3 }}
               className="group cursor-pointer"
             >
               <div className="h-full glassmorphism rounded-xl p-6 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">

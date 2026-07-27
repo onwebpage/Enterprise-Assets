@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
 import { Hero } from '@/components/hero';
 import { TrustedBy } from '@/components/trusted-by';
@@ -13,7 +14,12 @@ import { Footer } from '@/components/footer';
 
 export default function Home() {
   return (
-    <div className="min-h-screen w-full bg-background">
+    <motion.div
+      className="min-h-screen w-full bg-background"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+    >
       <Navbar />
       <Hero />
       <TrustedBy />
@@ -26,6 +32,6 @@ export default function Home() {
       <FAQ />
       <CTABanner />
       <Footer />
-    </div>
+    </motion.div>
   );
 }
