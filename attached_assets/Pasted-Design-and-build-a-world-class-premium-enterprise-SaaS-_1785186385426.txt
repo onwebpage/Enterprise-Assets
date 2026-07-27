@@ -1,0 +1,415 @@
+Design and build a world-class, premium enterprise SaaS ERP website for "OmniERP / BizOS". This is NOT a basic business website. It should feel like a billion-dollar startup such as Stripe, Linear, Vercel, Notion, Framer, Apple, SAP, Oracle, Odoo Enterprise, and Salesforce combined.
+
+The goal is to create an unforgettable first impression with an ultra-modern, luxury, futuristic, enterprise-grade design that instantly builds trust.
+
+IMPORTANT:
+Frontend only.
+No backend.
+No fake APIs.
+Use clean reusable components.
+Production-ready code.
+Fully responsive.
+Pixel-perfect.
+
+=================================================
+TECH STACK
+=================================================
+
+React
+Next.js
+TypeScript
+Tailwind CSS
+Framer Motion
+GSAP (where appropriate)
+Lucide Icons
+Shadcn UI
+
+=================================================
+DESIGN STYLE
+=================================================
+
+Minimal
+Luxury
+Dark Theme
+Premium Glassmorphism
+Soft Gradients
+Floating Cards
+Modern Enterprise
+Rounded UI
+Apple-Level Polish
+Stripe-Level Layout
+Linear-Level Simplicity
+Framer-Level Animation
+
+Use smooth shadows.
+
+Large whitespace.
+
+Excellent typography.
+
+Professional SaaS feel.
+
+Every section should feel expensive.
+
+No cheap gradients.
+
+No template feeling.
+
+=================================================
+COLOR PALETTE
+=================================================
+
+Background:
+#050816
+
+Primary:
+#2563EB
+
+Accent:
+#06B6D4
+
+Success:
+#22C55E
+
+Warning:
+#F59E0B
+
+Danger:
+#EF4444
+
+Cards:
+rgba(255,255,255,0.05)
+
+Borders:
+rgba(255,255,255,0.08)
+
+Text:
+White
+
+Secondary Text:
+Gray-400
+
+=================================================
+TYPOGRAPHY
+=================================================
+
+Font:
+Inter
+
+Large headings
+
+Bold weights
+
+Excellent spacing
+
+Premium readability
+
+=================================================
+ANIMATIONS
+=================================================
+
+Page reveal animation
+
+Smooth scrolling
+
+Mouse parallax
+
+Floating UI
+
+Blur transitions
+
+Card hover
+
+Micro interactions
+
+Scroll reveal
+
+Number counter animations
+
+Gradient glow
+
+Magnetic buttons
+
+Cursor effects
+
+Animated background
+
+=================================================
+LANDING PAGE
+=================================================
+
+Premium Hero
+
+Animated dashboard mockup
+
+Floating analytics widgets
+
+3D illustrations
+
+Live charts
+
+Animated ERP screens
+
+CTA
+
+Trusted by companies
+
+Background glow
+
+=================================================
+NAVBAR
+=================================================
+
+Glass Navbar
+
+Sticky
+
+Mega Menu
+
+Products
+
+Solutions
+
+Industries
+
+Pricing
+
+Resources
+
+Developers
+
+Company
+
+Login
+
+Book Demo
+
+Start Free Trial
+
+=================================================
+FEATURES SECTION
+=================================================
+
+Beautiful Bento Grid
+
+243+ Enterprise Features
+
+20 Core Modules
+
+AI Powered
+
+Cloud Native
+
+GST Ready
+
+Mobile Ready
+
+White Label
+
+Enterprise Security
+
+=================================================
+ERP MODULE SHOWCASE
+=================================================
+
+Create premium interactive cards for:
+
+Organization Management
+
+Financial Accounting
+
+Sales & CRM
+
+Purchase
+
+Inventory
+
+Manufacturing
+
+Projects
+
+HRMS
+
+GST
+
+Banking
+
+Reports
+
+AI
+
+Workflow
+
+SaaS
+
+Integrations
+
+Mobile Apps
+
+Documents
+
+Customer Portal
+
+Security
+
+Enterprise Features
+
+Each card should include:
+
+Luxury icon
+
+Short description
+
+Hover animation
+
+View Details button
+
+=================================================
+AI SECTION
+=================================================
+
+Huge futuristic AI section
+
+Animated AI assistant
+
+OCR
+
+Forecasting
+
+Fraud Detection
+
+Chatbot
+
+Business Intelligence
+
+Predictive Analytics
+
+Smart Automation
+
+=================================================
+DASHBOARD PREVIEW
+=================================================
+
+Create a fake but premium ERP dashboard including:
+
+Revenue Chart
+
+Sales Graph
+
+Expenses
+
+Inventory
+
+Orders
+
+Invoices
+
+Employees
+
+Projects
+
+Calendar
+
+Notifications
+
+AI Insights
+
+=================================================
+PRICING
+=================================================
+
+Starter
+
+Professional
+
+Enterprise
+
+Animated pricing cards
+
+Comparison table
+
+Toggle Monthly/Yearly
+
+=================================================
+TESTIMONIALS
+=================================================
+
+Luxury cards
+
+Company logos
+
+Success stories
+
+=================================================
+FAQ
+=================================================
+
+Animated accordion
+
+=================================================
+FOOTER
+=================================================
+
+Large premium footer
+
+Products
+
+Resources
+
+Legal
+
+Support
+
+Social Links
+
+Newsletter
+
+=================================================
+RESPONSIVE
+=================================================
+
+Perfect Mobile Experience
+
+Tablet optimized
+
+Desktop optimized
+
+Ultra-wide support
+
+Responsive typography
+
+Responsive spacing
+
+No horizontal scrolling
+
+=================================================
+PERFORMANCE
+=================================================
+
+Lazy Loading
+
+Image Optimization
+
+SEO Ready
+
+Accessibility
+
+Fast animations
+
+Reusable components
+
+=================================================
+OVERALL FEEL
+=================================================
+
+The website should make visitors think:
+
+"This looks more premium than Salesforce, SAP, Oracle, Odoo, Zoho and Microsoft Dynamics."
+
+Everything must feel expensive, modern, enterprise-grade, luxurious and visually stunning.
+
+Absolutely NO template-looking sections.
+
+Every component should be custom designed with beautiful spacing, premium animations, glassmorphism, gradients, charts, enterprise illustrations and world-class UX.
+
+The website should look like a $500,000 enterprise SaaS product.
