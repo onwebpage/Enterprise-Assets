@@ -42,7 +42,8 @@ if (fs.existsSync(frontendDist)) {
   app.use(express.static(frontendDist));
 
   // SPA fallback — send index.html for any non-API route so React Router works
-  app.get("*", (_req, res) => {
+  // Express 5 / path-to-regexp v8: bare "*" is invalid, use regex instead
+  app.get(/.*/, (_req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 } else {
