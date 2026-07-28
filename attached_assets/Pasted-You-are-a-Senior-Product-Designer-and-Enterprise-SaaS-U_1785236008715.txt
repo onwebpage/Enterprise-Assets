@@ -1,0 +1,305 @@
+You are a Senior Product Designer and Enterprise SaaS UX Architect.
+
+We have already completed the landing page and login page.
+
+Now design ONLY the authenticated application UI.
+
+DO NOT build any backend.
+
+DO NOT implement authentication.
+
+DO NOT use APIs.
+
+DO NOT create database models.
+
+DO NOT create business logic.
+
+Use only realistic dummy data.
+
+====================================================
+OBJECTIVE
+====================================================
+
+Design a world-class Enterprise ERP application UI for OmniERP.
+
+Every page must use the EXACT SAME design language as the landing page.
+
+Maintain complete visual consistency.
+
+Use the same:
+
+• Colors
+• Typography
+• Icons
+• Border Radius
+• Glass Effects
+• Shadows
+• Buttons
+• Cards
+• Navigation
+• Spacing
+• Component Style
+
+The application should feel like one unified product.
+
+====================================================
+DESIGN STYLE
+====================================================
+
+Enterprise
+
+Premium
+
+Luxury
+
+Minimal
+
+Professional
+
+Modern
+
+Dark Theme
+
+Apple-level spacing
+
+Stripe-level polish
+
+Linear-level cleanliness
+
+SAP-level professionalism
+
+====================================================
+IMPORTANT
+====================================================
+
+This is ONLY a frontend UI prototype.
+
+Every page should be fully designed.
+
+Navigation should work visually.
+
+Buttons can navigate between pages.
+
+Forms can be static.
+
+Charts can use dummy data.
+
+Tables can use dummy records.
+
+No backend functionality.
+
+====================================================
+APP LAYOUT
+====================================================
+
+Create a persistent application layout including:
+
+• Left Sidebar
+• Top Navigation
+• Search Bar
+• Notifications
+• AI Assistant Button
+• Company Switcher
+• Profile Menu
+• Breadcrumbs
+• Responsive Layout
+
+====================================================
+PAGES TO DESIGN
+====================================================
+
+Dashboard
+
+Organization Management
+
+Financial Accounting
+
+Sales & CRM
+
+Purchase & Procurement
+
+Inventory & Warehouse
+
+Manufacturing
+
+Projects
+
+HR & Payroll
+
+GST & Tax
+
+Banking & Payments
+
+Reports & Analytics
+
+AI Assistant
+
+Workflow Automation
+
+Documents
+
+Customer Portal
+
+Vendor Portal
+
+Settings
+
+User Management
+
+Roles & Permissions
+
+Subscription & Billing
+
+====================================================
+EACH PAGE MUST INCLUDE
+====================================================
+
+Beautiful page header
+
+Breadcrumb
+
+Action buttons
+
+Premium KPI cards
+
+Professional charts
+
+Modern tables
+
+Advanced filters
+
+Search
+
+Tabs
+
+Pagination
+
+Status badges
+
+Empty states
+
+Loading skeletons
+
+Success states
+
+Error states
+
+Confirmation dialogs
+
+Drawer panels
+
+Modals
+
+Dropdowns
+
+Date pickers
+
+File upload UI
+
+Export buttons
+
+Import UI
+
+Bulk actions
+
+====================================================
+DASHBOARD
+====================================================
+
+Design a premium executive dashboard including:
+
+Revenue
+
+Sales
+
+Inventory
+
+Profit
+
+Expenses
+
+Cash Flow
+
+Employees
+
+Projects
+
+Pending Tasks
+
+Recent Activity
+
+Calendar
+
+Notifications
+
+AI Insights
+
+Interactive Charts
+
+Quick Actions
+
+====================================================
+COMPONENTS
+====================================================
+
+Build a complete reusable design system.
+
+Buttons
+
+Inputs
+
+Tables
+
+Cards
+
+Charts
+
+Dialogs
+
+Tooltips
+
+Dropdowns
+
+Badges
+
+Progress Bars
+
+Timeline
+
+Tabs
+
+Accordions
+
+Toast Notifications
+
+Side Panels
+
+Data Tables
+
+Widgets
+
+====================================================
+RESPONSIVENESS
+====================================================
+
+Desktop First
+
+Tablet Optimized
+
+Mobile Responsive
+
+Perfect spacing on every device.
+
+====================================================
+QUALITY
+====================================================
+
+Every screen should look production-ready.
+
+Do not create placeholder-looking pages.
+
+Every page should feel like a premium enterprise application.
+
+The final UI should be comparable to SAP, Oracle, Salesforce, Microsoft Dynamics, Odoo Enterprise, Zoho One, Linear, Stripe, and Atlassian.
+
+Keep the same design language as the landing page so users feel they are using one seamless product.
