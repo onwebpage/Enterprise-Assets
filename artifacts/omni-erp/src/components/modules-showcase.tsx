@@ -1,88 +1,258 @@
-import { motion } from 'framer-motion';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Building2, DollarSign, ShoppingCart, Package, Warehouse, Factory,
-  FolderKanban, Users2, FileText, CreditCard, BarChart4, Brain,
-  Workflow, Cloud, Puzzle, Smartphone, FileCheck, UserCircle2,
-  Lock, Star
-} from 'lucide-react';
-import { ArrowRight } from 'lucide-react';
+  Building2,
+  DollarSign,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  Factory,
+  FolderKanban,
+  Users2,
+  FileText,
+  CreditCard,
+  BarChart4,
+  Brain,
+  Workflow,
+  Cloud,
+  Puzzle,
+  Smartphone,
+  FileCheck,
+  UserCircle2,
+  Lock,
+  Star,
+  ArrowRight,
+} from "lucide-react";
 
-const modules = [
-  { icon: Building2, title: 'Organization Management', description: 'Multi-entity structure and hierarchy' },
-  { icon: DollarSign, title: 'Financial Accounting', description: 'Complete GL, AP, AR, and reconciliation' },
-  { icon: ShoppingCart, title: 'Sales & CRM', description: 'Lead-to-cash automation and customer insights' },
-  { icon: Package, title: 'Purchase', description: 'Procurement, PO management, and vendor portal' },
-  { icon: Warehouse, title: 'Inventory', description: 'Real-time stock tracking and warehouse management' },
-  { icon: Factory, title: 'Manufacturing', description: 'BOM, work orders, and production planning' },
-  { icon: FolderKanban, title: 'Projects', description: 'Task management, time tracking, and billing' },
-  { icon: Users2, title: 'HRMS', description: 'Payroll, attendance, leave, and performance' },
-  { icon: FileText, title: 'GST', description: 'Automated tax calculation and filing' },
-  { icon: CreditCard, title: 'Banking', description: 'Payment processing and reconciliation' },
-  { icon: BarChart4, title: 'Reports', description: 'Advanced analytics and custom dashboards' },
-  { icon: Brain, title: 'AI', description: 'Predictive insights and automation' },
-  { icon: Workflow, title: 'Workflow', description: 'Custom approval chains and automation' },
-  { icon: Cloud, title: 'SaaS', description: 'Multi-tenant architecture with isolation' },
-  { icon: Puzzle, title: 'Integrations', description: '500+ pre-built connectors' },
-  { icon: Smartphone, title: 'Mobile Apps', description: 'Native iOS and Android applications' },
-  { icon: FileCheck, title: 'Documents', description: 'OCR, e-signature, and version control' },
-  { icon: UserCircle2, title: 'Customer Portal', description: 'Self-service portals and white-labeling' },
-  { icon: Lock, title: 'Security', description: 'SSO, 2FA, audit logs, and compliance' },
-  { icon: Star, title: 'Enterprise Features', description: 'Advanced customization and dedicated support' },
+const categories = [
+  { id: "finance", label: "Finance & Accounting" },
+  { id: "operations", label: "Operations & SCM" },
+  { id: "hr", label: "Human Resources" },
+  { id: "crm", label: "Sales & CRM" },
+  { id: "tech", label: "Platform & Tech" },
 ];
 
+const modulesMap: Record<
+  string,
+  { icon: any; title: string; description: string }[]
+> = {
+  finance: [
+    {
+      icon: DollarSign,
+      title: "Financial Accounting",
+      description: "Complete GL, AP, AR, and reconciliation",
+    },
+    {
+      icon: FileText,
+      title: "Tax & Compliance",
+      description: "Automated tax calculation and filing",
+    },
+    {
+      icon: CreditCard,
+      title: "Banking",
+      description: "Payment processing and reconciliation",
+    },
+    {
+      icon: BarChart4,
+      title: "Financial Reports",
+      description: "Advanced analytics and custom dashboards",
+    },
+    {
+      icon: Building2,
+      title: "Multi-Entity",
+      description: "Cross-organization structure and hierarchy",
+    },
+    {
+      icon: Workflow,
+      title: "Approvals",
+      description: "Custom financial approval chains",
+    },
+  ],
+  operations: [
+    {
+      icon: Warehouse,
+      title: "Inventory",
+      description: "Real-time stock tracking and warehouse management",
+    },
+    {
+      icon: Package,
+      title: "Procurement",
+      description: "PO management and vendor portal",
+    },
+    {
+      icon: Factory,
+      title: "Manufacturing",
+      description: "BOM, work orders, and production planning",
+    },
+    {
+      icon: FolderKanban,
+      title: "Projects",
+      description: "Task management, time tracking, and billing",
+    },
+    {
+      icon: FileCheck,
+      title: "Quality Control",
+      description: "Inspection workflows and compliance",
+    },
+    {
+      icon: Puzzle,
+      title: "Logistics",
+      description: "Fleet and delivery tracking",
+    },
+  ],
+  hr: [
+    {
+      icon: Users2,
+      title: "Core HR",
+      description: "Employee records, attendance, and leave",
+    },
+    {
+      icon: DollarSign,
+      title: "Payroll",
+      description: "Automated global payroll processing",
+    },
+    {
+      icon: Star,
+      title: "Performance",
+      description: "Reviews, goals, and appraisals",
+    },
+    {
+      icon: UserCircle2,
+      title: "Self-Service",
+      description: "Employee portal and document access",
+    },
+  ],
+  crm: [
+    {
+      icon: ShoppingCart,
+      title: "Sales Automation",
+      description: "Lead-to-cash workflow",
+    },
+    {
+      icon: Users2,
+      title: "Lead Management",
+      description: "Scoring, routing, and tracking",
+    },
+    {
+      icon: UserCircle2,
+      title: "Customer Portal",
+      description: "Self-service billing and support",
+    },
+    {
+      icon: Smartphone,
+      title: "Field Sales",
+      description: "Mobile app for on-the-go reps",
+    },
+  ],
+  tech: [
+    {
+      icon: Brain,
+      title: "AI Engine",
+      description: "Predictive insights and automation",
+    },
+    {
+      icon: Cloud,
+      title: "Cloud Infrastructure",
+      description: "Multi-tenant architecture",
+    },
+    {
+      icon: Lock,
+      title: "Security Center",
+      description: "SSO, 2FA, and audit logs",
+    },
+    {
+      icon: Puzzle,
+      title: "Integrations",
+      description: "500+ pre-built connectors via API",
+    },
+  ],
+};
+
 export function ModulesShowcase() {
+  const [activeTab, setActiveTab] = useState("finance");
+
   return (
-    <section id="products" className="py-24 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="products"
+      className="py-24 bg-[#050816] relative border-t border-white/[0.05]"
+    >
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            Everything your business needs.
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[11px] uppercase tracking-[0.15em] font-medium mb-6">
+            Unified Ecosystem
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-white tracking-tight">
+            Every department.
             <br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              In one platform.
-            </span>
+            One source of truth.
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            20 integrated modules working seamlessly together. No more data silos.
-          </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {modules.map((module, index) => (
-            <motion.div
-              key={module.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.03, duration: 0.6 }}
-              whileHover={{ y: -3 }}
-              className="group cursor-pointer"
-            >
-              <div className="h-full glassmorphism rounded-xl p-6 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-accent/0 group-hover:from-primary/10 group-hover:to-accent/10 transition-all duration-300" />
-                
-                <div className="relative z-10">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 group-hover:from-primary group-hover:to-accent flex items-center justify-center mb-4 transition-all duration-300">
-                    <module.icon className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
+        <div className="grid lg:grid-cols-[300px_1fr] gap-12 items-start">
+          {/* Left: Tabs */}
+          <div className="flex flex-col gap-2 relative">
+            <div className="absolute left-0 top-0 bottom-0 w-px bg-white/10" />
+
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setActiveTab(category.id)}
+                className={`relative pl-6 py-4 text-left transition-colors duration-200 group ${
+                  activeTab === category.id
+                    ? "text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {activeTab === category.id && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <span className="text-[16px] font-semibold">
+                  {category.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: Module Grid */}
+          <div className="min-h-[400px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="grid sm:grid-cols-2 gap-4"
+              >
+                {modulesMap[activeTab]?.map((module, i) => (
+                  <div
+                    key={i}
+                    className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-6 hover:border-white/15 transition-colors group cursor-default"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-4 group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors">
+                      <module.icon className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
+                    </div>
+                    <h3 className="text-[16px] font-semibold text-white mb-2">
+                      {module.title}
+                    </h3>
+                    <p className="text-[14px] text-slate-400 leading-relaxed">
+                      {module.description}
+                    </p>
                   </div>
-                  
-                  <h3 className="text-base font-semibold mb-2">{module.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{module.description}</p>
-                  
-                  <div className="flex items-center text-sm text-primary group-hover:text-accent transition-colors">
-                    <span>View Details</span>
-                    <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
       </div>
     </section>

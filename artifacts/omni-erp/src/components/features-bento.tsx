@@ -1,126 +1,144 @@
-import { motion } from 'framer-motion';
-import { Brain, Cloud, Receipt, Smartphone, Palette, Shield, BarChart3, Globe2, Users, Zap } from 'lucide-react';
+import { motion } from "framer-motion";
+import {
+  Brain,
+  Cloud,
+  Receipt,
+  Smartphone,
+  Palette,
+  Shield,
+  BarChart3,
+  Globe2,
+  Users,
+  Zap,
+} from "lucide-react";
 
 const features = [
   {
     icon: Brain,
-    title: 'AI Powered',
-    description: 'Intelligent automation and predictive insights',
-    span: 'col-span-1 row-span-2',
-    gradient: 'from-primary/20 to-accent/20',
-  },
-  {
-    icon: Cloud,
-    title: 'Cloud Native',
-    description: 'Built for scale and reliability',
-    span: 'col-span-1',
-    gradient: 'from-accent/20 to-primary/20',
-  },
-  {
-    icon: Receipt,
-    title: 'GST Ready',
-    description: 'Compliant with global tax regulations',
-    span: 'col-span-1',
-    gradient: 'from-[#22C55E]/20 to-accent/20',
-  },
-  {
-    icon: Smartphone,
-    title: 'Mobile Ready',
-    description: 'Native apps for iOS and Android',
-    span: 'col-span-1',
-    gradient: 'from-primary/20 to-[#22C55E]/20',
-  },
-  {
-    icon: Palette,
-    title: 'White Label',
-    description: 'Fully customizable branding',
-    span: 'col-span-1',
-    gradient: 'from-accent/20 to-primary/20',
+    title: "AI-Powered Insights",
+    description:
+      "Intelligent automation and predictive modeling that anticipates your business needs before they arise.",
+    span: "col-span-1 md:col-span-2 row-span-2",
+    isHero: true,
   },
   {
     icon: Shield,
-    title: 'Enterprise Security',
-    description: 'Bank-grade encryption and compliance',
-    span: 'col-span-1 row-span-2',
-    gradient: 'from-destructive/20 to-[#F59E0B]/20',
+    title: "Enterprise Security",
+    description:
+      "Bank-grade encryption, SOC 2 Type II compliance, and granular role-based access.",
+    span: "col-span-1 md:col-span-2 row-span-1",
+    isHero: false,
   },
   {
-    icon: BarChart3,
-    title: 'Real-time Analytics',
-    description: 'Live dashboards and reporting',
-    span: 'col-span-1',
-    gradient: 'from-[#F59E0B]/20 to-primary/20',
+    icon: Cloud,
+    title: "Cloud Native",
+    description: "Built for scale and 99.99% uptime reliability.",
+    span: "col-span-1 row-span-1",
+    isHero: false,
   },
   {
-    icon: Globe2,
-    title: 'Multi-currency',
-    description: 'Support for 150+ currencies',
-    span: 'col-span-1',
-    gradient: 'from-primary/20 to-accent/20',
+    icon: Receipt,
+    title: "Global Tax Ready",
+    description: "Compliant with local tax and GST regulations.",
+    span: "col-span-1 row-span-1",
+    isHero: false,
   },
   {
-    icon: Users,
-    title: 'Role-based Access',
-    description: 'Granular permissions control',
-    span: 'col-span-1',
-    gradient: 'from-accent/20 to-[#22C55E]/20',
+    icon: Smartphone,
+    title: "Mobile First",
+    description: "Native iOS and Android companion apps.",
+    span: "col-span-1 row-span-1",
+    isHero: false,
   },
   {
     icon: Zap,
-    title: 'API-first',
-    description: 'RESTful APIs for seamless integration',
-    span: 'col-span-1',
-    gradient: 'from-[#22C55E]/20 to-primary/20',
+    title: "API First",
+    description: "RESTful endpoints for custom integrations.",
+    span: "col-span-1 row-span-1",
+    isHero: false,
+  },
+  {
+    icon: BarChart3,
+    title: "Real-time Analytics",
+    description: "Live dashboards mapping every metric.",
+    span: "col-span-1 md:col-span-2 row-span-1",
+    isHero: false,
   },
 ];
 
 export function FeaturesBento() {
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent opacity-30" />
-      
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-24 relative bg-[#050816]">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            243+ Enterprise Features.
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[11px] uppercase tracking-[0.15em] font-medium mb-6">
+            Platform Capabilities
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight text-white">
+            Everything an enterprise needs.
             <br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              20 Core Modules.
-            </span>
+            Nothing it doesn't.
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Everything you need to run a modern enterprise, built into one powerful platform.
+          <p className="text-[17px] text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            A cohesive suite of 20+ core modules and 240+ features, meticulously
+            designed to replace a dozen fragmented tools.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[180px]">
-          {features.map((feature, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 auto-rows-[200px]">
+          {features.map((feature, i) => (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.05, duration: 0.6 }}
-              className={`${feature.span} group`}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.05,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              className={`relative overflow-hidden rounded-2xl bg-[#0a0f1e] border border-white/[0.07] p-6 sm:p-8 flex flex-col justify-between group cursor-default hover:border-white/15 hover:shadow-[0_0_30px_rgba(37,99,235,0.08)] transition-all ${feature.span}`}
             >
-              <div className="h-full glassmorphism rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 relative overflow-hidden">
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                
-                <div className="relative z-10 h-full flex flex-col">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-4 transition-transform duration-300">
-                    <feature.icon className="w-6 h-6 text-white" />
-                  </div>
-                  
-                  <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+              {/* Subtle corner gradient */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[60px] group-hover:bg-primary/10 transition-colors" />
+
+              <div>
+                <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center mb-5 group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors">
+                  <feature.icon className="w-5 h-5 text-slate-300 group-hover:text-primary transition-colors" />
                 </div>
+                <h3
+                  className={`font-semibold text-white mb-2 ${feature.isHero ? "text-2xl" : "text-[17px]"}`}
+                >
+                  {feature.title}
+                </h3>
+                <p
+                  className={`text-slate-400 leading-relaxed ${feature.isHero ? "text-[16px] max-w-md" : "text-[14px]"}`}
+                >
+                  {feature.description}
+                </p>
               </div>
+
+              {feature.isHero && (
+                <div className="mt-8 flex-1 w-full bg-[#050816] rounded-xl border border-white/5 relative overflow-hidden flex items-end">
+                  {/* Decorative chart for hero card */}
+                  <div className="w-full h-24 flex items-end gap-2 px-6 pt-4 opacity-70">
+                    {[40, 60, 45, 80, 55, 90, 75, 100].map((h, j) => (
+                      <div
+                        key={j}
+                        className="flex-1 bg-gradient-to-t from-primary/40 to-primary rounded-t-sm"
+                        style={{ height: `${h}%` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           ))}
         </div>

@@ -1,52 +1,53 @@
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Calendar } from 'lucide-react';
+import { motion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
 
 export function CTABanner() {
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-primary via-accent to-primary opacity-90" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent" />
-      
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,_rgba(255,255,255,0.06)_0%,_transparent_60%)]" />
+    <section className="py-24 relative bg-[#050816] overflow-hidden">
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-[#050816] to-accent/20" />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-primary/20 blur-[150px] pointer-events-none" />
 
-      <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div className="relative z-10 max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 text-center border border-white/[0.08] bg-[#0a0f1e]/80 backdrop-blur-xl rounded-3xl p-12 sm:p-20 shadow-2xl">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-white">
-            Ready to transform
+          <h2 className="text-4xl sm:text-5xl lg:text-[56px] font-bold mb-6 text-white tracking-tight leading-[1.1]">
+            Ready to upgrade your
             <br />
-            your business?
+            enterprise operations?
           </h2>
-          <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
-            Join 10,000+ enterprises running on OmniERP. Start your free trial today — no credit card required.
+          <p className="text-[17px] text-slate-400 mb-10 max-w-xl mx-auto leading-relaxed">
+            Join 10,000+ businesses running on OmniERP. Start your free trial
+            today — full access, no credit card required.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-white text-primary hover:bg-white/90 text-base px-8 font-semibold"
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="#trial"
+              className="bg-primary hover:bg-primary/90 text-white rounded-lg px-8 py-4 text-[15px] font-semibold transition-all w-full sm:w-auto inline-flex items-center justify-center gap-2"
             >
               Start Free Trial
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-2 border-white text-white hover:bg-white/10 text-base px-8 font-semibold"
+              <ArrowRight className="w-4 h-4" />
+            </a>
+            <a
+              href="#demo"
+              className="bg-[#050816] hover:bg-white/5 text-white border border-white/15 rounded-lg px-8 py-4 text-[15px] font-semibold transition-all w-full sm:w-auto text-center"
             >
-              <Calendar className="w-5 h-5 mr-2" />
-              Schedule Demo
-            </Button>
+              Contact Sales
+            </a>
           </div>
-
-          <p className="text-sm text-white/80 mt-6">
-            14-day free trial • No credit card required • Cancel anytime
-          </p>
         </motion.div>
       </div>
     </section>

@@ -1,93 +1,91 @@
-import { Link } from 'wouter';
-import { Twitter, Linkedin, Github, Youtube } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Link } from "wouter";
+import { Twitter, Linkedin, Github } from "lucide-react";
 
 const footerLinks = {
   Products: [
-    { label: 'Financial Accounting', href: '#' },
-    { label: 'Sales & CRM', href: '#' },
-    { label: 'Inventory Management', href: '#' },
-    { label: 'Manufacturing', href: '#' },
-    { label: 'HRMS', href: '#' },
-    { label: 'AI Features', href: '#' },
+    { label: "Financial Accounting", href: "#" },
+    { label: "Sales & CRM", href: "#" },
+    { label: "Inventory Management", href: "#" },
+    { label: "Manufacturing", href: "#" },
+    { label: "HRMS", href: "#" },
+    { label: "AI Features", href: "#" },
   ],
   Solutions: [
-    { label: 'Small Business', href: '#' },
-    { label: 'Mid-Market', href: '#' },
-    { label: 'Enterprise', href: '#' },
-    { label: 'By Industry', href: '#' },
-    { label: 'White Label', href: '#' },
+    { label: "Small Business", href: "#" },
+    { label: "Mid-Market", href: "#" },
+    { label: "Enterprise", href: "#" },
+    { label: "By Industry", href: "#" },
+    { label: "White Label", href: "#" },
   ],
   Resources: [
-    { label: 'Documentation', href: '#' },
-    { label: 'API Reference', href: '#' },
-    { label: 'Blog', href: '#' },
-    { label: 'Case Studies', href: '#' },
-    { label: 'Webinars', href: '#' },
-    { label: 'Support', href: '#' },
+    { label: "Documentation", href: "#" },
+    { label: "API Reference", href: "#" },
+    { label: "Blog", href: "#" },
+    { label: "Case Studies", href: "#" },
+    { label: "Webinars", href: "#" },
+    { label: "Support", href: "#" },
   ],
-  Legal: [
-    { label: 'Privacy Policy', href: '#' },
-    { label: 'Terms of Service', href: '#' },
-    { label: 'Security', href: '#' },
-    { label: 'Compliance', href: '#' },
-    { label: 'GDPR', href: '#' },
-  ],
-  Support: [
-    { label: 'Help Center', href: '#' },
-    { label: 'Contact Us', href: '#' },
-    { label: 'System Status', href: '#' },
-    { label: 'Report a Bug', href: '#' },
-    { label: 'Feature Requests', href: '#' },
+  Company: [
+    { label: "About Us", href: "#" },
+    { label: "Careers", href: "#" },
+    { label: "Security", href: "#" },
+    { label: "Privacy Policy", href: "#" },
+    { label: "Terms of Service", href: "#" },
   ],
 };
 
 export function Footer() {
   return (
-    <footer id="company" className="border-t border-border/50 pt-16 pb-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
-          {/* Logo & Newsletter */}
-          <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-3 mb-4 group">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 17L12 22L22 17" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M2 12L12 17L22 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+    <footer
+      id="company"
+      className="border-t border-white/[0.05] bg-[#050816] pt-20 pb-10"
+    >
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-12 mb-16">
+          {/* Brand & Newsletter */}
+          <div className="col-span-2 md:col-span-2">
+            <Link href="/" className="flex items-center gap-2.5 mb-6 group">
+              <div className="w-7 h-7 rounded bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <div className="w-2.5 h-2.5 border border-white rounded-sm rotate-45" />
               </div>
-              <span className="text-xl font-bold">OmniERP</span>
+              <span className="text-[18px] font-bold text-white tracking-tight">
+                OmniERP
+              </span>
             </Link>
-            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-              The all-in-one enterprise operating system that modern businesses deserve.
+            <p className="text-[14px] text-slate-400 mb-8 max-w-sm leading-relaxed">
+              The comprehensive enterprise operating system built for the scale
+              and complexity of modern business.
             </p>
-            
-            <div className="flex flex-col gap-2 mb-4">
-              <label className="text-sm font-medium">Subscribe to our newsletter</label>
+
+            <div className="space-y-3 max-w-sm">
+              <div className="text-[12px] font-semibold text-white uppercase tracking-wider">
+                Subscribe to our newsletter
+              </div>
               <div className="flex gap-2">
                 <input
                   type="email"
-                  placeholder="your@email.com"
-                  className="flex-1 px-4 py-2 rounded-lg glassmorphism text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="name@company.com"
+                  className="flex-1 bg-[#0a0f1e] border border-white/10 rounded-lg px-4 py-2.5 text-[14px] text-white placeholder:text-slate-500 focus:outline-none focus:border-primary/50"
                 />
-                <Button size="sm" className="gradient-primary">
+                <button className="bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-lg text-[14px] font-medium transition-colors">
                   Subscribe
-                </Button>
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Link Columns */}
+          {/* Links */}
           {Object.entries(footerLinks).map(([category, links]) => (
-            <div key={category}>
-              <h3 className="font-semibold mb-4 text-sm">{category}</h3>
-              <ul className="space-y-3">
+            <div key={category} className="col-span-1">
+              <h3 className="text-[13px] font-semibold text-white mb-5 uppercase tracking-wider">
+                {category}
+              </h3>
+              <ul className="space-y-3.5">
                 {links.map((link) => (
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-[14px] text-slate-400 hover:text-white transition-colors"
                     >
                       {link.label}
                     </a>
@@ -99,43 +97,30 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © 2024 OmniERP Technologies, Inc. All rights reserved.
+        <div className="pt-8 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-[13px] text-slate-500">
+            © {new Date().getFullYear()} OmniERP Technologies, Inc. All rights
+            reserved.
           </p>
-          
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-5">
             <a
-              href="https://twitter.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-lg glassmorphism flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
+              href="#"
+              className="text-slate-500 hover:text-white transition-colors"
             >
               <Twitter className="w-4 h-4" />
             </a>
             <a
-              href="https://linkedin.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-lg glassmorphism flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
+              href="#"
+              className="text-slate-500 hover:text-white transition-colors"
             >
               <Linkedin className="w-4 h-4" />
             </a>
             <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-lg glassmorphism flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
+              href="#"
+              className="text-slate-500 hover:text-white transition-colors"
             >
               <Github className="w-4 h-4" />
-            </a>
-            <a
-              href="https://youtube.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-9 h-9 rounded-lg glassmorphism flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
-            >
-              <Youtube className="w-4 h-4" />
             </a>
           </div>
         </div>

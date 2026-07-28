@@ -1,124 +1,113 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Check, Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
 
 const plans = [
   {
-    name: 'Starter',
-    price: { monthly: 49, yearly: 470 },
-    description: 'Perfect for small businesses getting started',
+    name: "Starter",
+    price: { monthly: 490, yearly: 390 },
+    description: "Core operational tools for growing mid-market companies.",
     features: [
-      'Up to 10 users',
-      'Core ERP modules',
-      'Basic reporting',
-      '10 GB storage',
-      'Email support',
-      'Mobile apps',
+      "Up to 25 core users",
+      "Financial Accounting & GL",
+      "Basic Inventory Management",
+      "Standard Reporting",
+      "Email Support (24hr SLA)",
     ],
-    cta: 'Start Free Trial',
-    featured: false,
+    cta: "Start Free Trial",
+    popular: false,
   },
   {
-    name: 'Professional',
-    price: { monthly: 199, yearly: 1910 },
-    description: 'For growing businesses that need more power',
+    name: "Professional",
+    price: { monthly: 1290, yearly: 990 },
+    description: "The complete command center for scaling enterprises.",
     features: [
-      'Up to 100 users',
-      'All ERP modules',
-      'Advanced analytics',
-      'AI-powered insights',
-      '100 GB storage',
-      'Priority support',
-      'API access',
-      'Custom workflows',
-      'White-label options',
+      "Up to 100 core users",
+      "All Core Modules + Manufacturing",
+      "Advanced AI Insights",
+      "Custom Workflows & API Access",
+      "Priority Support (4hr SLA)",
     ],
-    cta: 'Start Free Trial',
-    featured: true,
+    cta: "Start Free Trial",
+    popular: true,
   },
   {
-    name: 'Enterprise',
+    name: "Enterprise",
     price: { monthly: null, yearly: null },
-    description: 'For large organizations with complex needs',
+    description: "Custom solutions for complex global organizations.",
     features: [
-      'Unlimited users',
-      'All features included',
-      'Dedicated AI models',
-      'Unlimited storage',
-      '24/7 dedicated support',
-      'Custom integrations',
-      'SLA guarantee',
-      'On-premise deployment',
-      'Advanced security',
-      'Dedicated success manager',
+      "Unlimited users",
+      "Multi-Entity & Multi-Currency",
+      "Dedicated AI Models",
+      "On-Premise Deployment Option",
+      "Dedicated Success Manager",
     ],
-    cta: 'Contact Sales',
-    featured: false,
+    cta: "Contact Sales",
+    popular: false,
   },
 ];
 
 const comparisonFeatures = [
-  { name: 'Users', starter: '10', pro: '100', enterprise: 'Unlimited' },
-  { name: 'Storage', starter: '10 GB', pro: '100 GB', enterprise: 'Unlimited' },
-  { name: 'Core Modules', starter: true, pro: true, enterprise: true },
-  { name: 'Advanced Analytics', starter: false, pro: true, enterprise: true },
-  { name: 'AI Features', starter: false, pro: true, enterprise: true },
-  { name: 'API Access', starter: false, pro: true, enterprise: true },
-  { name: 'White Label', starter: false, pro: true, enterprise: true },
-  { name: 'Priority Support', starter: false, pro: true, enterprise: true },
-  { name: 'SLA Guarantee', starter: false, pro: false, enterprise: true },
-  { name: 'Dedicated Manager', starter: false, pro: false, enterprise: true },
+  {
+    name: "Core Users Included",
+    starter: "25",
+    pro: "100",
+    enterprise: "Custom",
+  },
+  {
+    name: "Data Storage",
+    starter: "100 GB",
+    pro: "1 TB",
+    enterprise: "Unlimited",
+  },
+  { name: "Core Modules", starter: true, pro: true, enterprise: true },
+  { name: "API Access", starter: false, pro: true, enterprise: true },
+  { name: "AI Features", starter: false, pro: true, enterprise: true },
+  { name: "Custom Workflows", starter: false, pro: true, enterprise: true },
+  {
+    name: "Multi-Entity Support",
+    starter: false,
+    pro: false,
+    enterprise: true,
+  },
+  { name: "SLA Guarantee", starter: false, pro: false, enterprise: true },
 ];
 
 export function Pricing() {
-  const [isYearly, setIsYearly] = useState(false);
+  const [isYearly, setIsYearly] = useState(true);
 
   return (
-    <section id="pricing" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
-      
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="pricing" className="py-24 relative bg-[#050816]">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            Simple,
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[11px] uppercase tracking-[0.15em] font-medium mb-6">
+            Predictable Pricing
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold mb-6 text-white tracking-tight">
+            Enterprise software doesn't
             <br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Transparent Pricing.
-            </span>
+            mean hidden fees.
           </h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Choose the perfect plan for your business. No hidden fees.
-          </p>
 
-          {/* Billing Toggle */}
-          <div className="inline-flex items-center gap-4 glassmorphism rounded-full p-1">
+          <div className="inline-flex items-center gap-1 bg-[#0a0f1e] border border-white/[0.07] p-1 rounded-lg mt-4">
             <button
               onClick={() => setIsYearly(false)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                !isYearly
-                  ? 'bg-gradient-to-r from-primary to-accent text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`px-5 py-2 text-[13px] font-medium rounded-md transition-colors ${!isYearly ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
             >
               Monthly
             </button>
             <button
               onClick={() => setIsYearly(true)}
-              className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                isYearly
-                  ? 'bg-gradient-to-r from-primary to-accent text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`px-5 py-2 text-[13px] font-medium rounded-md transition-colors flex items-center gap-2 ${isYearly ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
             >
-              Yearly
-              <span className="ml-2 text-xs bg-[#22C55E]/20 text-[#22C55E] px-2 py-1 rounded-full">
+              Annually
+              <span className="text-[10px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded uppercase tracking-wider">
                 Save 20%
               </span>
             </button>
@@ -126,141 +115,161 @@ export function Pricing() {
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan, index) => (
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {plans.map((plan, i) => (
             <motion.div
               key={plan.name}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.6 }}
-              whileHover={{ y: -4 }}
-              className={`relative ${plan.featured ? 'md:-mt-4' : ''}`}
+              transition={{
+                duration: 0.6,
+                delay: i * 0.1,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+              className={`relative bg-[#0a0f1e] border rounded-2xl p-8 flex flex-col ${
+                plan.popular
+                  ? "border-primary/50 shadow-[0_0_40px_rgba(37,99,235,0.1)] -translate-y-2"
+                  : "border-white/[0.07]"
+              }`}
             >
-              {plan.featured && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary to-accent text-white text-sm font-medium flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
+              {plan.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
                   Most Popular
                 </div>
               )}
-              
-              <div
-                className={`h-full glassmorphism rounded-2xl p-8 ${
-                  plan.featured
-                    ? 'bg-gradient-to-br from-primary/10 to-accent/10 border-primary/30'
-                    : ''
+
+              <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
+              <p className="text-[14px] text-slate-400 mb-6 h-10">
+                {plan.description}
+              </p>
+
+              <div className="mb-8">
+                {plan.price.monthly !== null ? (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold text-white tabular-nums tracking-tight">
+                      ${isYearly ? plan.price.yearly : plan.price.monthly}
+                    </span>
+                    <span className="text-slate-500 text-[14px]">/mo</span>
+                  </div>
+                ) : (
+                  <div className="text-4xl font-bold text-white tracking-tight">
+                    Custom
+                  </div>
+                )}
+              </div>
+
+              <button
+                className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 ${
+                  plan.popular
+                    ? "bg-primary hover:bg-primary/90 text-white"
+                    : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
                 }`}
               >
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
+                {plan.cta}
+              </button>
 
-                <div className="mb-6">
-                  {plan.price.monthly ? (
-                    <>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold">
-                          ${isYearly ? plan.price.yearly : plan.price.monthly}
-                        </span>
-                        <span className="text-muted-foreground">
-                          /{isYearly ? 'year' : 'month'}
-                        </span>
-                      </div>
-                      {isYearly && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Billed annually
-                        </p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-4xl font-bold">Custom</div>
-                  )}
+              <div className="flex flex-col gap-3 mt-auto">
+                <div className="text-[12px] font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                  Includes:
                 </div>
-
-                <Button
-                  className={`w-full mb-6 ${
-                    plan.featured
-                      ? 'gradient-primary'
-                      : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  size="lg"
-                >
-                  {plan.cta}
-                </Button>
-
-                <div className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-primary" />
-                      </div>
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
+                {plan.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <Check className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <span className="text-[14px] text-slate-400 leading-snug">
+                      {feature}
+                    </span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Comparison Table */}
+        {/* Feature Comparison */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="glassmorphism rounded-2xl p-8 overflow-x-auto"
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="bg-[#0a0f1e] border border-white/[0.07] rounded-2xl overflow-hidden"
         >
-          <h3 className="text-2xl font-bold mb-6">Feature Comparison</h3>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4">Feature</th>
-                <th className="text-center py-3 px-4">Starter</th>
-                <th className="text-center py-3 px-4">Professional</th>
-                <th className="text-center py-3 px-4">Enterprise</th>
-              </tr>
-            </thead>
-            <tbody>
-              {comparisonFeatures.map((feature, i) => (
-                <tr key={i} className="border-b border-border/50">
-                  <td className="py-3 px-4 text-sm font-medium">{feature.name}</td>
-                  <td className="py-3 px-4 text-center text-sm">
-                    {typeof feature.starter === 'boolean' ? (
-                      feature.starter ? (
-                        <Check className="w-4 h-4 text-primary mx-auto" />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )
-                    ) : (
-                      feature.starter
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-center text-sm">
-                    {typeof feature.pro === 'boolean' ? (
-                      feature.pro ? (
-                        <Check className="w-4 h-4 text-primary mx-auto" />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )
-                    ) : (
-                      feature.pro
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-center text-sm">
-                    {typeof feature.enterprise === 'boolean' ? (
-                      feature.enterprise ? (
-                        <Check className="w-4 h-4 text-primary mx-auto" />
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )
-                    ) : (
-                      feature.enterprise
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-6 text-[13px] font-semibold text-white uppercase tracking-wider w-1/3">
+                    Feature Comparison
+                  </th>
+                  <th className="p-6 text-[13px] font-semibold text-white text-center w-[22%]">
+                    Starter
+                  </th>
+                  <th className="p-6 text-[13px] font-semibold text-white text-center w-[22%]">
+                    Professional
+                  </th>
+                  <th className="p-6 text-[13px] font-semibold text-white text-center w-[22%]">
+                    Enterprise
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/[0.05]">
+                {comparisonFeatures.map((row, i) => (
+                  <tr
+                    key={i}
+                    className={
+                      i % 2 === 0 ? "bg-white/[0.02]" : "bg-transparent"
+                    }
+                  >
+                    <td className="p-4 px-6 text-[14px] text-slate-300 font-medium">
+                      {row.name}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      {typeof row.starter === "boolean" ? (
+                        row.starter ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )
+                      ) : (
+                        <span className="text-[13px] text-slate-400">
+                          {row.starter}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      {typeof row.pro === "boolean" ? (
+                        row.pro ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )
+                      ) : (
+                        <span className="text-[13px] text-slate-400">
+                          {row.pro}
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4 text-center">
+                      {typeof row.enterprise === "boolean" ? (
+                        row.enterprise ? (
+                          <Check className="w-4 h-4 text-primary mx-auto" />
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )
+                      ) : (
+                        <span className="text-[13px] text-slate-400">
+                          {row.enterprise}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       </div>
     </section>

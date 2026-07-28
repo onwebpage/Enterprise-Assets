@@ -1,101 +1,121 @@
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
 const testimonials = [
   {
-    quote: "OmniERP transformed how we run our manufacturing business. The level of integration and real-time visibility is unmatched. We've cut our month-end close from 15 days to just 3.",
-    author: 'Rachel Martinez',
-    role: 'CFO',
-    company: 'Apex Manufacturing',
-    initial: 'RM',
+    company: "Apex Manufacturing",
+    metric: "47% faster month-end close",
+    quote:
+      "OmniERP transformed how we run our manufacturing business. The level of integration and real-time visibility is unmatched.",
+    author: "Rachel Martinez",
+    role: "CFO",
+    initial: "RM",
   },
   {
-    quote: "The AI-powered insights have given us a competitive edge. We can now predict inventory needs with 94% accuracy, saving us hundreds of thousands in carrying costs.",
-    author: 'David Chen',
-    role: 'VP Operations',
-    company: 'Horizon Logistics',
-    initial: 'DC',
+    company: "Horizon Logistics",
+    metric: "$850k saved in carrying costs",
+    quote:
+      "The AI-powered insights have given us a competitive edge. We can now predict inventory needs with 94% accuracy.",
+    author: "David Chen",
+    role: "VP Operations",
+    initial: "DC",
   },
   {
-    quote: "We evaluated SAP, Oracle, and Salesforce. OmniERP was the only platform that felt built for this decade. The mobile experience alone justified the switch.",
-    author: 'Sarah Thompson',
-    role: 'CTO',
-    company: 'Quantum Solutions',
-    initial: 'ST',
+    company: "Quantum Solutions",
+    metric: "Zero downtime migration",
+    quote:
+      "We evaluated SAP, Oracle, and Salesforce. OmniERP was the only platform that felt built for this decade. The mobile experience alone justified the switch.",
+    author: "Sarah Thompson",
+    role: "CTO",
+    initial: "ST",
   },
   {
-    quote: "Implementation took 6 weeks instead of the 6 months our previous ERP required. The ROI was visible within the first quarter. Best enterprise software decision we've made.",
-    author: 'Michael Park',
-    role: 'CEO',
-    company: 'Vanguard Industries',
-    initial: 'MP',
+    company: "Vanguard Industries",
+    metric: "6-week implementation time",
+    quote:
+      "Implementation took 6 weeks instead of the 6 months our previous ERP required. The ROI was visible within the first quarter.",
+    author: "Michael Park",
+    role: "CEO",
+    initial: "MP",
   },
   {
-    quote: "As a multi-national corporation, we needed something that could handle complex tax scenarios across 40 countries. OmniERP handles it effortlessly.",
-    author: 'Elena Rodriguez',
-    role: 'Global Controller',
-    company: 'Atlas Group',
-    initial: 'ER',
+    company: "Atlas Group",
+    metric: "Active in 40+ countries",
+    quote:
+      "As a multi-national corporation, we needed something that could handle complex tax scenarios across borders. OmniERP handles it effortlessly.",
+    author: "Elena Rodriguez",
+    role: "Global Controller",
+    initial: "ER",
   },
   {
-    quote: "The white-label capabilities let us offer ERP to our clients under our own brand. It's become a significant revenue stream for our consulting practice.",
-    author: 'James Wilson',
-    role: 'Managing Partner',
-    company: 'Catalyst Consulting',
-    initial: 'JW',
+    company: "Catalyst Consulting",
+    metric: "14 new white-label deployments",
+    quote:
+      "The white-label capabilities let us offer ERP to our clients under our own brand. It's become a significant revenue stream for our practice.",
+    author: "James Wilson",
+    role: "Managing Partner",
+    initial: "JW",
   },
 ];
 
 export function Testimonials() {
   return (
-    <section id="resources" className="py-24 relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="resources" className="py-24 relative bg-[#050816]">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold mb-4">
-            Trusted by the
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[11px] uppercase tracking-[0.15em] font-medium mb-6">
+            Enterprise Case Studies
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight text-white">
+            Trusted by the world's
             <br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              world's best teams.
-            </span>
+            most demanding teams.
           </h2>
-          <p className="text-xl text-muted-foreground">
-            See why industry leaders choose OmniERP to power their operations.
-          </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {testimonials.map((testimonial, index) => (
+        <div className="grid md:grid-cols-2 gap-6">
+          {testimonials.map((t, i) => (
             <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
+              key={i}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.1, duration: 0.6 }}
-              whileHover={{ y: -5 }}
-              className="glassmorphism rounded-2xl p-6 hover:bg-white/10 transition-all duration-300"
+              transition={{
+                duration: 0.6,
+                delay: i * 0.1,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+              className="bg-[#0a0f1e] border border-white/[0.07] border-l-[3px] border-l-primary rounded-xl p-8 flex flex-col h-full"
             >
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-lg font-bold flex-shrink-0">
-                  {testimonial.initial}
-                </div>
-                <div>
-                  <div className="font-semibold">{testimonial.author}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {testimonial.role}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {testimonial.company}
-                  </div>
+              <div className="flex items-start justify-between mb-6">
+                <h3 className="text-2xl font-bold text-white tracking-tight">
+                  {t.company}
+                </h3>
+                <div className="text-[12px] font-semibold text-green-400 bg-green-400/10 px-3 py-1 rounded-full">
+                  {t.metric}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                "{testimonial.quote}"
+
+              <p className="text-[16px] text-slate-300 leading-relaxed mb-8 italic flex-1">
+                "{t.quote}"
               </p>
+
+              <div className="flex items-center gap-4 mt-auto">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[12px] font-bold text-slate-300">
+                  {t.initial}
+                </div>
+                <div>
+                  <div className="text-[14px] font-semibold text-white">
+                    {t.author}
+                  </div>
+                  <div className="text-[13px] text-slate-500">{t.role}</div>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
