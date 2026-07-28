@@ -1,6 +1,6 @@
-# [Project name]
+# OmniERP / BizOS
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Enterprise SaaS ERP platform — a React/Vite marketing + app UI paired with an Express API server, deployed as two separate Render services.
 
 ## Run & Operate
 
@@ -22,15 +22,23 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/omni-erp/src/` — React frontend (Vite). Pages in `pages/`, shared components in `components/`
+- `artifacts/api-server/src/` — Express 5 API server. Routes in `routes/`, built to `dist/index.mjs`
+- `lib/db/src/schema/index.ts` — Drizzle ORM schema (source of truth for DB shape)
+- `lib/api-spec/` — OpenAPI spec; run `pnpm --filter @workspace/api-spec run codegen` to regenerate hooks
+- `artifacts/omni-erp/dist/public/` — Frontend production build output (Render publish dir)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Frontend and API are separate Render services (static site + web service), not a single monolith
+- `BASE_PATH` defaults to `/` at build time; only required explicitly in dev via Replit artifact routing
+- `PORT` guard is dev-only — build mode skips the check so Render static builds work without it
+- Drizzle schema is the single source of truth; `drizzle-zod` derives Zod types from it automatically
+- Demo login uses hardcoded credentials client-side (no DB needed for the current frontend-only auth)
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+OmniERP is an enterprise ERP platform UI covering Finance, Sales, HR, Inventory, Manufacturing, Projects, GST, Banking, and more. The landing page markets the platform; `/app/*` routes are the authenticated app shell with a full sidebar and module pages.
 
 ## User preferences
 

@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Zap, Activity } from 'lucide-react';
+
+const DEMO_CREDENTIALS = [
+  { email: 'admin@omnierp.io', password: 'Admin@1234' },
+];
 
 const trustItems = [
   { icon: ShieldCheck, label: 'ISO 27001 Certified' },
@@ -21,11 +25,24 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [, navigate] = useLocation();
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => setLoading(false), 1800);
+    setTimeout(() => {
+      const valid = DEMO_CREDENTIALS.some(
+        c => c.email === email.trim().toLowerCase() && c.password === password,
+      );
+      if (valid) {
+        navigate('/app/dashboard');
+      } else {
+        setLoading(false);
+        setError('Invalid email or password. Use the demo credentials below.');
+      }
+    }, 900);
   }
 
   return (
@@ -213,6 +230,13 @@ export default function Login() {
                 Keep me signed in for 30 days
               </span>
             </label>
+
+            {/* Error */}
+            {error && (
+              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">
+                {error}
+              </p>
+            )}
 
             {/* Submit */}
             <motion.button

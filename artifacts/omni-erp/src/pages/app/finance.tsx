@@ -255,7 +255,7 @@ function FilterBar({ placeholder, children }: { placeholder: string; children?: 
 
 // ─── Statement row helper (P&L / Balance Sheet) ───────────────────────────────
 function StatRow({ label, value, indent = 0, bold = false, separator = false, highlight = false }: {
-  label: string; value?: string; indent?: number; bold?: boolean; separator?: boolean; highlight?: boolean;
+  label?: string; value?: string; indent?: number; bold?: boolean; separator?: boolean; highlight?: boolean;
 }) {
   if (separator) return <tr><td colSpan={2} className="px-4 py-1.5"><div className="h-px bg-white/[0.06]" /></td></tr>;
   return (
