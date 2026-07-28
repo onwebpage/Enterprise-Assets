@@ -67,9 +67,11 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-4">
-            <Button variant="ghost" size="sm">
-              Login
-            </Button>
+            <Link href="/login">
+              <Button variant="ghost" size="sm">
+                Login
+              </Button>
+            </Link>
             <Button variant="outline" size="sm">
               Book Demo
             </Button>
@@ -98,9 +100,11 @@ export function Navbar() {
                   </a>
                 ))}
                 <div className="flex flex-col gap-3 pt-4 border-t border-border">
-                  <Button variant="ghost" className="w-full">
-                    Login
-                  </Button>
+                  <Link href="/login" className="w-full">
+                    <Button variant="ghost" className="w-full">
+                      Login
+                    </Button>
+                  </Link>
                   <Button variant="outline" className="w-full">
                     Book Demo
                   </Button>
