@@ -281,7 +281,13 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
         <header className="flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-white/[0.07] bg-[#07091a]/80 backdrop-blur-xl flex-shrink-0">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => { setSidebarOpen(!sidebarOpen); setMobileOpen(!mobileOpen); }}
+              onClick={() => {
+                if (window.innerWidth >= 1024) {
+                  setSidebarOpen(v => !v);
+                } else {
+                  setMobileOpen(v => !v);
+                }
+              }}
               className="p-1.5 rounded-lg hover:bg-white/[0.07] text-white/50 hover:text-white transition-colors"
             >
               <Menu className="w-4 h-4" />
