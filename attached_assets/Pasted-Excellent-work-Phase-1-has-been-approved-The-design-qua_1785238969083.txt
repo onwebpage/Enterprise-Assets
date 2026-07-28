@@ -1,0 +1,184 @@
+Excellent work.
+
+Phase 1 has been approved.
+
+The design quality, consistency, and component architecture should now become the permanent design system for the entire application.
+
+DO NOT redesign anything from Phase 1.
+
+DO NOT change colors, spacing, typography, shadows, border radius, or component styles.
+
+Reuse the exact same components, design tokens, and interaction patterns.
+
+====================================================
+PHASE 2
+====================================================
+
+Build ONLY these three modules:
+
+1. Financial Accounting
+2. Sales & CRM
+3. Inventory & Warehouse
+
+These should become production-quality enterprise application screens.
+
+====================================================
+FINANCIAL ACCOUNTING
+====================================================
+
+Create a complete accounting workspace.
+
+Include:
+
+• Overview Dashboard
+• Chart of Accounts
+• General Ledger
+• Journal Entries
+• Accounts Receivable
+• Accounts Payable
+• Cash Book
+• Bank Book
+• Profit & Loss
+• Balance Sheet
+• Trial Balance
+• Bank Reconciliation
+
+Use:
+
+Professional data tables
+
+Advanced filters
+
+Date range picker
+
+Export buttons
+
+Search
+
+Pagination
+
+Summary KPI cards
+
+Interactive charts
+
+Modern empty states
+
+Drawer forms
+
+Modal dialogs
+
+====================================================
+SALES & CRM
+====================================================
+
+Create a modern CRM workspace.
+
+Include:
+
+Sales Dashboard
+
+Lead Pipeline (Kanban)
+
+Customers
+
+Opportunities
+
+Quotations
+
+Sales Orders
+
+Invoices
+
+Customer Profile
+
+Activity Timeline
+
+Tasks
+
+Calendar
+
+Revenue Analytics
+
+Performance charts
+
+Quick actions
+
+Everything should feel similar to Salesforce and HubSpot.
+
+====================================================
+INVENTORY
+====================================================
+
+Create a premium warehouse interface.
+
+Include:
+
+Inventory Dashboard
+
+Products
+
+Warehouses
+
+Stock Levels
+
+Batch Tracking
+
+Serial Numbers
+
+Barcode
+
+Transfers
+
+Low Stock Alerts
+
+Warehouse Analytics
+
+Inventory Valuation
+
+Stock Movements
+
+Modern data tables
+
+Advanced filters
+
+Charts
+
+Summary cards
+
+====================================================
+COMMON DESIGN RULES
+====================================================
+
+Reuse the existing design system.
+
+Use the existing App Layout.
+
+Use the same sidebar.
+
+Use the same navbar.
+
+Use the same typography.
+
+Use the same buttons.
+
+Use the same cards.
+
+Use the same spacing.
+
+Use the same animations.
+
+Every page must feel like part of one application.
+
+====================================================
+QUALITY
+====================================================
+
+Do not generate placeholder pages.
+
+Every screen should feel production-ready.
+
+Use realistic enterprise dummy data.
+
+The quality should match SAP Fiori, Oracle Fusion, Salesforce Lightning, Microsoft Dynamics, Atlassian Admin, and Stripe Dashboard.
+
+Build these modules one by one while maintaining pixel-perfect consistency with the Dashboard created in Phase 1.

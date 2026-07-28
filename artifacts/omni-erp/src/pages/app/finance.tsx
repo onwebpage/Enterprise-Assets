@@ -1,270 +1,946 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
 } from 'recharts';
 import {
   DollarSign, TrendingUp, TrendingDown, Plus, Download, Upload,
-  Filter, Search, MoreHorizontal, Eye, Edit, Trash2, CheckCircle,
-  Clock, AlertCircle, FileText, ArrowUpRight, ArrowDownRight,
-  CreditCard, Banknote, PieChart, ChevronDown, RefreshCw
+  Filter, Search, MoreHorizontal, Eye, Edit, Trash2, X,
+  CreditCard, Banknote, ArrowUpRight, ArrowDownRight, ArrowRight,
+  FileText, BookOpen, RefreshCw, CheckCircle2, AlertCircle,
+  ChevronRight, ChevronDown, Calendar, Building2, Layers,
+  Scale, ReceiptText, Landmark, GitMerge, Clock, Check,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
-import { Badge } from '@/components/ui/badge';
+import KPICard from '@/components/app/KPICard';
+import StatusBadge from '@/components/app/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
+// ─── Shared tooltip ──────────────────────────────────────────────────────────
+const ChartTip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#0d1225] border border-white/[0.1] rounded-xl p-3 shadow-2xl">
+      <p className="text-xs text-white/50 mb-2 font-medium">{label}</p>
+      {payload.map((p: any) => (
+        <div key={p.dataKey} className="flex items-center gap-2 mb-1 last:mb-0">
+          <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
+          <span className="text-xs text-white/60">{p.name}:</span>
+          <span className="text-xs font-semibold text-white">${p.value}M</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ─── Data ────────────────────────────────────────────────────────────────────
 const plData = [
-  { month: 'Jan', income: 4.2, cogs: 2.1, gross: 2.1 },
-  { month: 'Feb', income: 5.1, cogs: 2.6, gross: 2.5 },
-  { month: 'Mar', income: 4.8, cogs: 2.4, gross: 2.4 },
-  { month: 'Apr', income: 6.3, cogs: 3.1, gross: 3.2 },
-  { month: 'May', income: 5.9, cogs: 2.9, gross: 3.0 },
-  { month: 'Jun', income: 7.2, cogs: 3.5, gross: 3.7 },
-  { month: 'Jul', income: 8.1, cogs: 3.9, gross: 4.2 },
+  { month: 'Jan', revenue: 4.2, cogs: 2.1, gross: 2.1, opex: 1.4, net: 0.7 },
+  { month: 'Feb', revenue: 5.1, cogs: 2.6, gross: 2.5, opex: 1.5, net: 1.0 },
+  { month: 'Mar', revenue: 4.8, cogs: 2.4, gross: 2.4, opex: 1.4, net: 1.0 },
+  { month: 'Apr', revenue: 6.3, cogs: 3.1, gross: 3.2, opex: 1.7, net: 1.5 },
+  { month: 'May', revenue: 5.9, cogs: 2.9, gross: 3.0, opex: 1.6, net: 1.4 },
+  { month: 'Jun', revenue: 7.2, cogs: 3.5, gross: 3.7, opex: 1.9, net: 1.8 },
+  { month: 'Jul', revenue: 8.1, cogs: 3.9, gross: 4.2, opex: 2.1, net: 2.1 },
+];
+
+const cashFlowData = [
+  { month: 'Jan', operating: 1.8, investing: -0.4, financing: -0.2 },
+  { month: 'Feb', operating: 2.1, investing: -0.6, financing: -0.2 },
+  { month: 'Mar', operating: 1.9, investing: -0.3, financing: -0.3 },
+  { month: 'Apr', operating: 2.8, investing: -1.2, financing: -0.1 },
+  { month: 'May', operating: 2.6, investing: -0.5, financing: -0.2 },
+  { month: 'Jun', operating: 3.2, investing: -0.8, financing: -0.4 },
+  { month: 'Jul', operating: 3.8, investing: -1.1, financing: -0.3 },
+];
+
+const arAgingBands = [
+  { label: 'Current',  amount: 1284000, count: 42, pct: 40 },
+  { label: '1–30 days', amount: 892000, count: 28, pct: 28 },
+  { label: '31–60 days', amount: 641000, count: 19, pct: 20 },
+  { label: '61–90 days', amount: 284000, count: 8,  pct: 9  },
+  { label: '90+ days',  amount: 140000, count: 4,  pct: 4  },
+];
+
+const apAgingBands = [
+  { label: 'Current',   amount: 412000, count: 18, pct: 46 },
+  { label: '1–30 days', amount: 248000, count: 11, pct: 28 },
+  { label: '31–60 days', amount: 142000, count: 7,  pct: 16 },
+  { label: '61–90 days', amount: 64000,  count: 3,  pct: 7  },
+  { label: '90+ days',  amount: 26000,  count: 2,  pct: 3  },
 ];
 
 const invoices = [
-  { id: 'INV-4821', customer: 'Stratford Industries', amount: 48200, due: 'Jul 25, 2026', status: 'paid', type: 'Sales Invoice' },
-  { id: 'INV-4820', customer: 'Apex Global Ltd.', amount: 31500, due: 'Jul 28, 2026', status: 'pending', type: 'Sales Invoice' },
-  { id: 'INV-4819', customer: 'Meridian Corp', amount: 92750, due: 'Aug 1, 2026', status: 'overdue', type: 'Sales Invoice' },
-  { id: 'INV-4818', customer: 'BlueSky Technologies', amount: 7800, due: 'Aug 5, 2026', status: 'draft', type: 'Sales Invoice' },
-  { id: 'INV-4817', customer: 'Global Ventures Inc.', amount: 156000, due: 'Aug 10, 2026', status: 'sent', type: 'Sales Invoice' },
-  { id: 'BILL-0912', customer: 'TechParts Ltd.', amount: 12400, due: 'Jul 30, 2026', status: 'pending', type: 'Vendor Bill' },
-  { id: 'BILL-0911', customer: 'Omega Suppliers', amount: 8900, due: 'Aug 3, 2026', status: 'paid', type: 'Vendor Bill' },
+  { id: 'INV-4821', customer: 'Stratford Industries',   amount: 48200,  paid: 48200,  due: 'Jul 25, 2026', issued: 'Jul 10, 2026', status: 'paid',    type: 'Sales Invoice' },
+  { id: 'INV-4820', customer: 'Apex Global Ltd.',        amount: 31500,  paid: 0,      due: 'Jul 28, 2026', issued: 'Jul 13, 2026', status: 'pending',  type: 'Sales Invoice' },
+  { id: 'INV-4819', customer: 'Meridian Corp',           amount: 92750,  paid: 0,      due: 'Aug 1, 2026',  issued: 'Jul 15, 2026', status: 'overdue',  type: 'Sales Invoice' },
+  { id: 'INV-4818', customer: 'BlueSky Technologies',    amount: 7800,   paid: 0,      due: 'Aug 5, 2026',  issued: 'Jul 20, 2026', status: 'draft',    type: 'Sales Invoice' },
+  { id: 'INV-4817', customer: 'Global Ventures Inc.',    amount: 156000, paid: 0,      due: 'Aug 10, 2026', issued: 'Jul 18, 2026', status: 'sent',     type: 'Sales Invoice' },
+  { id: 'INV-4816', customer: 'Nexus Logistics',         amount: 24500,  paid: 24500,  due: 'Jul 20, 2026', issued: 'Jul 8, 2026',  status: 'paid',    type: 'Sales Invoice' },
+  { id: 'INV-4815', customer: 'Northstar LLC',           amount: 18200,  paid: 10000,  due: 'Jul 22, 2026', issued: 'Jul 9, 2026',  status: 'partial',  type: 'Sales Invoice' },
+];
+
+const bills = [
+  { id: 'BILL-0912', vendor: 'TechParts Ltd.',     amount: 12400,  due: 'Jul 30, 2026', issued: 'Jul 15, 2026', status: 'pending',  category: 'Materials' },
+  { id: 'BILL-0911', vendor: 'Omega Suppliers',    amount: 8900,   due: 'Aug 3, 2026',  issued: 'Jul 16, 2026', status: 'paid',     category: 'Materials' },
+  { id: 'BILL-0910', vendor: 'CloudInfra Inc.',    amount: 3200,   due: 'Aug 1, 2026',  issued: 'Jul 18, 2026', status: 'pending',  category: 'Software' },
+  { id: 'BILL-0909', vendor: 'Vertex Supply Co.',  amount: 41800,  due: 'Jul 25, 2026', issued: 'Jul 10, 2026', status: 'overdue',  category: 'Equipment' },
+  { id: 'BILL-0908', vendor: 'ProLogistics LLC',   amount: 6100,   due: 'Aug 8, 2026',  issued: 'Jul 20, 2026', status: 'draft',    category: 'Freight' },
+  { id: 'BILL-0907', vendor: 'SteelMart Corp',     amount: 22400,  due: 'Jul 28, 2026', issued: 'Jul 12, 2026', status: 'pending',  category: 'Materials' },
 ];
 
 const accounts = [
-  { code: '1000', name: 'Cash & Cash Equivalents', type: 'Asset', balance: 1842000, change: +12.4 },
-  { code: '1100', name: 'Accounts Receivable', type: 'Asset', balance: 3241000, change: +8.1 },
-  { code: '1200', name: 'Inventory', type: 'Asset', balance: 2408000, change: -1.2 },
-  { code: '2000', name: 'Accounts Payable', type: 'Liability', balance: 892000, change: +3.5 },
-  { code: '3000', name: 'Retained Earnings', type: 'Equity', balance: 5120000, change: +21.5 },
-  { code: '4000', name: 'Revenue', type: 'Income', balance: 7200000, change: +14.3 },
-  { code: '5000', name: 'Cost of Goods Sold', type: 'Expense', balance: 3180000, change: +11.2 },
+  { code: '1000', name: 'Cash & Cash Equivalents',      type: 'Asset',    normal: 'Debit',  balance: 1842000,  change: +12.4 },
+  { code: '1100', name: 'Accounts Receivable',           type: 'Asset',    normal: 'Debit',  balance: 3241000,  change: +8.1  },
+  { code: '1200', name: 'Inventory',                     type: 'Asset',    normal: 'Debit',  balance: 2408000,  change: -1.2  },
+  { code: '1500', name: 'Property, Plant & Equipment',   type: 'Asset',    normal: 'Debit',  balance: 4820000,  change: +2.1  },
+  { code: '1600', name: 'Accumulated Depreciation',      type: 'Asset',    normal: 'Credit', balance: -1240000, change: -5.8  },
+  { code: '2000', name: 'Accounts Payable',              type: 'Liability', normal: 'Credit', balance: 892000,  change: +3.5  },
+  { code: '2100', name: 'Accrued Liabilities',           type: 'Liability', normal: 'Credit', balance: 341000,  change: +1.8  },
+  { code: '2200', name: 'Long-term Debt',                type: 'Liability', normal: 'Credit', balance: 2400000, change: -4.2  },
+  { code: '3000', name: 'Share Capital',                 type: 'Equity',   normal: 'Credit', balance: 5000000, change: 0     },
+  { code: '3100', name: 'Retained Earnings',             type: 'Equity',   normal: 'Credit', balance: 2841000, change: +21.5 },
+  { code: '4000', name: 'Revenue',                       type: 'Income',   normal: 'Credit', balance: 7200000, change: +14.3 },
+  { code: '5000', name: 'Cost of Goods Sold',            type: 'Expense',  normal: 'Debit',  balance: 3180000, change: +11.2 },
+  { code: '6000', name: 'Salaries & Wages',              type: 'Expense',  normal: 'Debit',  balance: 1240000, change: +8.4  },
+  { code: '6100', name: 'Rent & Utilities',              type: 'Expense',  normal: 'Debit',  balance: 284000,  change: +2.1  },
+  { code: '6200', name: 'Depreciation Expense',          type: 'Expense',  normal: 'Debit',  balance: 182000,  change: 0     },
 ];
 
-const statusStyle: Record<string, string> = {
-  paid: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  overdue: 'bg-red-500/15 text-red-400 border-red-500/20',
-  draft: 'bg-white/5 text-white/50 border-white/10',
-  sent: 'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20',
+const journalEntries = [
+  { id: 'JE-2841', date: 'Jul 28, 2026', ref: 'INV-4821', memo: 'Revenue recognition — Stratford Industries',    debit: 48200,  credit: 48200,  status: 'posted' },
+  { id: 'JE-2840', date: 'Jul 27, 2026', ref: 'BILL-0912', memo: 'Vendor bill — TechParts Ltd.',                 debit: 12400,  credit: 12400,  status: 'posted' },
+  { id: 'JE-2839', date: 'Jul 26, 2026', ref: 'PAY-0291', memo: 'Payment received — Meridian Corp',              debit: 31500,  credit: 31500,  status: 'posted' },
+  { id: 'JE-2838', date: 'Jul 25, 2026', ref: 'DEP-0041', memo: 'Monthly depreciation — Plant & Equipment',      debit: 26000,  credit: 26000,  status: 'posted' },
+  { id: 'JE-2837', date: 'Jul 24, 2026', ref: 'SAL-0712', memo: 'Payroll — July 2026 (342 employees)',           debit: 184000, credit: 184000, status: 'posted' },
+  { id: 'JE-2836', date: 'Jul 23, 2026', ref: 'MISC-012', memo: 'Accrual — Q3 professional fees',               debit: 8400,   credit: 8400,   status: 'draft'  },
+];
+
+const ledgerEntries = [
+  { date: 'Jul 28', ref: 'JE-2841', desc: 'Invoice payment — Stratford Industries', debit: 48200,  credit: 0,     balance: 1842000 },
+  { date: 'Jul 27', ref: 'JE-2840', desc: 'Vendor payment — TechParts Ltd.',        debit: 0,      credit: 12400, balance: 1793800 },
+  { date: 'Jul 26', ref: 'JE-2839', desc: 'Customer payment — Meridian Corp',       debit: 31500,  credit: 0,     balance: 1806200 },
+  { date: 'Jul 25', ref: 'JE-2837', desc: 'Payroll disbursement — Jul 2026',        debit: 0,      credit: 184000,balance: 1774700 },
+  { date: 'Jul 24', ref: 'JE-2836', desc: 'Office rent — August advance',            debit: 0,      credit: 22000, balance: 1958700 },
+  { date: 'Jul 22', ref: 'JE-2835', desc: 'Sales order payment — Nexus Logistics',  debit: 24500,  credit: 0,     balance: 1980700 },
+];
+
+const bankRecon = {
+  bankBalance: 1842000,
+  bookBalance: 1798400,
+  outstanding: [
+    { ref: 'CHK-1041', date: 'Jul 26', desc: 'Vendor payment — Omega Suppliers',  amount: -8900  },
+    { ref: 'CHK-1040', date: 'Jul 25', desc: 'Utility bill payment',              amount: -3200  },
+    { ref: 'DEP-2204', date: 'Jul 28', desc: 'Customer receipt — Apex Global',    amount: 56100  },
+  ],
 };
 
+const typeColor: Record<string, string> = {
+  Asset:    'bg-blue-500/12 text-blue-400 border-blue-500/25',
+  Liability:'bg-red-500/12 text-red-400 border-red-500/25',
+  Equity:   'bg-purple-500/12 text-purple-400 border-purple-500/25',
+  Income:   'bg-emerald-500/12 text-emerald-400 border-emerald-500/25',
+  Expense:  'bg-amber-500/12 text-amber-400 border-amber-500/25',
+};
+
+const fmt = (n: number) =>
+  n < 0
+    ? `(${Math.abs(n).toLocaleString()})`
+    : `$${n.toLocaleString()}`;
+
+// ─── Reusable table shell ─────────────────────────────────────────────────────
+function TableShell({ headers, children, footer }: {
+  headers: string[];
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-white/[0.06]">
+            {headers.map(h => (
+              <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>{children}</tbody>
+      </table>
+      {footer && (
+        <div className="border-t border-white/[0.06] px-4 py-3 flex items-center justify-between">
+          {footer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TableRow({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <tr className={cn('border-b border-white/[0.04] hover:bg-white/[0.025] transition-colors cursor-pointer group last:border-0', className)}>
+      {children}
+    </tr>
+  );
+}
+
+function RowActions() {
+  return (
+    <td className="px-4 py-3">
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Eye className="w-3.5 h-3.5" /></button>
+        <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
+        <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+      </div>
+    </td>
+  );
+}
+
+function Pagination({ total, shown }: { total: string; shown: number }) {
+  return (
+    <>
+      <p className="text-xs text-white/30">Showing {shown} of {total} records</p>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, '…', '24'].map((p, i) => (
+          <button key={i} className={cn('w-7 h-7 rounded text-xs transition-colors', p === 1 ? 'bg-[#2563EB] text-white' : 'text-white/40 hover:bg-white/[0.07]')}>{p}</button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function SectionCard({ title, subtitle, action, children }: {
+  title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl">
+      <div className="flex items-center justify-between px-5 pt-5 pb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          {subtitle && <p className="text-xs text-white/35 mt-0.5">{subtitle}</p>}
+        </div>
+        {action}
+      </div>
+      <div className="px-5 pb-5">{children}</div>
+    </div>
+  );
+}
+
+function FilterBar({ placeholder, children }: { placeholder: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 p-4 border-b border-white/[0.06]">
+      <div className="relative flex-1 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+        <Input placeholder={placeholder} className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" />
+      </div>
+      <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+        <Calendar className="w-3.5 h-3.5 mr-1.5" />Date Range
+      </Button>
+      <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+        <Filter className="w-3.5 h-3.5 mr-1.5" />Filter
+      </Button>
+      {children}
+      <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8 ml-auto">
+        <Download className="w-3.5 h-3.5 mr-1.5" />Export
+      </Button>
+    </div>
+  );
+}
+
+// ─── Statement row helper (P&L / Balance Sheet) ───────────────────────────────
+function StatRow({ label, value, indent = 0, bold = false, separator = false, highlight = false }: {
+  label: string; value?: string; indent?: number; bold?: boolean; separator?: boolean; highlight?: boolean;
+}) {
+  if (separator) return <tr><td colSpan={2} className="px-4 py-1.5"><div className="h-px bg-white/[0.06]" /></td></tr>;
+  return (
+    <tr className={cn('group', highlight ? 'bg-[#2563EB]/8' : 'hover:bg-white/[0.02]')}>
+      <td className={cn('px-4 py-2 text-sm', bold ? 'font-semibold text-white' : 'text-white/60')}
+          style={{ paddingLeft: `${16 + indent * 20}px` }}>
+        {label}
+      </td>
+      <td className={cn('px-4 py-2 text-sm text-right tabular-nums', bold ? 'font-semibold text-white' : 'text-white/70')}>
+        {value}
+      </td>
+    </tr>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function Finance() {
   const [tab, setTab] = useState('overview');
-  const [search, setSearch] = useState('');
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
   const kpis = [
-    { label: 'Total Revenue', value: '$7.2M', change: '+14.3%', up: true, icon: TrendingUp },
-    { label: 'Gross Profit', value: '$4.2M', change: '+18.7%', up: true, icon: DollarSign },
-    { label: 'Net Profit', value: '$1.8M', change: '+21.5%', up: true, icon: ArrowUpRight },
-    { label: 'Outstanding AR', value: '$3.2M', change: '-5.1%', up: false, icon: CreditCard },
-    { label: 'Accounts Payable', value: '$892K', change: '+3.5%', up: false, icon: Banknote },
-    { label: 'Operating Expenses', value: '$2.4M', change: '+9.2%', up: false, icon: TrendingDown },
+    { label: 'Total Revenue',      value: '$7.2M',  change: '+14.3%', up: true,  icon: TrendingUp,   iconColor: 'text-[#2563EB]', gradient: 'bg-[#2563EB]/15',  sparkline: [4.2,5.1,4.8,6.3,5.9,7.2,8.1], changeLabel: 'YTD 2026' },
+    { label: 'Gross Profit',       value: '$4.2M',  change: '+18.7%', up: true,  icon: DollarSign,   iconColor: 'text-emerald-400',gradient: 'bg-emerald-500/15', sparkline: [2.1,2.5,2.4,3.2,3.0,3.7,4.2], changeLabel: 'GP margin 58%' },
+    { label: 'Net Profit',         value: '$1.8M',  change: '+21.5%', up: true,  icon: ArrowUpRight, iconColor: 'text-purple-400', gradient: 'bg-purple-500/15',  sparkline: [0.7,1.0,1.0,1.5,1.4,1.8,2.1], changeLabel: 'NP margin 25%' },
+    { label: 'Accounts Receivable',value: '$3.2M',  change: '+8.1%',  up: false, icon: CreditCard,   iconColor: 'text-amber-400',  gradient: 'bg-amber-500/15',   sparkline: [2.8,2.9,3.0,3.1,3.0,3.1,3.2], changeLabel: 'DSO: 38 days' },
+    { label: 'Accounts Payable',   value: '$892K',  change: '+3.5%',  up: false, icon: Banknote,     iconColor: 'text-red-400',    gradient: 'bg-red-500/15',     sparkline: [820,850,860,870,880,888,892], changeLabel: 'DPO: 28 days' },
+    { label: 'Operating Expenses', value: '$2.4M',  change: '+9.2%',  up: false, icon: TrendingDown, iconColor: 'text-[#06B6D4]',  gradient: 'bg-[#06B6D4]/15',  sparkline: [1.8,1.9,1.9,2.1,2.0,2.2,2.4], changeLabel: 'vs $2.2M target' },
   ];
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Finance' }, { label: 'Financial Accounting' }]}>
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="p-6 max-w-[1800px] mx-auto space-y-5">
+
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Financial Accounting</h1>
-            <p className="text-white/40 text-sm mt-0.5">General Ledger · FY 2026 · Q3</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Financial Accounting</h1>
+            <p className="text-sm text-white/40 mt-0.5">General Ledger · FY 2026 · Q3 &nbsp;·&nbsp; Apex Global Inc.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
-              <Download className="w-3.5 h-3.5 mr-1.5" /> Export
+            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+              <Upload className="w-3.5 h-3.5 mr-1.5" />Import
             </Button>
-            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
-              <Upload className="w-3.5 h-3.5 mr-1.5" /> Import
+            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+              <Download className="w-3.5 h-3.5 mr-1.5" />Export
             </Button>
-            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]">
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> New Invoice
+            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />New Entry
             </Button>
           </div>
-        </div>
+        </motion.div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          {kpis.map((k, i) => (
-            <motion.div key={k.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4 hover:border-white/[0.12] transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <k.icon className={`w-4 h-4 ${k.up ? 'text-emerald-400' : 'text-red-400'}`} />
-                <span className={`text-xs font-medium ${k.up ? 'text-emerald-400' : 'text-red-400'}`}>{k.change}</span>
-              </div>
-              <p className="text-xl font-bold text-white">{k.value}</p>
-              <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
-            </motion.div>
-          ))}
+        {/* KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          {kpis.map((k, i) => <KPICard key={k.label} {...k} index={i} />)}
         </div>
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="bg-white/[0.04] border border-white/[0.07]">
-            {['overview', 'invoices', 'accounts', 'journal'].map(t => (
-              <TabsTrigger key={t} value={t} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 capitalize">
-                {t}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="bg-white/[0.04] border border-white/[0.07] h-9 p-0.5 inline-flex min-w-max">
+              {[
+                { value: 'overview',  label: 'Overview',        icon: ReceiptText },
+                { value: 'invoices',  label: 'Receivables',     icon: ArrowUpRight },
+                { value: 'bills',     label: 'Payables',        icon: ArrowDownRight },
+                { value: 'accounts',  label: 'Chart of Accounts', icon: BookOpen },
+                { value: 'ledger',    label: 'General Ledger',  icon: Layers },
+                { value: 'journal',   label: 'Journal Entries', icon: FileText },
+                { value: 'pl',        label: 'P&L Statement',   icon: TrendingUp },
+                { value: 'bs',        label: 'Balance Sheet',   icon: Scale },
+                { value: 'tb',        label: 'Trial Balance',   icon: CheckCircle2 },
+                { value: 'recon',     label: 'Bank Reconciliation', icon: GitMerge },
+              ].map(t => (
+                <TabsTrigger key={t.value} value={t.value}
+                  className="text-xs h-8 px-3 data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/40 gap-1.5 whitespace-nowrap">
+                  <t.icon className="w-3.5 h-3.5" />{t.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-          <TabsContent value="overview" className="mt-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-              <h3 className="font-semibold text-white mb-4">P&L Statement</h3>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={plData}>
-                  <defs>
-                    <linearGradient id="incomeGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#2563EB" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#2563EB" stopOpacity={0.4} />
-                    </linearGradient>
-                    <linearGradient id="grossGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#22C55E" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#22C55E" stopOpacity={0.4} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
-                  <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: 'white' }} />
-                  <Bar dataKey="income" name="Revenue" fill="url(#incomeGrad)" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="gross" name="Gross Profit" fill="url(#grossGrad)" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+          {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
+          <TabsContent value="overview" className="mt-4 space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              {/* P&L Chart */}
+              <div className="xl:col-span-2 bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Profit & Loss — Monthly</h3>
+                    <p className="text-xs text-white/35 mt-0.5">Revenue, COGS, and Net Profit · FY 2026</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-emerald-400 text-sm font-semibold">
+                    <TrendingUp className="w-4 h-4" />+21.5% net profit
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <ComposedChart data={plData} margin={{ left: -20, right: 5, top: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.035)" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
+                    <Tooltip content={<ChartTip />} />
+                    <Bar dataKey="revenue" name="Revenue" fill="#2563EB" fillOpacity={0.5} radius={[3,3,0,0]} />
+                    <Bar dataKey="cogs"    name="COGS"    fill="#EF4444" fillOpacity={0.4} radius={[3,3,0,0]} />
+                    <Line type="monotone" dataKey="net" name="Net Profit" stroke="#22C55E" strokeWidth={2} dot={{ fill:'#22C55E', r:3 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+                <div className="flex items-center gap-5 mt-2">
+                  {[{l:'Revenue',c:'#2563EB'},{l:'COGS',c:'#EF4444'},{l:'Net Profit',c:'#22C55E'}].map(x=>(
+                    <span key={x.l} className="flex items-center gap-1.5 text-xs text-white/40">
+                      <span className="w-3 h-0.5 rounded-full inline-block" style={{background:x.c}} />{x.l}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* AR/AP Aging */}
+              <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-white mb-4">AR / AP Aging Summary</h3>
+                <div className="mb-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-emerald-400">Accounts Receivable</span>
+                    <span className="text-xs font-bold text-white">$3.24M</span>
+                  </div>
+                  {arAgingBands.map(b => (
+                    <div key={b.label} className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] text-white/40 w-20 flex-shrink-0">{b.label}</span>
+                      <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 rounded-full" style={{width:`${b.pct}%`}} />
+                      </div>
+                      <span className="text-[11px] font-medium text-white w-16 text-right">${(b.amount/1000).toFixed(0)}K</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-white/[0.06] pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-red-400">Accounts Payable</span>
+                    <span className="text-xs font-bold text-white">$892K</span>
+                  </div>
+                  {apAgingBands.map(b => (
+                    <div key={b.label} className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] text-white/40 w-20 flex-shrink-0">{b.label}</span>
+                      <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                        <div className="h-full bg-red-500 rounded-full" style={{width:`${b.pct}%`}} />
+                      </div>
+                      <span className="text-[11px] font-medium text-white w-16 text-right">${(b.amount/1000).toFixed(0)}K</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-              <h3 className="font-semibold text-white mb-4">Cash Flow Trend</h3>
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={plData}>
-                  <defs>
-                    <linearGradient id="cfGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
-                  <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: 'white' }} />
-                  <Area type="monotone" dataKey="income" name="Income" stroke="#06B6D4" strokeWidth={2} fill="url(#cfGrad)" />
-                </AreaChart>
-              </ResponsiveContainer>
+            {/* Cash Flow + Recent Transactions */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+              <div className="xl:col-span-2 bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Cash Flow</h3>
+                    <p className="text-xs text-white/35 mt-0.5">Operating · Investing · Financing</p>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={cashFlowData} margin={{ left: -20, right: 5, top: 5 }} barSize={16}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.035)" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v=>`$${v}M`} />
+                    <Tooltip content={<ChartTip />} />
+                    <Bar dataKey="operating"  name="Operating"  fill="#22C55E" radius={[3,3,0,0]} />
+                    <Bar dataKey="investing"  name="Investing"  fill="#EF4444" radius={[3,3,0,0]} />
+                    <Bar dataKey="financing"  name="Financing"  fill="#A78BFA" radius={[3,3,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-white">Recent Transactions</h3>
+                  <button className="text-xs text-[#2563EB] hover:text-[#60A5FA] flex items-center gap-1">
+                    View all <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { desc: 'Payment — Stratford Industries', amount: '+$48,200', type: 'credit', time: '2m ago' },
+                    { desc: 'Bill — TechParts Ltd.',          amount: '-$12,400', type: 'debit',  time: '3h ago' },
+                    { desc: 'Payment — Meridian Corp',        amount: '+$31,500', type: 'credit', time: '1d ago' },
+                    { desc: 'Payroll — Jul 2026',             amount: '-$184K',   type: 'debit',  time: '2d ago' },
+                    { desc: 'Receipt — Nexus Logistics',      amount: '+$24,500', type: 'credit', time: '3d ago' },
+                  ].map((t, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                      <div className={cn('w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0',
+                        t.type === 'credit' ? 'bg-emerald-500/15' : 'bg-red-500/15')}>
+                        {t.type === 'credit'
+                          ? <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                          : <ArrowDownRight className="w-3 h-3 text-red-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-white/75 truncate">{t.desc}</p>
+                        <p className="text-[10px] text-white/30">{t.time}</p>
+                      </div>
+                      <span className={cn('text-xs font-semibold flex-shrink-0',
+                        t.type === 'credit' ? 'text-emerald-400' : 'text-red-400')}>
+                        {t.amount}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="invoices" className="mt-4">
+          {/* ── RECEIVABLES ───────────────────────────────────────────────── */}
+          <TabsContent value="invoices" className="mt-4 space-y-4">
+            {/* AR Aging Bands */}
+            <div className="grid grid-cols-5 gap-3">
+              {arAgingBands.map((b, i) => (
+                <motion.div key={b.label} initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay: i*0.06 }}
+                  className={cn('bg-[#0a0f1e] border rounded-xl p-4 cursor-pointer transition-all hover:border-white/[0.14]',
+                    i === 0 ? 'border-emerald-500/25' : i < 3 ? 'border-amber-500/20' : 'border-red-500/25')}>
+                  <p className="text-[11px] font-medium text-white/40 mb-2">{b.label}</p>
+                  <p className="text-lg font-bold text-white">${(b.amount/1000).toFixed(0)}K</p>
+                  <p className="text-xs text-white/30 mt-0.5">{b.count} invoices</p>
+                  <div className="mt-3 h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full"
+                      style={{width:`${b.pct}%`, background: i===0?'#22C55E': i<3?'#F59E0B':'#EF4444'}} />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <TableShell
+              headers={['Invoice #', 'Customer', 'Type', 'Issued', 'Due Date', 'Amount', 'Balance Due', 'Status', '']}
+              footer={<Pagination total="248" shown={invoices.length} />}
+            >
+              <tr className="border-b border-white/[0.06]">
+                <td colSpan={9} className="p-0">
+                  <FilterBar placeholder="Search invoices, customers...">
+                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />New Invoice
+                    </Button>
+                  </FilterBar>
+                </td>
+              </tr>
+              {invoices.map(inv => (
+                <TableRow key={inv.id}>
+                  <td className="px-4 py-3 text-sm font-mono text-[#2563EB] font-medium">{inv.id}</td>
+                  <td className="px-4 py-3 text-sm text-white/80 font-medium">{inv.customer}</td>
+                  <td className="px-4 py-3 text-xs text-white/40">{inv.type}</td>
+                  <td className="px-4 py-3 text-sm text-white/50">{inv.issued}</td>
+                  <td className="px-4 py-3 text-sm text-white/50">{inv.due}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-white">${inv.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm font-semibold">
+                    <span className={inv.amount - inv.paid > 0 ? 'text-amber-400' : 'text-white/30'}>
+                      {inv.amount - inv.paid === 0 ? '—' : `$${(inv.amount - inv.paid).toLocaleString()}`}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3"><StatusBadge status={inv.status} /></td>
+                  <RowActions />
+                </TableRow>
+              ))}
+            </TableShell>
+          </TabsContent>
+
+          {/* ── PAYABLES ──────────────────────────────────────────────────── */}
+          <TabsContent value="bills" className="mt-4 space-y-4">
+            <div className="grid grid-cols-5 gap-3">
+              {apAgingBands.map((b, i) => (
+                <motion.div key={b.label} initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} transition={{ delay: i*0.06 }}
+                  className={cn('bg-[#0a0f1e] border rounded-xl p-4 cursor-pointer transition-all hover:border-white/[0.14]',
+                    i === 0 ? 'border-emerald-500/25' : i < 3 ? 'border-amber-500/20' : 'border-red-500/25')}>
+                  <p className="text-[11px] font-medium text-white/40 mb-2">{b.label}</p>
+                  <p className="text-lg font-bold text-white">${(b.amount/1000).toFixed(0)}K</p>
+                  <p className="text-xs text-white/30 mt-0.5">{b.count} bills</p>
+                  <div className="mt-3 h-1 bg-white/[0.05] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full"
+                      style={{width:`${b.pct}%`, background: i===0?'#22C55E': i<3?'#F59E0B':'#EF4444'}} />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <TableShell
+              headers={['Bill #', 'Vendor', 'Category', 'Issued', 'Due Date', 'Amount', 'Status', '']}
+              footer={<Pagination total="124" shown={bills.length} />}
+            >
+              <tr className="border-b border-white/[0.06]">
+                <td colSpan={8} className="p-0">
+                  <FilterBar placeholder="Search bills, vendors...">
+                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />New Bill
+                    </Button>
+                  </FilterBar>
+                </td>
+              </tr>
+              {bills.map(b => (
+                <TableRow key={b.id}>
+                  <td className="px-4 py-3 text-sm font-mono text-[#06B6D4] font-medium">{b.id}</td>
+                  <td className="px-4 py-3 text-sm text-white/80 font-medium">{b.vendor}</td>
+                  <td className="px-4 py-3">
+                    <Badge className="bg-white/[0.05] text-white/50 border-white/10 text-xs">{b.category}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-white/50">{b.issued}</td>
+                  <td className="px-4 py-3 text-sm text-white/50">{b.due}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-white">${b.amount.toLocaleString()}</td>
+                  <td className="px-4 py-3"><StatusBadge status={b.status} /></td>
+                  <RowActions />
+                </TableRow>
+              ))}
+            </TableShell>
+          </TabsContent>
+
+          {/* ── CHART OF ACCOUNTS ─────────────────────────────────────────── */}
+          <TabsContent value="accounts" className="mt-4">
+            <TableShell
+              headers={['Code', 'Account Name', 'Type', 'Normal', 'Balance', 'Change', '']}
+              footer={<Pagination total={accounts.length.toString()} shown={accounts.length} />}
+            >
+              <tr className="border-b border-white/[0.06]">
+                <td colSpan={7} className="p-0">
+                  <FilterBar placeholder="Search by code or account name...">
+                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />Add Account
+                    </Button>
+                  </FilterBar>
+                </td>
+              </tr>
+              {accounts.map(acc => (
+                <TableRow key={acc.code}>
+                  <td className="px-4 py-3 text-sm font-mono text-[#06B6D4] font-semibold w-20">{acc.code}</td>
+                  <td className="px-4 py-3 text-sm text-white/85 font-medium">{acc.name}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border', typeColor[acc.type])}>
+                      {acc.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-white/40">{acc.normal}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-white tabular-nums">{fmt(acc.balance)}</td>
+                  <td className="px-4 py-3">
+                    <span className={cn('text-sm font-medium flex items-center gap-1', acc.change > 0 ? 'text-emerald-400' : acc.change < 0 ? 'text-red-400' : 'text-white/30')}>
+                      {acc.change > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : acc.change < 0 ? <ArrowDownRight className="w-3.5 h-3.5" /> : null}
+                      {acc.change !== 0 ? `${Math.abs(acc.change)}%` : '—'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/25 hover:text-white/60 transition-colors opacity-0 group-hover:opacity-100">
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </TableRow>
+              ))}
+            </TableShell>
+          </TabsContent>
+
+          {/* ── GENERAL LEDGER ────────────────────────────────────────────── */}
+          <TabsContent value="ledger" className="mt-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+                <Input placeholder="Filter by account..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" />
+              </div>
+              <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />Jul 1 – Jul 28, 2026
+              </Button>
+              <div className="ml-auto flex items-center gap-2">
+                <Badge className="bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/25 border text-xs">
+                  Account: 1000 · Cash
+                </Badge>
+                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                  <Download className="w-3.5 h-3.5 mr-1.5" />Export
+                </Button>
+              </div>
+            </div>
+            {/* Opening balance */}
             <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="flex items-center gap-3 p-4 border-b border-white/[0.07]">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                  <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search invoices..."
-                    className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" />
-                </div>
-                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
-                  <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
-                </Button>
-                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
-                  <Download className="w-3.5 h-3.5 mr-1.5" /> Export
-                </Button>
+              <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                <span className="text-xs font-semibold text-white/60">Opening Balance — Jul 1, 2026</span>
+                <span className="text-sm font-bold text-white">$1,756,200</span>
               </div>
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-white/[0.05]">
-                    {['Invoice #', 'Customer / Vendor', 'Type', 'Amount', 'Due Date', 'Status', ''].map(h => (
-                      <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>
+                    {['Date','Reference','Description','Debit','Credit','Balance'].map(h=>(
+                      <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices.map((inv) => (
-                    <tr key={inv.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-[#2563EB]">{inv.id}</td>
-                      <td className="px-4 py-3 text-sm text-white/80">{inv.customer}</td>
-                      <td className="px-4 py-3 text-sm text-white/50">{inv.type}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">${inv.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-white/50">{inv.due}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={`text-[10px] border ${statusStyle[inv.status]} px-2 py-0`}>{inv.status}</Badge>
+                  {ledgerEntries.map((e, i) => (
+                    <TableRow key={i}>
+                      <td className="px-4 py-3 text-sm text-white/50 w-20">{e.date}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-[#2563EB]">{e.ref}</td>
+                      <td className="px-4 py-3 text-sm text-white/70">{e.desc}</td>
+                      <td className="px-4 py-3 text-sm tabular-nums text-emerald-400 font-medium">
+                        {e.debit > 0 ? `$${e.debit.toLocaleString()}` : '—'}
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Eye className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Edit className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
+                      <td className="px-4 py-3 text-sm tabular-nums text-red-400 font-medium">
+                        {e.credit > 0 ? `$${e.credit.toLocaleString()}` : '—'}
                       </td>
-                    </tr>
+                      <td className="px-4 py-3 text-sm tabular-nums font-semibold text-white">
+                        ${e.balance.toLocaleString()}
+                      </td>
+                    </TableRow>
                   ))}
                 </tbody>
               </table>
-              <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.05]">
-                <p className="text-xs text-white/30">Showing 7 of 248 records</p>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, '...', 24].map((p, i) => (
-                    <button key={i} className={`w-7 h-7 rounded text-xs ${p === 1 ? 'bg-[#2563EB] text-white' : 'text-white/40 hover:bg-white/[0.05]'}`}>{p}</button>
-                  ))}
-                </div>
+              <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
+                <span className="text-xs font-semibold text-white/60">Closing Balance — Jul 28, 2026</span>
+                <span className="text-sm font-bold text-white">$1,842,000</span>
               </div>
             </div>
           </TabsContent>
 
-          <TabsContent value="accounts" className="mt-4">
+          {/* ── JOURNAL ENTRIES ───────────────────────────────────────────── */}
+          <TabsContent value="journal" className="mt-4">
+            <TableShell
+              headers={['JE #', 'Date', 'Reference', 'Description', 'Debit Total', 'Credit Total', 'Status', '']}
+              footer={<Pagination total="248" shown={journalEntries.length} />}
+            >
+              <tr className="border-b border-white/[0.06]">
+                <td colSpan={8} className="p-0">
+                  <FilterBar placeholder="Search journal entries...">
+                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
+                      <Plus className="w-3.5 h-3.5 mr-1.5" />New Journal Entry
+                    </Button>
+                  </FilterBar>
+                </td>
+              </tr>
+              {journalEntries.map(je => (
+                <TableRow key={je.id}>
+                  <td className="px-4 py-3 text-sm font-mono text-[#2563EB] font-medium">{je.id}</td>
+                  <td className="px-4 py-3 text-sm text-white/50">{je.date}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-[#06B6D4]">{je.ref}</td>
+                  <td className="px-4 py-3 text-sm text-white/70 max-w-xs truncate">{je.memo}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-emerald-400 tabular-nums">${je.debit.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm font-semibold text-red-400 tabular-nums">${je.credit.toLocaleString()}</td>
+                  <td className="px-4 py-3"><StatusBadge status={je.status} /></td>
+                  <RowActions />
+                </TableRow>
+              ))}
+            </TableShell>
+          </TabsContent>
+
+          {/* ── P&L STATEMENT ─────────────────────────────────────────────── */}
+          <TabsContent value="pl" className="mt-4">
             <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="flex items-center gap-3 p-4 border-b border-white/[0.07]">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                  <Input placeholder="Search accounts..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" />
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Profit & Loss Statement</h3>
+                  <p className="text-xs text-white/35 mt-0.5">Apex Global Inc. · Jan 1 – Jul 28, 2026</p>
                 </div>
-                <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] ml-auto"><Plus className="w-3.5 h-3.5 mr-1.5" /> Add Account</Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                    <Calendar className="w-3.5 h-3.5 mr-1.5" />Period
+                  </Button>
+                  <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                    <Download className="w-3.5 h-3.5 mr-1.5" />Export PDF
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-0">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.06] bg-white/[0.02]">
+                      <th className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">Description</th>
+                      <th className="text-right text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3 w-36">Current Period</th>
+                      <th className="text-right text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3 w-36">Prior Period</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <StatRow label="REVENUE" bold separator={false} />
+                    <StatRow label="Product Sales"               value="$6,841,200" indent={1} />
+                    <StatRow label="Service Revenue"             value="$358,800"   indent={1} />
+                    <StatRow label="Total Revenue"               value="$7,200,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="COST OF GOODS SOLD" bold />
+                    <StatRow label="Direct Materials"            value="$2,184,000" indent={1} />
+                    <StatRow label="Direct Labor"                value="$648,000"   indent={1} />
+                    <StatRow label="Manufacturing Overhead"      value="$348,000"   indent={1} />
+                    <StatRow label="Total COGS"                  value="$3,180,000" bold />
+                    <StatRow separator />
+                    <StatRow label="GROSS PROFIT"                value="$4,020,000" bold highlight />
+                    <StatRow label="Gross Profit Margin"         value="55.8%"      indent={1} />
+                    <StatRow separator />
+                    <StatRow label="OPERATING EXPENSES" bold />
+                    <StatRow label="Salaries & Wages"            value="$1,240,000" indent={1} />
+                    <StatRow label="Rent & Utilities"            value="$284,000"   indent={1} />
+                    <StatRow label="Marketing & Advertising"     value="$192,000"   indent={1} />
+                    <StatRow label="Depreciation"                value="$182,000"   indent={1} />
+                    <StatRow label="Professional Fees"           value="$84,000"    indent={1} />
+                    <StatRow label="Other Operating Expenses"    value="$418,000"   indent={1} />
+                    <StatRow label="Total Operating Expenses"    value="$2,400,000" bold />
+                    <StatRow separator />
+                    <StatRow label="EBIT (Operating Profit)"     value="$1,620,000" bold highlight />
+                    <StatRow label="Interest Income"             value="$48,000"    indent={1} />
+                    <StatRow label="Interest Expense"            value="($82,000)"  indent={1} />
+                    <StatRow separator />
+                    <StatRow label="Profit Before Tax"           value="$1,586,000" bold />
+                    <StatRow label="Income Tax (18%)"            value="($285,480)" indent={1} />
+                    <StatRow separator />
+                    <StatRow label="NET PROFIT"                  value="$1,300,520" bold highlight />
+                    <StatRow label="Net Profit Margin"           value="18.1%"      indent={1} />
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── BALANCE SHEET ─────────────────────────────────────────────── */}
+          <TabsContent value="bs" className="mt-4">
+            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Balance Sheet</h3>
+                  <p className="text-xs text-white/35 mt-0.5">Apex Global Inc. · As at Jul 28, 2026</p>
+                </div>
+                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                  <Download className="w-3.5 h-3.5 mr-1.5" />Export PDF
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
+                {/* Assets */}
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.05] bg-white/[0.02]">
+                      <th colSpan={2} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">Assets</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <StatRow label="Current Assets" bold />
+                    <StatRow label="Cash & Equivalents"       value="$1,842,000" indent={1} />
+                    <StatRow label="Accounts Receivable"      value="$3,241,000" indent={1} />
+                    <StatRow label="Inventory"                value="$2,408,000" indent={1} />
+                    <StatRow label="Prepaid Expenses"         value="$124,000"   indent={1} />
+                    <StatRow label="Total Current Assets"     value="$7,615,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="Non-current Assets" bold />
+                    <StatRow label="Property, Plant & Equipment" value="$4,820,000" indent={1} />
+                    <StatRow label="Less: Accumulated Depreciation" value="($1,240,000)" indent={1} />
+                    <StatRow label="Intangible Assets"        value="$480,000"   indent={1} />
+                    <StatRow label="Total Non-current Assets" value="$4,060,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="TOTAL ASSETS"             value="$11,675,000" bold highlight />
+                  </tbody>
+                </table>
+                {/* Liabilities + Equity */}
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/[0.05] bg-white/[0.02]">
+                      <th colSpan={2} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">Liabilities & Equity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <StatRow label="Current Liabilities" bold />
+                    <StatRow label="Accounts Payable"         value="$892,000"   indent={1} />
+                    <StatRow label="Accrued Liabilities"      value="$341,000"   indent={1} />
+                    <StatRow label="Short-term Debt"          value="$600,000"   indent={1} />
+                    <StatRow label="Total Current Liabilities" value="$1,833,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="Non-current Liabilities" bold />
+                    <StatRow label="Long-term Debt"           value="$2,400,000" indent={1} />
+                    <StatRow label="Deferred Tax Liabilities" value="$201,000"   indent={1} />
+                    <StatRow label="Total Non-current Liabilities" value="$2,601,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="TOTAL LIABILITIES"        value="$4,434,000" bold />
+                    <StatRow separator />
+                    <StatRow label="Shareholders' Equity" bold />
+                    <StatRow label="Share Capital"            value="$5,000,000" indent={1} />
+                    <StatRow label="Retained Earnings"        value="$1,940,480" indent={1} />
+                    <StatRow label="Current Year Profit"      value="$1,300,520" indent={1} />
+                    <StatRow label="TOTAL EQUITY"             value="$8,241,000" bold highlight />
+                    <StatRow separator />
+                    <StatRow label="TOTAL LIABILITIES + EQUITY" value="$11,675,000" bold highlight />
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ── TRIAL BALANCE ─────────────────────────────────────────────── */}
+          <TabsContent value="tb" className="mt-4">
+            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Trial Balance</h3>
+                  <p className="text-xs text-white/35 mt-0.5">As at Jul 28, 2026</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-500/12 text-emerald-400 border-emerald-500/25 border text-xs">
+                    <CheckCircle2 className="w-3 h-3 mr-1" />Balanced
+                  </Badge>
+                  <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
+                    <Download className="w-3.5 h-3.5 mr-1.5" />Export
+                  </Button>
+                </div>
               </div>
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-white/[0.05]">
-                    {['Code', 'Account Name', 'Type', 'Balance', 'Change', ''].map(h => (
-                      <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>
+                  <tr className="border-b border-white/[0.05] bg-white/[0.02]">
+                    {['Code','Account Name','Type','Debit','Credit'].map(h=>(
+                      <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map((acc) => (
-                    <tr key={acc.code} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-sm font-mono text-[#06B6D4]">{acc.code}</td>
-                      <td className="px-4 py-3 text-sm text-white/80 font-medium">{acc.name}</td>
-                      <td className="px-4 py-3">
-                        <Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{acc.type}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">${acc.balance.toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <span className={`text-sm font-medium flex items-center gap-1 ${acc.change > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {acc.change > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
-                          {Math.abs(acc.change)}%
+                  {accounts.map(acc => (
+                    <TableRow key={acc.code}>
+                      <td className="px-4 py-2.5 text-sm font-mono text-[#06B6D4]">{acc.code}</td>
+                      <td className="px-4 py-2.5 text-sm text-white/75">{acc.name}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border', typeColor[acc.type])}>
+                          {acc.type}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button>
+                      <td className="px-4 py-2.5 text-sm tabular-nums text-right">
+                        {acc.normal === 'Debit' && acc.balance > 0
+                          ? <span className="text-white font-medium">${Math.abs(acc.balance).toLocaleString()}</span>
+                          : <span className="text-white/20">—</span>}
                       </td>
-                    </tr>
+                      <td className="px-4 py-2.5 text-sm tabular-nums text-right">
+                        {acc.normal === 'Credit' || acc.balance < 0
+                          ? <span className="text-white font-medium">${Math.abs(acc.balance).toLocaleString()}</span>
+                          : <span className="text-white/20">—</span>}
+                      </td>
+                    </TableRow>
+                  ))}
+                  <tr className="border-t-2 border-white/[0.1] bg-white/[0.03]">
+                    <td className="px-4 py-3 text-sm font-bold text-white" colSpan={3}>Totals</td>
+                    <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">$16,777,200</td>
+                    <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">$16,777,200</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          {/* ── BANK RECONCILIATION ───────────────────────────────────────── */}
+          <TabsContent value="recon" className="mt-4 space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: 'Bank Statement Balance', value: `$${bankRecon.bankBalance.toLocaleString()}`, color: 'text-white', border: 'border-white/[0.07]' },
+                { label: 'Outstanding Items',       value: `$${(bankRecon.bankBalance - bankRecon.bookBalance).toLocaleString()}`, color: 'text-amber-400', border: 'border-amber-500/20' },
+                { label: 'Book Balance (Adjusted)', value: `$${bankRecon.bookBalance.toLocaleString()}`, color: 'text-emerald-400', border: 'border-emerald-500/20' },
+              ].map(s => (
+                <div key={s.label} className={cn('bg-[#0a0f1e] border rounded-xl p-4', s.border)}>
+                  <p className="text-xs text-white/40 mb-2">{s.label}</p>
+                  <p className={cn('text-2xl font-bold', s.color)}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+            {/* Outstanding items */}
+            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-white/[0.06]">
+                <h3 className="text-sm font-semibold text-white">Outstanding / Unmatched Items</h3>
+                <p className="text-xs text-white/35 mt-0.5">Items in bank statement not yet matched to book entries</p>
+              </div>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/[0.05]">
+                    {['Reference','Date','Description','Amount','Action'].map(h=>(
+                      <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {bankRecon.outstanding.map((item, i) => (
+                    <TableRow key={i}>
+                      <td className="px-4 py-3 text-sm font-mono text-[#2563EB]">{item.ref}</td>
+                      <td className="px-4 py-3 text-sm text-white/50">{item.date}</td>
+                      <td className="px-4 py-3 text-sm text-white/75">{item.desc}</td>
+                      <td className={cn('px-4 py-3 text-sm font-semibold tabular-nums',
+                        item.amount > 0 ? 'text-emerald-400' : 'text-red-400')}>
+                        {item.amount > 0 ? '+' : ''}${Math.abs(item.amount).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button size="sm" variant="outline"
+                          className="border-[#2563EB]/30 text-[#2563EB] hover:bg-[#2563EB]/10 h-7 text-xs px-2">
+                          <GitMerge className="w-3 h-3 mr-1" />Match
+                        </Button>
+                      </td>
+                    </TableRow>
                   ))}
                 </tbody>
               </table>
             </div>
           </TabsContent>
 
-          <TabsContent value="journal" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-6 text-center">
-              <FileText className="w-12 h-12 text-white/20 mx-auto mb-3" />
-              <p className="text-white/50 font-medium">Journal Entries</p>
-              <p className="text-white/30 text-sm mt-1">248 journal entries · FY 2026</p>
-              <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] mt-4"><Plus className="w-3.5 h-3.5 mr-1.5" /> New Entry</Button>
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
