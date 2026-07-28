@@ -55,6 +55,15 @@ const testimonials = [
     role: "Managing Partner",
     initial: "JW",
   },
+  {
+    company: "Tata Nexus Enterprises",
+    metric: "₹12Cr saved in operational costs",
+    quote:
+      "OmniERP has been a game-changer for our operations across India. The GST compliance module and multi-language support made rollout seamless across our 18 regional offices. Our finance team now closes books in 2 days instead of 3 weeks.",
+    author: "Arjun Mehta",
+    role: "Chief Operating Officer",
+    initial: "AM",
+  },
 ];
 
 export function Testimonials() {
