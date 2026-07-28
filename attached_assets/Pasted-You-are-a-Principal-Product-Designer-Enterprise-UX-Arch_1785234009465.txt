@@ -1,0 +1,275 @@
+You are a Principal Product Designer, Enterprise UX Architect, and Creative Director with experience designing products for Apple, Stripe, Linear, Notion, Vercel, SAP, Oracle, Salesforce, Microsoft, and Atlassian.
+
+The website content is already complete.
+
+DO NOT rewrite the content.
+
+DO NOT remove any existing sections.
+
+DO NOT change the branding.
+
+Your only task is to transform the UI/UX into a premium enterprise experience.
+
+====================================================
+MAIN OBJECTIVE
+====================================================
+
+The current website feels like a good SaaS template.
+
+I want it to feel like a billion-dollar enterprise software company.
+
+Every section should have its own identity while maintaining a consistent design language.
+
+Focus on premium layout, spacing, typography, hierarchy, product presentation, and visual storytelling.
+
+====================================================
+KEEP THE CONTENT
+====================================================
+
+Keep all existing content exactly as it is.
+
+Do not rewrite headlines.
+
+Do not rewrite paragraphs.
+
+Do not remove any cards.
+
+Only improve how everything is presented visually.
+
+====================================================
+HERO SECTION
+====================================================
+
+The hero should become the strongest section on the website.
+
+Replace the current simple dashboard with a realistic enterprise ERP interface.
+
+The product should become the visual centerpiece.
+
+The dashboard should look like real enterprise software with:
+
+• Sidebar
+• Top Navigation
+• Revenue Analytics
+• Sales Dashboard
+• Finance
+• CRM
+• Inventory
+• Manufacturing
+• HR
+• Reports
+• Calendar
+• AI Assistant
+• Notifications
+• Recent Activity
+• Charts
+• Tables
+• KPI Cards
+
+The dashboard should feel like a real application, not an illustration.
+
+====================================================
+LAYOUT VARIETY
+====================================================
+
+Every section currently feels visually similar.
+
+Create unique layouts for different sections.
+
+Example:
+
+Hero → Split Layout
+
+Trusted Companies → Infinite Logo Marquee
+
+Features → Bento Grid
+
+ERP Modules → Interactive Tabs
+
+AI → Chat Interface
+
+Product Preview → Laptop Mockup
+
+Pricing → Premium Cards + Comparison Table
+
+Testimonials → Enterprise Case Studies
+
+FAQ → Large Accordion Layout
+
+Final CTA → Full Width Premium Banner
+
+Avoid repeating the same "Heading + Paragraph + Cards" structure.
+
+====================================================
+PRODUCT SHOWCASE
+====================================================
+
+The website should showcase the software itself.
+
+Use realistic ERP screenshots.
+
+Real dashboards.
+
+Real workflows.
+
+Real reports.
+
+Real charts.
+
+Real tables.
+
+Real invoices.
+
+Real CRM pipeline.
+
+Real inventory.
+
+Everything should feel authentic.
+
+====================================================
+VISUAL DESIGN
+====================================================
+
+Use premium spacing.
+
+Excellent typography hierarchy.
+
+Large visual blocks.
+
+Thin borders.
+
+Soft shadows.
+
+Perfect alignment.
+
+High-quality icons.
+
+Consistent border radius.
+
+Luxury card design.
+
+Elegant gradients.
+
+Professional color balance.
+
+Use whitespace to create luxury instead of adding unnecessary effects.
+
+====================================================
+BACKGROUND
+====================================================
+
+The background should feel premium but subtle.
+
+Use:
+
+Soft radial glows
+
+Very subtle grid
+
+Elegant lighting
+
+Minimal texture
+
+Deep dark tones
+
+Avoid distracting effects.
+
+====================================================
+ANIMATIONS
+====================================================
+
+Keep animations minimal.
+
+Use only:
+
+Smooth fade
+
+Soft hover
+
+Small card lift
+
+Elegant transitions
+
+Gentle scroll reveal
+
+No floating objects.
+
+No excessive motion.
+
+No flashy effects.
+
+====================================================
+TRUST
+====================================================
+
+Make trust more visible.
+
+Display certifications beautifully.
+
+Show enterprise badges.
+
+Show company logos professionally.
+
+Increase credibility.
+
+====================================================
+RESPONSIVENESS
+====================================================
+
+Improve mobile layouts.
+
+Improve tablet layouts.
+
+Improve spacing.
+
+Improve typography scaling.
+
+Improve touch interactions.
+
+====================================================
+PREMIUM DETAILS
+====================================================
+
+Improve:
+
+Button design
+
+Card hierarchy
+
+Section spacing
+
+Visual rhythm
+
+Grid consistency
+
+Chart quality
+
+Dashboard realism
+
+Typography
+
+Iconography
+
+Glass effects
+
+Depth
+
+Alignment
+
+Everything should feel handcrafted.
+
+====================================================
+FINAL GOAL
+====================================================
+
+When someone visits the website, they should immediately think:
+
+"This is one of the most premium enterprise software websites I've ever seen."
+
+The website should feel comparable to Apple, Stripe, Linear, Notion, SAP, Oracle, Microsoft, Salesforce, Atlassian, and Vercel.
+
+Do not redesign the product.
+
+Do not change the content.
+
+Only elevate the UI/UX until every section reaches world-class enterprise quality.
