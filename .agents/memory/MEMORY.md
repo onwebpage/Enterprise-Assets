@@ -1,0 +1,1 @@
+- [Phase 1 Auth Foundation](phase1-auth.md) — JWT + bcryptjs auth complete; seed creds admin@omnierp.io / Admin@1234; DB schema live.

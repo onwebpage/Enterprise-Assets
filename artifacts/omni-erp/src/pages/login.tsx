@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, ArrowRight, ShieldCheck, Zap, Activity } from 'lucide-react';
-
-const DEMO_CREDENTIALS = [
-  { email: 'admin@omnierp.io', password: 'Admin@1234' },
-];
+import { useAuth } from '@/contexts/auth';
 
 const trustItems = [
   { icon: ShieldCheck, label: 'ISO 27001 Certified' },
@@ -26,23 +23,21 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { login } = useAuth();
   const [, navigate] = useLocation();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
-    setTimeout(() => {
-      const valid = DEMO_CREDENTIALS.some(
-        c => c.email === email.trim().toLowerCase() && c.password === password,
-      );
-      if (valid) {
-        navigate('/app/dashboard');
-      } else {
-        setLoading(false);
-        setError('Invalid email or password. Use the demo credentials below.');
-      }
-    }, 900);
+    try {
+      await login(email.trim(), password);
+      navigate('/app/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid email or password');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -50,7 +45,6 @@ export default function Login() {
 
       {/* ── Left brand panel ──────────────────────────────────────── */}
       <div className="hidden lg:flex lg:w-[46%] xl:w-[42%] relative flex-col justify-between p-12 overflow-hidden">
-        {/* Background layers */}
         <div
           className="absolute inset-0 opacity-[0.04]"
           style={{
@@ -63,7 +57,6 @@ export default function Login() {
         <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-accent/[0.08] blur-[80px] translate-x-1/4 translate-y-1/4 pointer-events-none" />
         <div className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-border/60 to-transparent" />
 
-        {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -83,7 +76,6 @@ export default function Login() {
           </Link>
         </motion.div>
 
-        {/* Center content */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -99,8 +91,6 @@ export default function Login() {
           <p className="text-sm text-muted-foreground/70 leading-relaxed max-w-sm mb-10">
             Finance, operations, HR, supply chain, and CRM — all connected, all intelligent, all in real time.
           </p>
-
-          {/* Testimonial */}
           <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
             <div className="flex gap-0.5 mb-3">
               {[...Array(5)].map((_, i) => (
@@ -124,7 +114,6 @@ export default function Login() {
           </div>
         </motion.div>
 
-        {/* Trust badges */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -142,10 +131,8 @@ export default function Login() {
 
       {/* ── Right form panel ──────────────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 py-12 relative">
-        {/* Subtle top glow */}
         <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
 
-        {/* Mobile logo */}
         <div className="lg:hidden mb-10 flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -164,7 +151,6 @@ export default function Login() {
           transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-[400px] relative z-10"
         >
-          {/* Heading */}
           <div className="mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Sign in to OmniERP</h1>
             <p className="text-sm text-muted-foreground/60">
@@ -175,9 +161,7 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Email */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-foreground/80">Work email</label>
               <input
@@ -186,18 +170,15 @@ export default function Login() {
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 required
+                autoComplete="email"
                 className="w-full px-4 py-2.5 rounded-xl border border-border/60 bg-white/[0.03] text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 focus:bg-white/[0.05] focus:ring-2 focus:ring-primary/10 transition-all duration-150"
               />
             </div>
 
-            {/* Password */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-foreground/80">Password</label>
-                <button
-                  type="button"
-                  className="text-xs text-primary/70 hover:text-primary transition-colors font-medium"
-                >
+                <button type="button" className="text-xs text-primary/70 hover:text-primary transition-colors font-medium">
                   Forgot password?
                 </button>
               </div>
@@ -208,6 +189,7 @@ export default function Login() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••••"
                   required
+                  autoComplete="current-password"
                   className="w-full px-4 py-2.5 pr-11 rounded-xl border border-border/60 bg-white/[0.03] text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary/60 focus:bg-white/[0.05] focus:ring-2 focus:ring-primary/10 transition-all duration-150"
                 />
                 <button
@@ -220,25 +202,19 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember me */}
             <label className="flex items-center gap-2.5 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="w-4 h-4 rounded border-border/60 bg-white/[0.03] accent-primary cursor-pointer"
-              />
+              <input type="checkbox" className="w-4 h-4 rounded border-border/60 bg-white/[0.03] accent-primary cursor-pointer" />
               <span className="text-sm text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
                 Keep me signed in for 30 days
               </span>
             </label>
 
-            {/* Error */}
             {error && (
               <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5">
                 {error}
               </p>
             )}
 
-            {/* Submit */}
             <motion.button
               type="submit"
               disabled={loading}
@@ -263,7 +239,6 @@ export default function Login() {
             </motion.button>
           </form>
 
-          {/* SSO enterprise link */}
           <div className="mt-5 text-center">
             <button className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors font-medium">
               Sign in with SAML SSO →
@@ -271,7 +246,6 @@ export default function Login() {
           </div>
         </motion.div>
 
-        {/* Footer */}
         <p className="absolute bottom-6 text-[11px] text-muted-foreground/30 text-center">
           © 2025 OmniERP Inc. ·{' '}
           <span className="hover:text-muted-foreground/50 cursor-pointer transition-colors">Privacy</span>

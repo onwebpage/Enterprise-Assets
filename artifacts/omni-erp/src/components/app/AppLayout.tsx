@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useAuth } from '@/contexts/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, DollarSign, Users, ShoppingCart,
@@ -106,6 +107,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   const [currentCompany, setCurrentCompany] = useState(companies[0]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount] = useState(3);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -222,21 +224,21 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
       {/* Bottom */}
       <div className="border-t border-white/[0.07] p-3">
         {sidebarOpen ? (
-          <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/[0.05] transition-colors cursor-pointer group">
+          <div onClick={logout} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-white/[0.05] transition-colors cursor-pointer group">
             <Avatar className="w-7 h-7 flex-shrink-0">
               <AvatarImage src="" />
-              <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">JD</AvatarFallback>
+              <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">{user?.initials ?? 'U'}</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">James Doyle</p>
-              <p className="text-xs text-white/40 truncate">Admin</p>
+              <p className="text-sm font-medium text-white truncate">{user?.displayName ?? 'User'}</p>
+              <p className="text-xs text-white/40 truncate">{user?.roleName ?? ''}</p>
             </div>
             <LogOut className="w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
           </div>
         ) : (
           <div className="flex justify-center">
             <Avatar className="w-7 h-7">
-              <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">JD</AvatarFallback>
+              <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">{user?.initials ?? 'U'}</AvatarFallback>
             </Avatar>
           </div>
         )}
@@ -375,25 +377,23 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 hover:bg-white/[0.05] rounded-lg p-1 transition-colors">
                 <Avatar className="w-7 h-7">
-                  <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">JD</AvatarFallback>
+                  <AvatarFallback className="bg-gradient-to-br from-[#2563EB] to-[#06B6D4] text-white text-xs font-bold">{user?.initials ?? 'U'}</AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-[#0a0f1e] border-white/[0.07] text-white">
               <DropdownMenuLabel>
-                <p className="font-semibold">James Doyle</p>
-                <p className="text-xs text-white/40 font-normal">james@apexglobal.io</p>
+                <p className="font-semibold">{user?.displayName ?? 'User'}</p>
+                <p className="text-xs text-white/40 font-normal">{user?.email ?? ''}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/[0.07]" />
               <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer"><User className="w-3.5 h-3.5 mr-2" />Profile</DropdownMenuItem>
               <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer"><Settings className="w-3.5 h-3.5 mr-2" />Settings</DropdownMenuItem>
               <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer"><HelpCircle className="w-3.5 h-3.5 mr-2" />Help & Support</DropdownMenuItem>
               <DropdownMenuSeparator className="bg-white/[0.07]" />
-              <Link href="/login">
-                <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-red-400">
-                  <LogOut className="w-3.5 h-3.5 mr-2" />Sign out
-                </DropdownMenuItem>
-              </Link>
+              <DropdownMenuItem onClick={logout} className="hover:bg-white/[0.05] cursor-pointer text-red-400">
+                <LogOut className="w-3.5 h-3.5 mr-2" />Sign out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>

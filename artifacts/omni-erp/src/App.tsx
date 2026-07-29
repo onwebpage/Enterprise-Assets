@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { AuthProvider } from '@/contexts/auth';
+import ProtectedRoute from '@/components/app/ProtectedRoute';
 import NotFound from '@/pages/not-found';
 import Home from '@/pages/home';
 import Login from '@/pages/login';
@@ -29,37 +31,83 @@ import Roles from '@/pages/app/roles';
 import SettingsPage from '@/pages/app/settings';
 import Billing from '@/pages/app/billing';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1 },
+  },
+});
 
-function Router() {
+function AppRoutes() {
   return (
     <Switch>
       {/* Public */}
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
 
-      {/* App — authenticated UI */}
-      <Route path="/app/dashboard" component={Dashboard} />
-      <Route path="/app/finance" component={Finance} />
-      <Route path="/app/sales" component={Sales} />
-      <Route path="/app/purchase" component={Purchase} />
-      <Route path="/app/inventory" component={Inventory} />
-      <Route path="/app/manufacturing" component={Manufacturing} />
-      <Route path="/app/projects" component={Projects} />
-      <Route path="/app/hr" component={HR} />
-      <Route path="/app/gst" component={GST} />
-      <Route path="/app/banking" component={Banking} />
-      <Route path="/app/reports" component={Reports} />
-      <Route path="/app/ai" component={AIAssistant} />
-      <Route path="/app/workflow" component={Workflow} />
-      <Route path="/app/documents" component={Documents} />
-      <Route path="/app/customer-portal" component={CustomerPortal} />
-      <Route path="/app/vendor-portal" component={VendorPortal} />
-      <Route path="/app/organization" component={Organization} />
-      <Route path="/app/users" component={UserManagement} />
-      <Route path="/app/roles" component={Roles} />
-      <Route path="/app/settings" component={SettingsPage} />
-      <Route path="/app/billing" component={Billing} />
+      {/* Protected app routes */}
+      <Route path="/app/dashboard">
+        <ProtectedRoute><Dashboard /></ProtectedRoute>
+      </Route>
+      <Route path="/app/finance">
+        <ProtectedRoute><Finance /></ProtectedRoute>
+      </Route>
+      <Route path="/app/sales">
+        <ProtectedRoute><Sales /></ProtectedRoute>
+      </Route>
+      <Route path="/app/purchase">
+        <ProtectedRoute><Purchase /></ProtectedRoute>
+      </Route>
+      <Route path="/app/inventory">
+        <ProtectedRoute><Inventory /></ProtectedRoute>
+      </Route>
+      <Route path="/app/manufacturing">
+        <ProtectedRoute><Manufacturing /></ProtectedRoute>
+      </Route>
+      <Route path="/app/projects">
+        <ProtectedRoute><Projects /></ProtectedRoute>
+      </Route>
+      <Route path="/app/hr">
+        <ProtectedRoute><HR /></ProtectedRoute>
+      </Route>
+      <Route path="/app/gst">
+        <ProtectedRoute><GST /></ProtectedRoute>
+      </Route>
+      <Route path="/app/banking">
+        <ProtectedRoute><Banking /></ProtectedRoute>
+      </Route>
+      <Route path="/app/reports">
+        <ProtectedRoute><Reports /></ProtectedRoute>
+      </Route>
+      <Route path="/app/ai">
+        <ProtectedRoute><AIAssistant /></ProtectedRoute>
+      </Route>
+      <Route path="/app/workflow">
+        <ProtectedRoute><Workflow /></ProtectedRoute>
+      </Route>
+      <Route path="/app/documents">
+        <ProtectedRoute><Documents /></ProtectedRoute>
+      </Route>
+      <Route path="/app/customer-portal">
+        <ProtectedRoute><CustomerPortal /></ProtectedRoute>
+      </Route>
+      <Route path="/app/vendor-portal">
+        <ProtectedRoute><VendorPortal /></ProtectedRoute>
+      </Route>
+      <Route path="/app/organization">
+        <ProtectedRoute><Organization /></ProtectedRoute>
+      </Route>
+      <Route path="/app/users">
+        <ProtectedRoute><UserManagement /></ProtectedRoute>
+      </Route>
+      <Route path="/app/roles">
+        <ProtectedRoute><Roles /></ProtectedRoute>
+      </Route>
+      <Route path="/app/settings">
+        <ProtectedRoute><SettingsPage /></ProtectedRoute>
+      </Route>
+      <Route path="/app/billing">
+        <ProtectedRoute><Billing /></ProtectedRoute>
+      </Route>
 
       <Route component={NotFound} />
     </Switch>
@@ -69,12 +117,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <AppRoutes />
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
