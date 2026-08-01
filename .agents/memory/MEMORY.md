@@ -2,3 +2,4 @@
 - [Chart of Accounts module](chart-of-accounts.md) — RBAC middleware pattern, self-ref FK quirk, case-sensitive module names, CoA CRUD architecture.
 - [General Ledger module](general-ledger.md) — JE schema, running balance algorithm, posting logic, orgScope vs CoA global-account scope difference.
 - [Accounts Receivable module](accounts-receivable.md) — AR schema, RBAC module name, payment-balance atomicity rule, invoice deletion policy.
+- [Accounts Payable module](accounts-payable.md) — AP schema, RBAC module name, payment-balance atomicity rule, bill deletion policy.

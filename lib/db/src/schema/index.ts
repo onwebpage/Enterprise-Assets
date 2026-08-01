@@ -7,3 +7,4 @@ export * from "./finance";
 export * from "./chartOfAccounts";
 export * from "./generalLedger";
 export * from "./accountsReceivable";
+export * from "./accountsPayable";

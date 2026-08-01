@@ -9,6 +9,7 @@ import financeRouter from "./finance";
 import financeAccountsRouter from "./financeAccounts";
 import generalLedgerRouter from "./generalLedger";
 import accountsReceivableRouter from "./accountsReceivable";
+import accountsPayableRouter from "./accountsPayable";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/finance", financeRouter);
 router.use("/finance/accounts", financeAccountsRouter);
 router.use("/finance/ledger", generalLedgerRouter);
 router.use("/ar", accountsReceivableRouter);
+router.use("/ap", accountsPayableRouter);
 
 export default router;

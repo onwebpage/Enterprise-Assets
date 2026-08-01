@@ -92,7 +92,7 @@ async function seed() {
   console.log("✓ Departments seeded");
 
   // ── Roles ─────────────────────────────────────────────────────────────────
-  const modules = ["Finance", "Sales", "Purchase", "Inventory", "Manufacturing", "Projects", "HR", "Reports", "Settings"];
+  const modules = ["Finance", "Sales", "Purchase", "Inventory", "Manufacturing", "Projects", "HR", "Reports", "Settings", "Accounts Receivable", "Accounts Payable", "General Ledger"];
 
   const [adminRole] = await db.insert(roles).values({
     orgId, name: "System Admin", description: "Full system access", isSystem: true, userCount: 2,
