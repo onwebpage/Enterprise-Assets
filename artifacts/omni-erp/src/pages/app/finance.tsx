@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFinanceDashboard, fmtMoney, timeAgo } from '@/hooks/useFinanceDashboard';
 import ChartOfAccountsTab from '@/components/app/finance/ChartOfAccountsTab';
+import GeneralLedgerTab from '@/components/app/finance/GeneralLedgerTab';
+import JournalEntriesTab from '@/components/app/finance/JournalEntriesTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -581,92 +583,13 @@ export default function Finance() {
           </TabsContent>
 
           {/* ── GENERAL LEDGER ────────────────────────────────────────────── */}
-          <TabsContent value="ledger" className="mt-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                <Input placeholder="Filter by account..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" />
-              </div>
-              <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
-                <Calendar className="w-3.5 h-3.5 mr-1.5" />Jul 1 – Jul 28, 2026
-              </Button>
-              <div className="ml-auto flex items-center gap-2">
-                <Badge className="bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/25 border text-xs">
-                  Account: 1000 · Cash
-                </Badge>
-                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
-                  <Download className="w-3.5 h-3.5 mr-1.5" />Export
-                </Button>
-              </div>
-            </div>
-            {/* Opening balance */}
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
-                <span className="text-xs font-semibold text-white/60">Opening Balance — Jul 1, 2026</span>
-                <span className="text-sm font-bold text-white">$1,756,200</span>
-              </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/[0.05]">
-                    {['Date','Reference','Description','Debit','Credit','Balance'].map(h=>(
-                      <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ledgerEntries.map((e, i) => (
-                    <TableRow key={i}>
-                      <td className="px-4 py-3 text-sm text-white/50 w-20">{e.date}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-[#2563EB]">{e.ref}</td>
-                      <td className="px-4 py-3 text-sm text-white/70">{e.desc}</td>
-                      <td className="px-4 py-3 text-sm tabular-nums text-emerald-400 font-medium">
-                        {e.debit > 0 ? `$${e.debit.toLocaleString()}` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm tabular-nums text-red-400 font-medium">
-                        {e.credit > 0 ? `$${e.credit.toLocaleString()}` : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-sm tabular-nums font-semibold text-white">
-                        ${e.balance.toLocaleString()}
-                      </td>
-                    </TableRow>
-                  ))}
-                </tbody>
-              </table>
-              <div className="px-4 py-3 border-t border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
-                <span className="text-xs font-semibold text-white/60">Closing Balance — Jul 28, 2026</span>
-                <span className="text-sm font-bold text-white">$1,842,000</span>
-              </div>
-            </div>
+          <TabsContent value="ledger" className="mt-4">
+            <GeneralLedgerTab />
           </TabsContent>
 
           {/* ── JOURNAL ENTRIES ───────────────────────────────────────────── */}
           <TabsContent value="journal" className="mt-4">
-            <TableShell
-              headers={['JE #', 'Date', 'Reference', 'Description', 'Debit Total', 'Credit Total', 'Status', '']}
-              footer={<Pagination total="248" shown={journalEntries.length} />}
-            >
-              <tr className="border-b border-white/[0.06]">
-                <td colSpan={8} className="p-0">
-                  <FilterBar placeholder="Search journal entries...">
-                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
-                      <Plus className="w-3.5 h-3.5 mr-1.5" />New Journal Entry
-                    </Button>
-                  </FilterBar>
-                </td>
-              </tr>
-              {journalEntries.map(je => (
-                <TableRow key={je.id}>
-                  <td className="px-4 py-3 text-sm font-mono text-[#2563EB] font-medium">{je.id}</td>
-                  <td className="px-4 py-3 text-sm text-white/50">{je.date}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-[#06B6D4]">{je.ref}</td>
-                  <td className="px-4 py-3 text-sm text-white/70 max-w-xs truncate">{je.memo}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-emerald-400 tabular-nums">${je.debit.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-red-400 tabular-nums">${je.credit.toLocaleString()}</td>
-                  <td className="px-4 py-3"><StatusBadge status={je.status} /></td>
-                  <RowActions />
-                </TableRow>
-              ))}
-            </TableShell>
+            <JournalEntriesTab />
           </TabsContent>
 
           {/* ── P&L STATEMENT ─────────────────────────────────────────────── */}

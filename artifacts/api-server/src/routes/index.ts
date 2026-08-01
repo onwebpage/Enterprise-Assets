@@ -7,6 +7,7 @@ import organizationsRouter from "./organizations";
 import dashboardRouter from "./dashboard";
 import financeRouter from "./finance";
 import financeAccountsRouter from "./financeAccounts";
+import generalLedgerRouter from "./generalLedger";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/organizations", organizationsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/finance", financeRouter);
 router.use("/finance/accounts", financeAccountsRouter);
+router.use("/finance/ledger", generalLedgerRouter);
 
 export default router;
