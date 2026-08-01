@@ -818,6 +818,247 @@ router.get("/profit-loss", requirePermission("finance", "view"), async (req: Aut
   }
 });
 
+// ── GET /api/finance/ledger/balance-sheet ─────────────────────────────────────
+// Groups all active accounts into Assets / Liabilities / Equity.
+// Net Income (Income – Expense balances) is included as a current-period equity component.
+// Query: asOf (ISO date) — if omitted, uses stored `balance` on each account.
+router.get("/balance-sheet", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+  try {
+    const { asOf } = req.query as Record<string, string>;
+
+    const allAccounts = await db
+      .select()
+      .from(chartOfAccounts)
+      .where(and(coaOrgScope(req) as any, eq(chartOfAccounts.status, "active")))
+      .orderBy(asc(chartOfAccounts.code));
+
+    // Build a balance map: accountId → numeric balance
+    let balanceMap: Map<number, number>;
+
+    if (asOf) {
+      // Aggregate all posted JEs from inception through asOf date
+      const lineAggs = await db
+        .select({
+          accountId:   journalEntryLines.accountId,
+          totalDebit:  sql<string>`coalesce(sum(${journalEntryLines.debit}),  '0')`,
+          totalCredit: sql<string>`coalesce(sum(${journalEntryLines.credit}), '0')`,
+        })
+        .from(journalEntryLines)
+        .innerJoin(
+          journalEntries,
+          and(
+            eq(journalEntries.id, journalEntryLines.journalEntryId),
+            eq(journalEntries.status, "posted"),
+            orgScope(req),
+            lte(journalEntries.date, asOf),
+          ),
+        )
+        .groupBy(journalEntryLines.accountId);
+
+      const aggById = new Map(lineAggs.map((r) => [r.accountId, r]));
+      balanceMap = new Map(
+        allAccounts.map((acc) => {
+          const agg = aggById.get(acc.id);
+          const d   = parseFloat(agg?.totalDebit  ?? "0");
+          const c   = parseFloat(agg?.totalCredit ?? "0");
+          return [acc.id, acc.normalBalance === "Debit" ? d - c : c - d];
+        }),
+      );
+    } else {
+      balanceMap = new Map(allAccounts.map((acc) => [acc.id, parseFloat(acc.balance ?? "0")]));
+    }
+
+    const bal = (id: number) => balanceMap.get(id) ?? 0;
+
+    const toRow = (acc: typeof allAccounts[0]) => ({
+      accountId:   acc.id,
+      accountCode: acc.code,
+      accountName: acc.name,
+      balance:     bal(acc.id).toFixed(2),
+    });
+
+    const assets      = allAccounts.filter((a) => a.type === "Asset").map(toRow);
+    const liabilities = allAccounts.filter((a) => a.type === "Liability").map(toRow);
+    const equity      = allAccounts.filter((a) => a.type === "Equity").map(toRow);
+
+    // Net Income = sum(Income balances) – sum(Expense balances)
+    const netIncome = allAccounts.reduce((sum, a) => {
+      if (a.type === "Income")  return sum + bal(a.id);
+      if (a.type === "Expense") return sum - bal(a.id);
+      return sum;
+    }, 0);
+
+    const totalAssets      = assets.reduce((s, r) => s + parseFloat(r.balance), 0);
+    const totalLiabilities = liabilities.reduce((s, r) => s + parseFloat(r.balance), 0);
+    const totalEquity      = equity.reduce((s, r) => s + parseFloat(r.balance), 0) + netIncome;
+    const balanced         = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01;
+
+    res.json({
+      success: true,
+      data: { assets, liabilities, equity },
+      netIncome:               netIncome.toFixed(2),
+      totalAssets:             totalAssets.toFixed(2),
+      totalLiabilities:        totalLiabilities.toFixed(2),
+      totalEquity:             totalEquity.toFixed(2),
+      totalLiabilitiesEquity:  (totalLiabilities + totalEquity).toFixed(2),
+      balanced,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to generate balance sheet" });
+  }
+});
+
+// ── GET /api/finance/ledger/cash-flow ─────────────────────────────────────────
+// Indirect-method cash flow statement.  Accounts are classified into
+// operating / investing / financing using account type + name keywords.
+// Query: dateFrom, dateTo
+router.get("/cash-flow", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query as Record<string, string>;
+
+    const allAccounts = await db
+      .select()
+      .from(chartOfAccounts)
+      .where(and(coaOrgScope(req) as any, eq(chartOfAccounts.status, "active")))
+      .orderBy(asc(chartOfAccounts.code));
+
+    const jeFilters: any[] = [eq(journalEntries.status, "posted"), orgScope(req)];
+    if (dateFrom) jeFilters.push(gte(journalEntries.date, dateFrom));
+    if (dateTo)   jeFilters.push(lte(journalEntries.date, dateTo));
+
+    const lineAggs = await db
+      .select({
+        accountId:   journalEntryLines.accountId,
+        totalDebit:  sql<string>`coalesce(sum(${journalEntryLines.debit}),  '0')`,
+        totalCredit: sql<string>`coalesce(sum(${journalEntryLines.credit}), '0')`,
+      })
+      .from(journalEntryLines)
+      .innerJoin(
+        journalEntries,
+        and(eq(journalEntries.id, journalEntryLines.journalEntryId), ...jeFilters),
+      )
+      .groupBy(journalEntryLines.accountId);
+
+    const aggMap = new Map(lineAggs.map((r) => [r.accountId, r]));
+
+    /** Net movement in the normal-balance direction for the period. */
+    function netMovement(acc: typeof allAccounts[0]): number {
+      const agg = aggMap.get(acc.id);
+      const d = parseFloat(agg?.totalDebit  ?? "0");
+      const c = parseFloat(agg?.totalCredit ?? "0");
+      return acc.normalBalance === "Debit" ? d - c : c - d;
+    }
+
+    type CfCategory = "cash" | "op_asset" | "invest_asset" | "op_liability" | "fin_liability" | "equity" | "income" | "expense";
+
+    function classify(acc: typeof allAccounts[0]): CfCategory {
+      const n = acc.name.toLowerCase();
+      if (acc.type === "Asset") {
+        if (n.includes("cash") || n.includes("bank") || n.includes("petty")) return "cash";
+        if (n.includes("property") || n.includes("plant") || n.includes("equipment") ||
+            n.includes("pp&e") || n.includes("depreciation") || n.includes("intangible") ||
+            n.includes("investment") || n.includes("long-term") || n.includes("goodwill"))
+          return "invest_asset";
+        return "op_asset";
+      }
+      if (acc.type === "Liability") {
+        if (n.includes("long-term") || n.includes("debt") || n.includes("loan") ||
+            n.includes("bond") || n.includes("mortgage") || n.includes("debenture") ||
+            n.includes("notes payable") || n.includes("credit facility"))
+          return "fin_liability";
+        return "op_liability";
+      }
+      if (acc.type === "Equity")  return "equity";
+      if (acc.type === "Income")  return "income";
+      if (acc.type === "Expense") return "expense";
+      return "op_asset";
+    }
+
+    const classified = allAccounts
+      .map((acc) => ({ acc, cat: classify(acc), mv: netMovement(acc) }))
+      .filter((x) => Math.abs(x.mv) > 0.005);
+
+    // ── Net Income ────────────────────────────────────────────────────────────
+    const totalIncome  = classified.filter((x) => x.cat === "income").reduce((s, x) => s + x.mv, 0);
+    const totalExpense = classified.filter((x) => x.cat === "expense").reduce((s, x) => s + x.mv, 0);
+    const netIncome    = totalIncome - totalExpense;
+
+    // ── Depreciation / amortisation add-back ─────────────────────────────────
+    const depreciation = classified
+      .filter((x) => {
+        const n = x.acc.name.toLowerCase();
+        return x.cat === "expense" && (n.includes("depreciation") || n.includes("amortization") || n.includes("amortisation"));
+      })
+      .map((x) => ({ accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name, amount: x.mv.toFixed(2) }));
+    const totalDepreciation = depreciation.reduce((s, x) => s + parseFloat(x.amount), 0);
+
+    // ── Working-capital changes ───────────────────────────────────────────────
+    // Increase in operating asset → uses cash → negative
+    const wcAssets = classified.filter((x) => x.cat === "op_asset").map((x) => ({
+      accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name,
+      amount: (-x.mv).toFixed(2),
+    }));
+    // Increase in operating liability → provides cash → positive
+    const wcLiabilities = classified.filter((x) => x.cat === "op_liability").map((x) => ({
+      accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name,
+      amount: x.mv.toFixed(2),
+    }));
+    const totalWC = wcAssets.reduce((s, x) => s + parseFloat(x.amount), 0)
+                  + wcLiabilities.reduce((s, x) => s + parseFloat(x.amount), 0);
+
+    const netOperating = netIncome + totalDepreciation + totalWC;
+
+    // ── Investing activities ──────────────────────────────────────────────────
+    // Increase in investing asset → outflow → negative
+    const investItems = classified.filter((x) => x.cat === "invest_asset").map((x) => ({
+      accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name,
+      amount: (-x.mv).toFixed(2),
+    }));
+    const netInvesting = investItems.reduce((s, x) => s + parseFloat(x.amount), 0);
+
+    // ── Financing activities ──────────────────────────────────────────────────
+    // Increase in financing liability OR equity → inflow → positive
+    const finItems = [
+      ...classified.filter((x) => x.cat === "fin_liability").map((x) => ({
+        accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name,
+        amount: x.mv.toFixed(2),
+      })),
+      ...classified.filter((x) => x.cat === "equity").map((x) => ({
+        accountId: x.acc.id, accountCode: x.acc.code, accountName: x.acc.name,
+        amount: x.mv.toFixed(2),
+      })),
+    ];
+    const netFinancing = finItems.reduce((s, x) => s + parseFloat(x.amount), 0);
+
+    // ── Cash position ─────────────────────────────────────────────────────────
+    const netCashChange = netOperating + netInvesting + netFinancing;
+    const closingCash   = allAccounts
+      .filter((a) => classify(a) === "cash")
+      .reduce((s, a) => s + parseFloat(a.balance ?? "0"), 0);
+    const openingCash = closingCash - netCashChange;   // simplified (current – period change)
+
+    res.json({
+      success: true,
+      operating: {
+        netIncome:   netIncome.toFixed(2),
+        depreciation,
+        wcAssets,
+        wcLiabilities,
+        total:       netOperating.toFixed(2),
+      },
+      investing: { items: investItems,  total: netInvesting.toFixed(2) },
+      financing: { items: finItems,     total: netFinancing.toFixed(2) },
+      netCashChange: netCashChange.toFixed(2),
+      openingCash:   openingCash.toFixed(2),
+      closingCash:   closingCash.toFixed(2),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to generate cash flow statement" });
+  }
+});
+
 // ── DELETE /api/finance/ledger/journal-entries/:id ────────────────────────────
 // Only draft entries may be deleted.
 router.delete("/journal-entries/:id", requirePermission("finance", "delete"), async (req: AuthRequest, res) => {

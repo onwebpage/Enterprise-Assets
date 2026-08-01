@@ -6,6 +6,8 @@ import GeneralLedgerTab from '@/components/app/finance/GeneralLedgerTab';
 import JournalEntriesTab from '@/components/app/finance/JournalEntriesTab';
 import TrialBalanceTab from '@/components/app/finance/TrialBalanceTab';
 import ProfitLossTab from '@/components/app/finance/ProfitLossTab';
+import BalanceSheetTab from '@/components/app/finance/BalanceSheetTab';
+import CashFlowTab from '@/components/app/finance/CashFlowTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -16,7 +18,7 @@ import {
   CreditCard, Banknote, ArrowUpRight, ArrowDownRight, ArrowRight,
   FileText, BookOpen, RefreshCw, CheckCircle2, AlertCircle,
   ChevronRight, ChevronDown, Calendar, Building2, Layers,
-  Scale, ReceiptText, Landmark, GitMerge, Clock, Check,
+  Scale, ReceiptText, Landmark, GitMerge, Clock, Check, Wallet,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import KPICard from '@/components/app/KPICard';
@@ -344,6 +346,7 @@ export default function Finance() {
                 { value: 'journal',   label: 'Journal Entries', icon: FileText },
                 { value: 'pl',        label: 'P&L Statement',   icon: TrendingUp },
                 { value: 'bs',        label: 'Balance Sheet',   icon: Scale },
+                { value: 'cf',        label: 'Cash Flow',       icon: Wallet },
                 { value: 'tb',        label: 'Trial Balance',   icon: CheckCircle2 },
                 { value: 'recon',     label: 'Bank Reconciliation', icon: GitMerge },
               ].map(t => (
@@ -662,73 +665,12 @@ export default function Finance() {
 
           {/* ── BALANCE SHEET ─────────────────────────────────────────────── */}
           <TabsContent value="bs" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Balance Sheet</h3>
-                  <p className="text-xs text-white/35 mt-0.5">Apex Global Inc. · As at Jul 28, 2026</p>
-                </div>
-                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
-                  <Download className="w-3.5 h-3.5 mr-1.5" />Export PDF
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
-                {/* Assets */}
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                      <th colSpan={2} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">Assets</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <StatRow label="Current Assets" bold />
-                    <StatRow label="Cash & Equivalents"       value="$1,842,000" indent={1} />
-                    <StatRow label="Accounts Receivable"      value="$3,241,000" indent={1} />
-                    <StatRow label="Inventory"                value="$2,408,000" indent={1} />
-                    <StatRow label="Prepaid Expenses"         value="$124,000"   indent={1} />
-                    <StatRow label="Total Current Assets"     value="$7,615,000" bold highlight />
-                    <StatRow separator />
-                    <StatRow label="Non-current Assets" bold />
-                    <StatRow label="Property, Plant & Equipment" value="$4,820,000" indent={1} />
-                    <StatRow label="Less: Accumulated Depreciation" value="($1,240,000)" indent={1} />
-                    <StatRow label="Intangible Assets"        value="$480,000"   indent={1} />
-                    <StatRow label="Total Non-current Assets" value="$4,060,000" bold highlight />
-                    <StatRow separator />
-                    <StatRow label="TOTAL ASSETS"             value="$11,675,000" bold highlight />
-                  </tbody>
-                </table>
-                {/* Liabilities + Equity */}
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                      <th colSpan={2} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">Liabilities & Equity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <StatRow label="Current Liabilities" bold />
-                    <StatRow label="Accounts Payable"         value="$892,000"   indent={1} />
-                    <StatRow label="Accrued Liabilities"      value="$341,000"   indent={1} />
-                    <StatRow label="Short-term Debt"          value="$600,000"   indent={1} />
-                    <StatRow label="Total Current Liabilities" value="$1,833,000" bold highlight />
-                    <StatRow separator />
-                    <StatRow label="Non-current Liabilities" bold />
-                    <StatRow label="Long-term Debt"           value="$2,400,000" indent={1} />
-                    <StatRow label="Deferred Tax Liabilities" value="$201,000"   indent={1} />
-                    <StatRow label="Total Non-current Liabilities" value="$2,601,000" bold highlight />
-                    <StatRow separator />
-                    <StatRow label="TOTAL LIABILITIES"        value="$4,434,000" bold />
-                    <StatRow separator />
-                    <StatRow label="Shareholders' Equity" bold />
-                    <StatRow label="Share Capital"            value="$5,000,000" indent={1} />
-                    <StatRow label="Retained Earnings"        value="$1,940,480" indent={1} />
-                    <StatRow label="Current Year Profit"      value="$1,300,520" indent={1} />
-                    <StatRow label="TOTAL EQUITY"             value="$8,241,000" bold highlight />
-                    <StatRow separator />
-                    <StatRow label="TOTAL LIABILITIES + EQUITY" value="$11,675,000" bold highlight />
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <BalanceSheetTab />
+          </TabsContent>
+
+          {/* ── CASH FLOW ─────────────────────────────────────────────────── */}
+          <TabsContent value="cf" className="mt-4">
+            <CashFlowTab />
           </TabsContent>
 
           {/* ── TRIAL BALANCE ─────────────────────────────────────────────── */}

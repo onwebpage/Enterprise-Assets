@@ -278,6 +278,78 @@ export function useProfitLoss(params: ReportDateParams = {}) {
   });
 }
 
+// ── Balance Sheet ─────────────────────────────────────────────────────────────
+
+export interface BSRow {
+  accountId:   number;
+  accountCode: string;
+  accountName: string;
+  balance:     string;
+}
+
+export interface BalanceSheetResponse {
+  success: boolean;
+  data: {
+    assets:      BSRow[];
+    liabilities: BSRow[];
+    equity:      BSRow[];
+  };
+  netIncome:              string;
+  totalAssets:            string;
+  totalLiabilities:       string;
+  totalEquity:            string;
+  totalLiabilitiesEquity: string;
+  balanced:               boolean;
+}
+
+export function useBalanceSheet(params: { asOf?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.asOf) qs.set("asOf", params.asOf);
+  return useQuery<BalanceSheetResponse>({
+    queryKey: [...GL_KEY, "balance-sheet", params],
+    queryFn:  () => api.get(`/finance/ledger/balance-sheet?${qs}`),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+// ── Cash Flow ─────────────────────────────────────────────────────────────────
+
+export interface CFLineItem {
+  accountId:   number;
+  accountCode: string;
+  accountName: string;
+  amount:      string;
+}
+
+export interface CashFlowResponse {
+  success: boolean;
+  operating: {
+    netIncome:    string;
+    depreciation: CFLineItem[];
+    wcAssets:     CFLineItem[];
+    wcLiabilities: CFLineItem[];
+    total:        string;
+  };
+  investing: { items: CFLineItem[]; total: string };
+  financing: { items: CFLineItem[]; total: string };
+  netCashChange: string;
+  openingCash:   string;
+  closingCash:   string;
+}
+
+export function useCashFlow(params: ReportDateParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.dateFrom) qs.set("dateFrom", params.dateFrom);
+  if (params.dateTo)   qs.set("dateTo",   params.dateTo);
+  return useQuery<CashFlowResponse>({
+    queryKey: [...GL_KEY, "cash-flow", params],
+    queryFn:  () => api.get(`/finance/ledger/cash-flow?${qs}`),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateJournalEntry() {
