@@ -539,16 +539,18 @@ router.post("/payments", requirePermission(MODULE, "create"), async (req: AuthRe
 
     const newStatus = newPaid >= total - 0.001 ? "paid" : "partial";
 
-    const [payment] = await db.insert(arPayments).values({
-      orgId, invoiceId: data.invoiceId, customerId: invoice.customerId,
-      paymentDate: data.paymentDate, amount: paymentAmt.toFixed(2),
-      method: data.method ?? "bank_transfer", reference: data.reference ?? null,
-      notes: data.notes ?? null, createdBy: req.user!.id,
-    }).returning();
-
-    await db.update(arInvoices)
-      .set({ amountPaid: newPaid.toFixed(2), status: newStatus, updatedAt: new Date() })
-      .where(eq(arInvoices.id, data.invoiceId));
+    const payment = await db.transaction(async (tx) => {
+      const [inserted] = await tx.insert(arPayments).values({
+        orgId, invoiceId: data.invoiceId, customerId: invoice.customerId,
+        paymentDate: data.paymentDate, amount: paymentAmt.toFixed(2),
+        method: data.method ?? "bank_transfer", reference: data.reference ?? null,
+        notes: data.notes ?? null, createdBy: req.user!.id,
+      }).returning();
+      await tx.update(arInvoices)
+        .set({ amountPaid: newPaid.toFixed(2), status: newStatus, updatedAt: new Date() })
+        .where(eq(arInvoices.id, data.invoiceId));
+      return inserted;
+    });
 
     res.status(201).json({ success: true, data: payment });
   } catch {

@@ -65,7 +65,11 @@ const TABS: { id: Tab; label: string }[] = [
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 
-function OverviewTab() {
+interface OverviewTabProps {
+  onNavigate: (tab: Tab) => void;
+}
+
+function OverviewTab({ onNavigate }: OverviewTabProps) {
   const { data: summary, isLoading } = useARSummary();
   const s = summary?.data;
 
@@ -162,15 +166,14 @@ function OverviewTab() {
               { label: 'Record a payment',        tab: 'payments'  as Tab },
               { label: 'Add a customer',          tab: 'customers' as Tab },
               { label: 'View overdue invoices',   tab: 'invoices'  as Tab },
-            ].map(({ label }) => (
-              <div key={label}
-                className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 cursor-default transition-colors">
-                <span className="w-1 h-1 rounded-full bg-[#2563EB]/60" />
+            ].map(({ label, tab }) => (
+              <button key={label} onClick={() => onNavigate(tab)}
+                className="flex items-center gap-2 text-xs text-white/40 hover:text-white/70 cursor-pointer transition-colors w-full text-left">
+                <span className="w-1 h-1 rounded-full bg-[#2563EB]/60 shrink-0" />
                 {label}
-              </div>
+              </button>
             ))}
           </div>
-          <p className="text-[11px] text-white/20 mt-4">Use the tabs above to navigate.</p>
         </div>
       </div>
     </div>
@@ -230,7 +233,7 @@ export default function AccountsReceivable() {
 
         {/* Tab content */}
         <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-          {activeTab === 'overview'  && <OverviewTab />}
+          {activeTab === 'overview'  && <OverviewTab onNavigate={setActiveTab} />}
           {activeTab === 'customers' && <CustomersTab />}
           {activeTab === 'invoices'  && <InvoicesTab />}
           {activeTab === 'payments'  && <PaymentsTab />}
