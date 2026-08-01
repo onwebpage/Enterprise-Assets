@@ -207,6 +207,77 @@ export function useGLPermissions() {
   });
 }
 
+// ── Trial Balance ─────────────────────────────────────────────────────────────
+
+export interface TrialBalanceRow {
+  accountId:     number;
+  accountCode:   string;
+  accountName:   string;
+  accountType:   string;
+  normalBalance: string;
+  debitBalance:  string;
+  creditBalance: string;
+}
+
+export interface TrialBalanceResponse {
+  success:     boolean;
+  data:        TrialBalanceRow[];
+  totalDebit:  string;
+  totalCredit: string;
+  balanced:    boolean;
+}
+
+export interface ReportDateParams {
+  dateFrom?: string;
+  dateTo?:   string;
+}
+
+export function useTrialBalance(params: ReportDateParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.dateFrom) qs.set("dateFrom", params.dateFrom);
+  if (params.dateTo)   qs.set("dateTo",   params.dateTo);
+
+  return useQuery<TrialBalanceResponse>({
+    queryKey: [...GL_KEY, "trial-balance", params],
+    queryFn:  () => api.get(`/finance/ledger/trial-balance?${qs}`),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+// ── Profit & Loss ─────────────────────────────────────────────────────────────
+
+export interface PLAccountRow {
+  accountId:   number;
+  accountCode: string;
+  accountName: string;
+  amount:      string;
+}
+
+export interface ProfitLossResponse {
+  success: boolean;
+  data: {
+    income:   PLAccountRow[];
+    expenses: PLAccountRow[];
+  };
+  totalIncome:   string;
+  totalExpenses: string;
+  netProfit:     string;
+}
+
+export function useProfitLoss(params: ReportDateParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.dateFrom) qs.set("dateFrom", params.dateFrom);
+  if (params.dateTo)   qs.set("dateTo",   params.dateTo);
+
+  return useQuery<ProfitLossResponse>({
+    queryKey: [...GL_KEY, "profit-loss", params],
+    queryFn:  () => api.get(`/finance/ledger/profit-loss?${qs}`),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 export function useCreateJournalEntry() {

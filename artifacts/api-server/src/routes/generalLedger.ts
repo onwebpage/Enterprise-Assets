@@ -639,6 +639,185 @@ router.post("/journal-entries/:id/post", requirePermission("finance", "edit"), a
   }
 });
 
+// ── GET /api/finance/ledger/trial-balance ─────────────────────────────────────
+// Returns every active account with its debit/credit column amounts.
+// Optional date range filters against posted JE lines; without a range the
+// account's running balance (updated on post) is used directly.
+// Query: dateFrom, dateTo
+router.get("/trial-balance", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query as Record<string, string>;
+
+    // Fetch all active accounts in scope
+    const allAccounts = await db
+      .select()
+      .from(chartOfAccounts)
+      .where(
+        and(
+          coaOrgScope(req) as any,
+          eq(chartOfAccounts.status, "active"),
+        ),
+      )
+      .orderBy(asc(chartOfAccounts.code));
+
+    // Build JE filters for posted entries in optional date range
+    const jeFilters: any[] = [eq(journalEntries.status, "posted"), orgScope(req)];
+    if (dateFrom) jeFilters.push(gte(journalEntries.date, dateFrom));
+    if (dateTo)   jeFilters.push(lte(journalEntries.date, dateTo));
+
+    // Aggregate posted line totals per account
+    const lineAggs = await db
+      .select({
+        accountId:   journalEntryLines.accountId,
+        totalDebit:  sql<string>`coalesce(sum(${journalEntryLines.debit}),  '0')`,
+        totalCredit: sql<string>`coalesce(sum(${journalEntryLines.credit}), '0')`,
+      })
+      .from(journalEntryLines)
+      .innerJoin(
+        journalEntries,
+        and(eq(journalEntries.id, journalEntryLines.journalEntryId), ...jeFilters),
+      )
+      .groupBy(journalEntryLines.accountId);
+
+    const aggMap = new Map(lineAggs.map((r) => [r.accountId, r]));
+    const hasDateFilter = !!(dateFrom || dateTo);
+
+    const rows = allAccounts.map((acc) => {
+      const agg = aggMap.get(acc.id);
+      const totalDebit  = parseFloat(agg?.totalDebit  ?? "0");
+      const totalCredit = parseFloat(agg?.totalCredit ?? "0");
+
+      // Balance for the period: computed from lines if date-filtered, else use stored balance
+      const balance = hasDateFilter
+        ? acc.normalBalance === "Debit"
+          ? totalDebit  - totalCredit
+          : totalCredit - totalDebit
+        : parseFloat(acc.balance ?? "0");
+
+      // Assign to debit/credit column based on normal balance and sign
+      let debitBalance = 0;
+      let creditBalance = 0;
+      if (acc.normalBalance === "Debit") {
+        if (balance >= 0) debitBalance  = balance;
+        else              creditBalance = Math.abs(balance);
+      } else {
+        if (balance >= 0) creditBalance = balance;
+        else              debitBalance  = Math.abs(balance);
+      }
+
+      return {
+        accountId:     acc.id,
+        accountCode:   acc.code,
+        accountName:   acc.name,
+        accountType:   acc.type,
+        normalBalance: acc.normalBalance,
+        debitBalance:  debitBalance.toFixed(2),
+        creditBalance: creditBalance.toFixed(2),
+      };
+    });
+
+    // Only show accounts with a non-zero balance in the report period
+    const nonZero = rows.filter(
+      (r) => parseFloat(r.debitBalance) !== 0 || parseFloat(r.creditBalance) !== 0,
+    );
+
+    const totalDebitCol  = nonZero.reduce((s, r) => s + parseFloat(r.debitBalance),  0);
+    const totalCreditCol = nonZero.reduce((s, r) => s + parseFloat(r.creditBalance), 0);
+    const balanced = Math.abs(totalDebitCol - totalCreditCol) < 0.01;
+
+    res.json({
+      success: true,
+      data:        nonZero,
+      totalDebit:  totalDebitCol.toFixed(2),
+      totalCredit: totalCreditCol.toFixed(2),
+      balanced,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to generate trial balance" });
+  }
+});
+
+// ── GET /api/finance/ledger/profit-loss ───────────────────────────────────────
+// Aggregates Income and Expense account activity from posted JEs.
+// Query: dateFrom, dateTo
+router.get("/profit-loss", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+  try {
+    const { dateFrom, dateTo } = req.query as Record<string, string>;
+
+    const jeFilters: any[] = [eq(journalEntries.status, "posted"), orgScope(req)];
+    if (dateFrom) jeFilters.push(gte(journalEntries.date, dateFrom));
+    if (dateTo)   jeFilters.push(lte(journalEntries.date, dateTo));
+
+    const rows = await db
+      .select({
+        accountId:     chartOfAccounts.id,
+        accountCode:   chartOfAccounts.code,
+        accountName:   chartOfAccounts.name,
+        accountType:   chartOfAccounts.type,
+        normalBalance: chartOfAccounts.normalBalance,
+        totalDebit:    sql<string>`coalesce(sum(${journalEntryLines.debit}),  '0')`,
+        totalCredit:   sql<string>`coalesce(sum(${journalEntryLines.credit}), '0')`,
+      })
+      .from(journalEntryLines)
+      .innerJoin(
+        journalEntries,
+        and(eq(journalEntries.id, journalEntryLines.journalEntryId), ...jeFilters),
+      )
+      .innerJoin(
+        chartOfAccounts,
+        and(
+          eq(chartOfAccounts.id, journalEntryLines.accountId),
+          coaOrgScope(req) as any,
+          inArray(chartOfAccounts.type, ["Income", "Expense"]),
+        ),
+      )
+      .groupBy(
+        chartOfAccounts.id,
+        chartOfAccounts.code,
+        chartOfAccounts.name,
+        chartOfAccounts.type,
+        chartOfAccounts.normalBalance,
+      )
+      .orderBy(asc(chartOfAccounts.code));
+
+    const income = rows
+      .filter((r) => r.accountType === "Income")
+      .map((r) => ({
+        accountId:   r.accountId,
+        accountCode: r.accountCode,
+        accountName: r.accountName,
+        // Credit-normal: net = credit - debit
+        amount: (parseFloat(r.totalCredit) - parseFloat(r.totalDebit)).toFixed(2),
+      }));
+
+    const expenses = rows
+      .filter((r) => r.accountType === "Expense")
+      .map((r) => ({
+        accountId:   r.accountId,
+        accountCode: r.accountCode,
+        accountName: r.accountName,
+        // Debit-normal: net = debit - credit
+        amount: (parseFloat(r.totalDebit) - parseFloat(r.totalCredit)).toFixed(2),
+      }));
+
+    const totalIncome   = income.reduce((s, r) => s + parseFloat(r.amount), 0);
+    const totalExpenses = expenses.reduce((s, r) => s + parseFloat(r.amount), 0);
+    const netProfit     = totalIncome - totalExpenses;
+
+    res.json({
+      success: true,
+      data: { income, expenses },
+      totalIncome:   totalIncome.toFixed(2),
+      totalExpenses: totalExpenses.toFixed(2),
+      netProfit:     netProfit.toFixed(2),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to generate P&L" });
+  }
+});
+
 // ── DELETE /api/finance/ledger/journal-entries/:id ────────────────────────────
 // Only draft entries may be deleted.
 router.delete("/journal-entries/:id", requirePermission("finance", "delete"), async (req: AuthRequest, res) => {

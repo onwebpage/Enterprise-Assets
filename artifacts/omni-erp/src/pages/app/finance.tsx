@@ -4,6 +4,8 @@ import { useFinanceDashboard, fmtMoney, timeAgo } from '@/hooks/useFinanceDashbo
 import ChartOfAccountsTab from '@/components/app/finance/ChartOfAccountsTab';
 import GeneralLedgerTab from '@/components/app/finance/GeneralLedgerTab';
 import JournalEntriesTab from '@/components/app/finance/JournalEntriesTab';
+import TrialBalanceTab from '@/components/app/finance/TrialBalanceTab';
+import ProfitLossTab from '@/components/app/finance/ProfitLossTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -594,7 +596,8 @@ export default function Finance() {
 
           {/* ── P&L STATEMENT ─────────────────────────────────────────────── */}
           <TabsContent value="pl" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+            <ProfitLossTab />
+            <div className="hidden bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
                 <div>
                   <h3 className="text-sm font-semibold text-white">Profit & Loss Statement</h3>
@@ -730,59 +733,7 @@ export default function Finance() {
 
           {/* ── TRIAL BALANCE ─────────────────────────────────────────────── */}
           <TabsContent value="tb" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-                <div>
-                  <h3 className="text-sm font-semibold text-white">Trial Balance</h3>
-                  <p className="text-xs text-white/35 mt-0.5">As at Jul 28, 2026</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-500/12 text-emerald-400 border-emerald-500/25 border text-xs">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />Balanced
-                  </Badge>
-                  <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/50 hover:text-white hover:bg-white/[0.05] h-8">
-                    <Download className="w-3.5 h-3.5 mr-1.5" />Export
-                  </Button>
-                </div>
-              </div>
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/[0.05] bg-white/[0.02]">
-                    {['Code','Account Name','Type','Debit','Credit'].map(h=>(
-                      <th key={h} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-4 py-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts.map(acc => (
-                    <TableRow key={acc.code}>
-                      <td className="px-4 py-2.5 text-sm font-mono text-[#06B6D4]">{acc.code}</td>
-                      <td className="px-4 py-2.5 text-sm text-white/75">{acc.name}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border', typeColor[acc.type])}>
-                          {acc.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-sm tabular-nums text-right">
-                        {acc.normal === 'Debit' && acc.balance > 0
-                          ? <span className="text-white font-medium">${Math.abs(acc.balance).toLocaleString()}</span>
-                          : <span className="text-white/20">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm tabular-nums text-right">
-                        {acc.normal === 'Credit' || acc.balance < 0
-                          ? <span className="text-white font-medium">${Math.abs(acc.balance).toLocaleString()}</span>
-                          : <span className="text-white/20">—</span>}
-                      </td>
-                    </TableRow>
-                  ))}
-                  <tr className="border-t-2 border-white/[0.1] bg-white/[0.03]">
-                    <td className="px-4 py-3 text-sm font-bold text-white" colSpan={3}>Totals</td>
-                    <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">$16,777,200</td>
-                    <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">$16,777,200</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <TrialBalanceTab />
           </TabsContent>
 
           {/* ── BANK RECONCILIATION ───────────────────────────────────────── */}
