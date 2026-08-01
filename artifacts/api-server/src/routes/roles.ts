@@ -48,7 +48,7 @@ router.post("/", async (req: AuthRequest, res) => {
 // PUT /api/roles/:id — update role + permissions
 router.put("/:id", async (req: AuthRequest, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     const { name, description, permissions: permsInput } = req.body as {
       name?: string; description?: string;
       permissions?: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>;
@@ -78,12 +78,12 @@ router.put("/:id", async (req: AuthRequest, res) => {
 // DELETE /api/roles/:id
 router.delete("/:id", async (req: AuthRequest, res) => {
   try {
-    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, parseInt(req.params.id))).limit(1);
+    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, parseInt(req.params.id as string))).limit(1);
     if (role?.isSystem) {
       res.status(400).json({ success: false, error: "Cannot delete system roles" });
       return;
     }
-    await db.delete(roles).where(eq(roles.id, parseInt(req.params.id)));
+    await db.delete(roles).where(eq(roles.id, parseInt(req.params.id as string)));
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete role" });

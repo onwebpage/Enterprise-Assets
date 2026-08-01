@@ -78,7 +78,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .leftJoin(departments, eq(users.deptId, departments.id))
-      .where(eq(users.id, parseInt(req.params.id)))
+      .where(eq(users.id, parseInt(req.params.id as string)))
       .limit(1);
 
     if (!row) { res.status(404).json({ success: false, error: "User not found" }); return; }
@@ -133,7 +133,7 @@ router.put("/:id", async (req: AuthRequest, res) => {
       ...(status !== undefined && { status }),
       ...(mfaEnabled !== undefined && { mfaEnabled }),
       updatedAt: new Date(),
-    }).where(eq(users.id, parseInt(req.params.id))).returning();
+    }).where(eq(users.id, parseInt(req.params.id as string))).returning();
     if (!user) { res.status(404).json({ success: false, error: "User not found" }); return; }
     const { passwordHash: _ph, ...safe } = user;
     res.json({ success: true, data: safe });
@@ -145,7 +145,7 @@ router.put("/:id", async (req: AuthRequest, res) => {
 // DELETE /api/users/:id
 router.delete("/:id", async (req: AuthRequest, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id as string);
     if (id === req.user?.userId) {
       res.status(400).json({ success: false, error: "Cannot delete your own account" });
       return;

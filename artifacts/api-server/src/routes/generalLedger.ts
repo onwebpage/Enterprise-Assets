@@ -99,11 +99,13 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
     const { roleId } = req.user!;
     if (roleId === null) {
-      return res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      return;
     }
     const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, roleId)).limit(1);
     if (role?.isSystem) {
-      return res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      return;
     }
     const [perm] = await db
       .select()
@@ -146,16 +148,16 @@ router.get("/journal-entries", requirePermission("finance", "view"), async (req:
     if (dateTo)   filters.push(lte(journalEntries.date, dateTo));
 
     // If filtering by accountId, restrict to JEs that have a line for that account
-    let jeIdsForAccount: number[] | null = null;
     if (accountId && !isNaN(parseInt(accountId))) {
       const accId = parseInt(accountId);
       const rows = await db
         .selectDistinct({ jeId: journalEntryLines.journalEntryId })
         .from(journalEntryLines)
         .where(eq(journalEntryLines.accountId, accId));
-      jeIdsForAccount = rows.map((r) => r.jeId);
+      const jeIdsForAccount = rows.map((r) => r.jeId);
       if (jeIdsForAccount.length === 0) {
-        return res.json({ success: true, data: [], total: 0, page, limit, totalPages: 0 });
+        res.json({ success: true, data: [], total: 0, page, limit, totalPages: 0 });
+        return;
       }
       filters.push(inArray(journalEntries.id, jeIdsForAccount));
     }
@@ -228,7 +230,8 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
   try {
     const { accountId, dateFrom, dateTo } = req.query as Record<string, string>;
     if (!accountId || isNaN(parseInt(accountId))) {
-      return res.status(400).json({ success: false, error: "accountId is required" });
+      res.status(400).json({ success: false, error: "accountId is required" });
+      return;
     }
     const accId = parseInt(accountId);
     const page  = Math.max(1, parseInt(String(req.query.page  ?? 1)));
@@ -241,7 +244,10 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
       .from(chartOfAccounts)
       .where(and(eq(chartOfAccounts.id, accId), coaOrgScope(req) as any))
       .limit(1);
-    if (!account) return res.status(404).json({ success: false, error: "Account not found" });
+    if (!account) {
+      res.status(404).json({ success: false, error: "Account not found" });
+      return;
+    }
 
     // Build JE filters (posted only)
     const jeFilters: any[] = [
@@ -252,8 +258,6 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
     if (dateTo)   jeFilters.push(lte(journalEntries.date, dateTo));
 
     // Compute net change from all posted lines for this account IN the range
-    // net change (for debit-normal): Σ(debit - credit); for credit-normal: Σ(credit - debit)
-    // opening balance = current balance - net change in range
     const [netRow] = await db
       .select({
         sumDebit:  sql<string>`coalesce(sum(${journalEntryLines.debit}),  '0')`,
@@ -315,8 +319,7 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
       .limit(limit)
       .offset(offset);
 
-    // Compute running balance starting from opening (for pages beyond page 1, we need the carry-forward)
-    // For page > 1, compute carry-forward balance up to the offset
+    // Compute running balance starting from opening
     let runningBalance = openingBalance;
     if (offset > 0) {
       // Get the net change of all lines BEFORE this page
@@ -333,7 +336,6 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
         .where(eq(journalEntryLines.accountId, accId))
         .orderBy(asc(journalEntries.date), asc(journalEntries.id), asc(journalEntryLines.sequence))
         .limit(offset);
-      // Carry-forward net change
       const cd = parseFloat((carryRow as any)?.sumDebit  ?? "0");
       const cc = parseFloat((carryRow as any)?.sumCredit ?? "0");
       if (account.normalBalance === "Debit") {
@@ -376,15 +378,22 @@ router.get("/account-entries", requirePermission("finance", "view"), async (req:
 
 // ── GET /api/finance/ledger/journal-entries/:id ───────────────────────────────
 router.get("/journal-entries/:id", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
   try {
     const je = await fetchJEWithLines(id);
-    if (!je) return res.status(404).json({ success: false, error: "Journal entry not found" });
+    if (!je) {
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
+    }
     // Scope check
     const { orgId } = req.user!;
     if (orgId !== null && je.orgId !== null && je.orgId !== orgId) {
-      return res.status(404).json({ success: false, error: "Journal entry not found" });
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
     }
     res.json({ success: true, data: je });
   } catch {
@@ -396,7 +405,8 @@ router.get("/journal-entries/:id", requirePermission("finance", "view"), async (
 router.post("/journal-entries", requirePermission("finance", "create"), async (req: AuthRequest, res) => {
   const parsed = insertJournalEntrySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    return;
   }
 
   const { date, reference, memo, lines } = parsed.data;
@@ -407,10 +417,12 @@ router.post("/journal-entries", requirePermission("finance", "create"), async (r
     const d = parseFloat(line.debit  ?? "0");
     const c = parseFloat(line.credit ?? "0");
     if (d < 0 || c < 0) {
-      return res.status(422).json({ success: false, error: "Debit and credit amounts must be non-negative" });
+      res.status(422).json({ success: false, error: "Debit and credit amounts must be non-negative" });
+      return;
     }
     if (d === 0 && c === 0) {
-      return res.status(422).json({ success: false, error: "Each line must have a non-zero debit or credit" });
+      res.status(422).json({ success: false, error: "Each line must have a non-zero debit or credit" });
+      return;
     }
   }
 
@@ -461,24 +473,33 @@ router.post("/journal-entries", requirePermission("finance", "create"), async (r
 // ── PUT /api/finance/ledger/journal-entries/:id ───────────────────────────────
 // Only draft entries may be edited.
 router.put("/journal-entries/:id", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   const parsed = updateJournalEntrySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    return;
   }
 
   try {
     const [existing] = await db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1);
-    if (!existing) return res.status(404).json({ success: false, error: "Journal entry not found" });
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
+    }
 
     const { orgId } = req.user!;
     if (orgId !== null && existing.orgId !== null && existing.orgId !== orgId) {
-      return res.status(404).json({ success: false, error: "Journal entry not found" });
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
     }
     if (existing.status !== "draft") {
-      return res.status(409).json({ success: false, error: `Cannot edit a ${existing.status} journal entry` });
+      res.status(409).json({ success: false, error: `Cannot edit a ${existing.status} journal entry` });
+      return;
     }
 
     const { date, reference, memo, lines } = parsed.data;
@@ -488,7 +509,8 @@ router.put("/journal-entries/:id", requirePermission("finance", "edit"), async (
       const d = parseFloat(line.debit  ?? "0");
       const c = parseFloat(line.credit ?? "0");
       if (d === 0 && c === 0) {
-        return res.status(422).json({ success: false, error: "Each line must have a non-zero debit or credit" });
+        res.status(422).json({ success: false, error: "Each line must have a non-zero debit or credit" });
+        return;
       }
     }
 
@@ -531,19 +553,27 @@ router.put("/journal-entries/:id", requirePermission("finance", "edit"), async (
 // ── POST /api/finance/ledger/journal-entries/:id/post ────────────────────────
 // Posts a draft journal entry: validates balance, marks posted, updates account balances.
 router.post("/journal-entries/:id/post", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   try {
     const [existing] = await db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1);
-    if (!existing) return res.status(404).json({ success: false, error: "Journal entry not found" });
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
+    }
 
     const { orgId } = req.user!;
     if (orgId !== null && existing.orgId !== null && existing.orgId !== orgId) {
-      return res.status(404).json({ success: false, error: "Journal entry not found" });
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
     }
     if (existing.status !== "draft") {
-      return res.status(409).json({ success: false, error: `Entry is already ${existing.status}` });
+      res.status(409).json({ success: false, error: `Entry is already ${existing.status}` });
+      return;
     }
 
     // Fetch lines
@@ -553,17 +583,19 @@ router.post("/journal-entries/:id/post", requirePermission("finance", "edit"), a
       .where(eq(journalEntryLines.journalEntryId, id));
 
     if (lines.length < 2) {
-      return res.status(422).json({ success: false, error: "A journal entry must have at least 2 lines" });
+      res.status(422).json({ success: false, error: "A journal entry must have at least 2 lines" });
+      return;
     }
 
     const totalDebit  = lines.reduce((s, l) => s + parseFloat(l.debit  ?? "0"), 0);
     const totalCredit = lines.reduce((s, l) => s + parseFloat(l.credit ?? "0"), 0);
 
     if (Math.abs(totalDebit - totalCredit) > 0.005) {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: `Entry is not balanced: debits (${totalDebit.toFixed(2)}) ≠ credits (${totalCredit.toFixed(2)})`,
       });
+      return;
     }
 
     // Update account balances for each line
@@ -610,19 +642,27 @@ router.post("/journal-entries/:id/post", requirePermission("finance", "edit"), a
 // ── DELETE /api/finance/ledger/journal-entries/:id ────────────────────────────
 // Only draft entries may be deleted.
 router.delete("/journal-entries/:id", requirePermission("finance", "delete"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   try {
     const [existing] = await db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1);
-    if (!existing) return res.status(404).json({ success: false, error: "Journal entry not found" });
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
+    }
 
     const { orgId } = req.user!;
     if (orgId !== null && existing.orgId !== null && existing.orgId !== orgId) {
-      return res.status(404).json({ success: false, error: "Journal entry not found" });
+      res.status(404).json({ success: false, error: "Journal entry not found" });
+      return;
     }
     if (existing.status !== "draft") {
-      return res.status(409).json({ success: false, error: `Cannot delete a ${existing.status} journal entry` });
+      res.status(409).json({ success: false, error: `Cannot delete a ${existing.status} journal entry` });
+      return;
     }
 
     // Lines are deleted via cascade

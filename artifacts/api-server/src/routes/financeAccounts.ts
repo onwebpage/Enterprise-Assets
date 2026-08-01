@@ -124,10 +124,11 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
 
     // No roleId → super-admin
     if (roleId === null) {
-      return res.json({
+      res.json({
         success: true,
         data: { canView: true, canCreate: true, canEdit: true, canDelete: true },
       });
+      return;
     }
 
     // System roles bypass per-module checks
@@ -138,10 +139,11 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
       .limit(1);
 
     if (role?.isSystem) {
-      return res.json({
+      res.json({
         success: true,
         data: { canView: true, canCreate: true, canEdit: true, canDelete: true },
       });
+      return;
     }
 
     // Look up the Finance module permission (case-insensitive)
@@ -166,7 +168,8 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
 router.post("/", requirePermission("finance", "create"), async (req: AuthRequest, res) => {
   const parsed = insertChartOfAccountSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    return;
   }
 
   try {
@@ -180,7 +183,8 @@ router.post("/", requirePermission("finance", "create"), async (req: AuthRequest
       .where(and(eq(chartOfAccounts.code, data.code), scopeFilter(req) as any))
       .limit(1);
     if (existing) {
-      return res.status(409).json({ success: false, error: `Account code "${data.code}" already exists` });
+      res.status(409).json({ success: false, error: `Account code "${data.code}" already exists` });
+      return;
     }
 
     // Validate parent belongs to same scope
@@ -191,7 +195,8 @@ router.post("/", requirePermission("finance", "create"), async (req: AuthRequest
         .where(and(eq(chartOfAccounts.id, data.parentId), scopeFilter(req) as any))
         .limit(1);
       if (!parent) {
-        return res.status(422).json({ success: false, error: "Parent account not found" });
+        res.status(422).json({ success: false, error: "Parent account not found" });
+        return;
       }
     }
 
@@ -208,8 +213,11 @@ router.post("/", requirePermission("finance", "create"), async (req: AuthRequest
 
 // ── GET /api/finance/accounts/:id ─────────────────────────────────────────────
 router.get("/:id", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   try {
     const [row] = await db
@@ -218,7 +226,10 @@ router.get("/:id", requirePermission("finance", "view"), async (req: AuthRequest
       .where(and(eq(chartOfAccounts.id, id), scopeFilter(req) as any))
       .limit(1);
 
-    if (!row) return res.status(404).json({ success: false, error: "Account not found" });
+    if (!row) {
+      res.status(404).json({ success: false, error: "Account not found" });
+      return;
+    }
     res.json({ success: true, data: row });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch account" });
@@ -227,12 +238,16 @@ router.get("/:id", requirePermission("finance", "view"), async (req: AuthRequest
 
 // ── PUT /api/finance/accounts/:id ─────────────────────────────────────────────
 router.put("/:id", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   const parsed = updateChartOfAccountSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    return;
   }
 
   try {
@@ -242,7 +257,10 @@ router.put("/:id", requirePermission("finance", "edit"), async (req: AuthRequest
       .from(chartOfAccounts)
       .where(and(eq(chartOfAccounts.id, id), scopeFilter(req) as any))
       .limit(1);
-    if (!existing) return res.status(404).json({ success: false, error: "Account not found" });
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Account not found" });
+      return;
+    }
 
     const data = parsed.data;
 
@@ -254,13 +272,15 @@ router.put("/:id", requirePermission("finance", "edit"), async (req: AuthRequest
         .where(and(eq(chartOfAccounts.code, data.code), scopeFilter(req) as any))
         .limit(1);
       if (dup && dup.id !== id) {
-        return res.status(409).json({ success: false, error: `Account code "${data.code}" already exists` });
+        res.status(409).json({ success: false, error: `Account code "${data.code}" already exists` });
+        return;
       }
     }
 
     // Prevent circular parent reference
     if (data.parentId && data.parentId === id) {
-      return res.status(422).json({ success: false, error: "An account cannot be its own parent" });
+      res.status(422).json({ success: false, error: "An account cannot be its own parent" });
+      return;
     }
 
     const [updated] = await db
@@ -277,8 +297,11 @@ router.put("/:id", requirePermission("finance", "edit"), async (req: AuthRequest
 
 // ── DELETE /api/finance/accounts/:id ──────────────────────────────────────────
 router.delete("/:id", requirePermission("finance", "delete"), async (req: AuthRequest, res) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) return res.status(400).json({ success: false, error: "Invalid id" });
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) {
+    res.status(400).json({ success: false, error: "Invalid id" });
+    return;
+  }
 
   try {
     const [existing] = await db
@@ -286,7 +309,10 @@ router.delete("/:id", requirePermission("finance", "delete"), async (req: AuthRe
       .from(chartOfAccounts)
       .where(and(eq(chartOfAccounts.id, id), scopeFilter(req) as any))
       .limit(1);
-    if (!existing) return res.status(404).json({ success: false, error: "Account not found" });
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Account not found" });
+      return;
+    }
 
     // Refuse if any children exist (DB constraint would also catch it, but give a clear message)
     const [{ childCount }] = await db
@@ -295,10 +321,11 @@ router.delete("/:id", requirePermission("finance", "delete"), async (req: AuthRe
       .where(eq(chartOfAccounts.parentId, id));
 
     if (childCount > 0) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: `Cannot delete account "${existing.name}" — it has ${childCount} child account(s). Remove or re-parent them first.`,
       });
+      return;
     }
 
     await db.delete(chartOfAccounts).where(eq(chartOfAccounts.id, id));

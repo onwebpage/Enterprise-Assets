@@ -2,14 +2,24 @@
 
 Enterprise SaaS ERP platform — a React/Vite marketing + app UI paired with an Express API server, deployed as two separate Render services.
 
-## Run & Operate
+## Run & Operate (Replit)
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+Workflows are pre-configured and start automatically:
+- **API Server** — `pnpm --filter @workspace/api-server run dev` (reads `PORT` from Replit, preview at `/api`)
+- **Web** — `pnpm --filter @workspace/omni-erp run dev` (Vite, preview at `/`)
+
+Other useful commands:
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/db run seed` — seed database with default org/roles/users
+
+Required env vars (set in Replit Secrets):
+- `DATABASE_URL` — Postgres connection string
+- `SESSION_SECRET` — JWT signing secret (falls back to a dev default if absent)
+
+Default login: `admin@omnierp.io` / `Admin@1234`
 
 ## Stack
 
