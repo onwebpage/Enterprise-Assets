@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFinanceDashboard, fmtMoney, timeAgo } from '@/hooks/useFinanceDashboard';
+import ChartOfAccountsTab from '@/components/app/finance/ChartOfAccountsTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -576,44 +577,7 @@ export default function Finance() {
 
           {/* ── CHART OF ACCOUNTS ─────────────────────────────────────────── */}
           <TabsContent value="accounts" className="mt-4">
-            <TableShell
-              headers={['Code', 'Account Name', 'Type', 'Normal', 'Balance', 'Change', '']}
-              footer={<Pagination total={accounts.length.toString()} shown={accounts.length} />}
-            >
-              <tr className="border-b border-white/[0.06]">
-                <td colSpan={7} className="p-0">
-                  <FilterBar placeholder="Search by code or account name...">
-                    <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8">
-                      <Plus className="w-3.5 h-3.5 mr-1.5" />Add Account
-                    </Button>
-                  </FilterBar>
-                </td>
-              </tr>
-              {accounts.map(acc => (
-                <TableRow key={acc.code}>
-                  <td className="px-4 py-3 text-sm font-mono text-[#06B6D4] font-semibold w-20">{acc.code}</td>
-                  <td className="px-4 py-3 text-sm text-white/85 font-medium">{acc.name}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border', typeColor[acc.type])}>
-                      {acc.type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-white/40">{acc.normal}</td>
-                  <td className="px-4 py-3 text-sm font-semibold text-white tabular-nums">{fmt(acc.balance)}</td>
-                  <td className="px-4 py-3">
-                    <span className={cn('text-sm font-medium flex items-center gap-1', acc.change > 0 ? 'text-emerald-400' : acc.change < 0 ? 'text-red-400' : 'text-white/30')}>
-                      {acc.change > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : acc.change < 0 ? <ArrowDownRight className="w-3.5 h-3.5" /> : null}
-                      {acc.change !== 0 ? `${Math.abs(acc.change)}%` : '—'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/25 hover:text-white/60 transition-colors opacity-0 group-hover:opacity-100">
-                      <MoreHorizontal className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </TableRow>
-              ))}
-            </TableShell>
+            <ChartOfAccountsTab />
           </TabsContent>
 
           {/* ── GENERAL LEDGER ────────────────────────────────────────────── */}

@@ -1,1 +1,2 @@
 - [Phase 1 Auth Foundation](phase1-auth.md) — JWT + bcryptjs auth complete; seed creds admin@omnierp.io / Admin@1234; DB schema live.
+- [Chart of Accounts module](chart-of-accounts.md) — RBAC middleware pattern, self-ref FK quirk, case-sensitive module names, CoA CRUD architecture.
