@@ -5,6 +5,7 @@ import usersRouter from "./users";
 import rolesRouter from "./roles";
 import organizationsRouter from "./organizations";
 import dashboardRouter from "./dashboard";
+import financeRouter from "./finance";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use("/users", usersRouter);
 router.use("/roles", rolesRouter);
 router.use("/organizations", organizationsRouter);
 router.use("/dashboard", dashboardRouter);
+router.use("/finance", financeRouter);
 
 export default router;

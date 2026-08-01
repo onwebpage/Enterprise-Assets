@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useFinanceDashboard, fmtMoney, timeAgo } from '@/hooks/useFinanceDashboard';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -276,13 +277,24 @@ export default function Finance() {
   const [tab, setTab] = useState('overview');
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
+  const { data: dashData, isLoading: dashLoading } = useFinanceDashboard();
+
+  // Live KPI values — fall back to em-dash while loading
+  const liveRevenue  = dashData ? fmtMoney(dashData.kpis.totalRevenue)  : '—';
+  const liveCashBal  = dashData ? fmtMoney(dashData.kpis.cashBalance)   : '—';
+  const liveNetProfit= dashData ? fmtMoney(dashData.kpis.netProfit)     : '—';
+  const liveExpenses = dashData ? fmtMoney(dashData.kpis.totalExpenses) : '—';
+
+  // Revenue chart: use API monthly data; fall back to static while loading
+  const chartData = dashData?.monthlyPL ?? plData;
+
   const kpis = [
-    { label: 'Total Revenue',      value: '$7.2M',  change: '+14.3%', up: true,  icon: TrendingUp,   iconColor: 'text-[#2563EB]', gradient: 'bg-[#2563EB]/15',  sparkline: [4.2,5.1,4.8,6.3,5.9,7.2,8.1], changeLabel: 'YTD 2026' },
-    { label: 'Gross Profit',       value: '$4.2M',  change: '+18.7%', up: true,  icon: DollarSign,   iconColor: 'text-emerald-400',gradient: 'bg-emerald-500/15', sparkline: [2.1,2.5,2.4,3.2,3.0,3.7,4.2], changeLabel: 'GP margin 58%' },
-    { label: 'Net Profit',         value: '$1.8M',  change: '+21.5%', up: true,  icon: ArrowUpRight, iconColor: 'text-purple-400', gradient: 'bg-purple-500/15',  sparkline: [0.7,1.0,1.0,1.5,1.4,1.8,2.1], changeLabel: 'NP margin 25%' },
-    { label: 'Accounts Receivable',value: '$3.2M',  change: '+8.1%',  up: false, icon: CreditCard,   iconColor: 'text-amber-400',  gradient: 'bg-amber-500/15',   sparkline: [2.8,2.9,3.0,3.1,3.0,3.1,3.2], changeLabel: 'DSO: 38 days' },
-    { label: 'Accounts Payable',   value: '$892K',  change: '+3.5%',  up: false, icon: Banknote,     iconColor: 'text-red-400',    gradient: 'bg-red-500/15',     sparkline: [820,850,860,870,880,888,892], changeLabel: 'DPO: 28 days' },
-    { label: 'Operating Expenses', value: '$2.4M',  change: '+9.2%',  up: false, icon: TrendingDown, iconColor: 'text-[#06B6D4]',  gradient: 'bg-[#06B6D4]/15',  sparkline: [1.8,1.9,1.9,2.1,2.0,2.2,2.4], changeLabel: 'vs $2.2M target' },
+    { label: 'Total Revenue',  value: dashLoading ? '…' : liveRevenue,   change: '+14.3%', up: true,  icon: TrendingUp,   iconColor: 'text-[#2563EB]', gradient: 'bg-[#2563EB]/15',  sparkline: [4.2,5.1,4.8,6.3,5.9,7.2,8.1], changeLabel: 'YTD 2026' },
+    { label: 'Cash Balance',   value: dashLoading ? '…' : liveCashBal,   change: '+12.4%', up: true,  icon: DollarSign,   iconColor: 'text-emerald-400',gradient: 'bg-emerald-500/15', sparkline: [1.4,1.6,1.7,1.7,1.8,1.8,1.8], changeLabel: 'Liquid funds' },
+    { label: 'Net Profit',     value: dashLoading ? '…' : liveNetProfit, change: '+21.5%', up: true,  icon: ArrowUpRight, iconColor: 'text-purple-400', gradient: 'bg-purple-500/15',  sparkline: [0.7,1.0,1.0,1.5,1.4,1.8,2.1], changeLabel: 'NP margin 25%' },
+    { label: 'Accounts Receivable', value: '$3.2M', change: '+8.1%',     up: false, icon: CreditCard, iconColor: 'text-amber-400', gradient: 'bg-amber-500/15', sparkline: [2.8,2.9,3.0,3.1,3.0,3.1,3.2], changeLabel: 'DSO: 38 days' },
+    { label: 'Accounts Payable',    value: '$892K', change: '+3.5%',     up: false, icon: Banknote,   iconColor: 'text-red-400',   gradient: 'bg-red-500/15',   sparkline: [820,850,860,870,880,888,892], changeLabel: 'DPO: 28 days' },
+    { label: 'Total Expenses', value: dashLoading ? '…' : liveExpenses,  change: '+9.2%',  up: false, icon: TrendingDown, iconColor: 'text-[#06B6D4]',  gradient: 'bg-[#06B6D4]/15',  sparkline: [1.8,1.9,1.9,2.1,2.0,2.2,2.4], changeLabel: 'vs $2.2M target' },
   ];
 
   return (
@@ -353,7 +365,7 @@ export default function Finance() {
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
-                  <ComposedChart data={plData} margin={{ left: -20, right: 5, top: 5 }}>
+                  <ComposedChart data={chartData} margin={{ left: -20, right: 5, top: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.035)" vertical={false} />
                     <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
@@ -437,27 +449,24 @@ export default function Finance() {
                   </button>
                 </div>
                 <div className="space-y-2">
-                  {[
-                    { desc: 'Payment — Stratford Industries', amount: '+$48,200', type: 'credit', time: '2m ago' },
-                    { desc: 'Bill — TechParts Ltd.',          amount: '-$12,400', type: 'debit',  time: '3h ago' },
-                    { desc: 'Payment — Meridian Corp',        amount: '+$31,500', type: 'credit', time: '1d ago' },
-                    { desc: 'Payroll — Jul 2026',             amount: '-$184K',   type: 'debit',  time: '2d ago' },
-                    { desc: 'Receipt — Nexus Logistics',      amount: '+$24,500', type: 'credit', time: '3d ago' },
-                  ].map((t, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                  {dashLoading && (
+                    <p className="text-xs text-white/30 py-4 text-center">Loading…</p>
+                  )}
+                  {(dashData?.recentTransactions ?? []).slice(0, 5).map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
                       <div className={cn('w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0',
-                        t.type === 'credit' ? 'bg-emerald-500/15' : 'bg-red-500/15')}>
-                        {t.type === 'credit'
+                        t.direction === 'credit' ? 'bg-emerald-500/15' : 'bg-red-500/15')}>
+                        {t.direction === 'credit'
                           ? <ArrowUpRight className="w-3 h-3 text-emerald-400" />
                           : <ArrowDownRight className="w-3 h-3 text-red-400" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-white/75 truncate">{t.desc}</p>
-                        <p className="text-[10px] text-white/30">{t.time}</p>
+                        <p className="text-xs font-medium text-white/75 truncate">{t.description}</p>
+                        <p className="text-[10px] text-white/30">{timeAgo(t.transactedAt)}</p>
                       </div>
                       <span className={cn('text-xs font-semibold flex-shrink-0',
-                        t.type === 'credit' ? 'text-emerald-400' : 'text-red-400')}>
-                        {t.amount}
+                        t.direction === 'credit' ? 'text-emerald-400' : 'text-red-400')}>
+                        {t.direction === 'credit' ? '+' : '-'}{fmtMoney(t.amount)}
                       </span>
                     </div>
                   ))}
