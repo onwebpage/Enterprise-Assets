@@ -30,6 +30,7 @@ import UserManagement from '@/pages/app/users';
 import Roles from '@/pages/app/roles';
 import SettingsPage from '@/pages/app/settings';
 import Billing from '@/pages/app/billing';
+import AccountsReceivable from '@/pages/app/accounts-receivable';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -107,6 +108,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/billing">
         <ProtectedRoute><Billing /></ProtectedRoute>
+      </Route>
+      <Route path="/app/ar">
+        <ProtectedRoute><AccountsReceivable /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

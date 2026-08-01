@@ -9,7 +9,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building
+  Building, Landmark
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +33,7 @@ const navGroups = [
     label: 'Finance',
     items: [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance' },
+      { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
       { icon: CreditCard, label: 'Banking & Payments', path: '/app/banking' },
       { icon: Receipt, label: 'GST & Tax', path: '/app/gst' },
     ]
