@@ -11,3 +11,4 @@ export * from "./accountsPayable";
 export * from "./banking";
 export * from "./fixedAssets";
 export * from "./gst";
+export * from "./eInvoicing";
