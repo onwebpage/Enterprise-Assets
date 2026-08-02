@@ -18,3 +18,4 @@ export * from "./inventory";
 export * from "./manufacturing";
 export * from "./hr";
 export * from "./ai";
+export * from "./workflowAutomation";

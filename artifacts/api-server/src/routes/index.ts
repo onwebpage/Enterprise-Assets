@@ -22,6 +22,7 @@ import manufacturingRouter from "./manufacturing";
 import hrRouter from "./hr";
 import reportsRouter from "./reports";
 import aiRouter from "./ai";
+import workflowRouter from "./workflowAutomation";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use("/manufacturing", manufacturingRouter);
 router.use("/hr", hrRouter);
 router.use("/reports", reportsRouter);
 router.use("/ai", aiRouter);
+router.use("/workflow", workflowRouter);
 
 export default router;

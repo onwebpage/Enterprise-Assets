@@ -12,3 +12,4 @@
 - [Manufacturing module](manufacturing-module.md) — 4 tables, /api/manufacturing routes, RBAC "Manufacturing"; drizzle-kit push hangs — use raw psql for schema changes.
 - [HR & Payroll module](hr-payroll-module.md) — 6 tables, /api/hr routes, RBAC "HR & Payroll"; payroll auto-generates lines on run creation; active employees can't be deleted.
 - [AI Assistant module](ai-assistant.md) — custom rule-based engine, /api/ai routes, no external API; critical DB column name quirks documented.
+- [Workflow Automation module](workflow-automation-module.md) — 4 tables, /api/workflow routes, RBAC "Workflow Automation"; simulated execution engine; psql for schema; draft→publish→toggle lifecycle.
