@@ -10,3 +10,4 @@
 - [Purchase & Procurement module](purchase-procurement.md) — 6 tables, /api/purchase routes, RBAC "Purchase & Procurement"; GRN creation auto-updates PO status; received/accepted/converted records are immutable.
 - [Inventory & Warehouse module](inventory-module.md) — 7 tables, /api/inventory routes, RBAC "Inventory"; stock atomically updated by movements; transfer completion applies stock changes.
 - [Manufacturing module](manufacturing-module.md) — 4 tables, /api/manufacturing routes, RBAC "Manufacturing"; drizzle-kit push hangs — use raw psql for schema changes.
+- [HR & Payroll module](hr-payroll-module.md) — 6 tables, /api/hr routes, RBAC "HR & Payroll"; payroll auto-generates lines on run creation; active employees can't be deleted.

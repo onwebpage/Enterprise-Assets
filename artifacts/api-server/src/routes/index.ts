@@ -19,6 +19,7 @@ import tdsRouter from "./tds";
 import purchaseRouter from "./purchase";
 import inventoryRouter from "./inventory";
 import manufacturingRouter from "./manufacturing";
+import hrRouter from "./hr";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use("/tds", tdsRouter);
 router.use("/purchase", purchaseRouter);
 router.use("/inventory", inventoryRouter);
 router.use("/manufacturing", manufacturingRouter);
+router.use("/hr", hrRouter);
 
 export default router;
