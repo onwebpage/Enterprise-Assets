@@ -35,8 +35,9 @@ const navGroups = [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance' },
       { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
       { icon: CreditCard, label: 'Accounts Payable',   path: '/app/ap' },
-      { icon: CreditCard, label: 'Banking & Payments', path: '/app/banking' },
-      { icon: Receipt, label: 'GST & Tax', path: '/app/gst' },
+      { icon: CreditCard, label: 'Bank Reconciliation', path: '/app/banking' },
+      { icon: Package,   label: 'Fixed Assets',        path: '/app/fixed-assets' },
+      { icon: Receipt,   label: 'GST & Tax',           path: '/app/gst' },
     ]
   },
   {

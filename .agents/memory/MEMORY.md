@@ -3,3 +3,4 @@
 - [General Ledger module](general-ledger.md) — JE schema, running balance algorithm, posting logic, orgScope vs CoA global-account scope difference.
 - [Accounts Receivable module](accounts-receivable.md) — AR schema, RBAC module name, payment-balance atomicity rule, invoice deletion policy.
 - [Accounts Payable module](accounts-payable.md) — AP schema, RBAC module name, payment-balance atomicity rule, bill deletion policy.
+- [Banking & Fixed Assets modules](banking-fixed-assets.md) — schemas, routes, frontend; lib/db must be recompiled after schema changes; Express 5 params casting.

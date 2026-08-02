@@ -8,3 +8,5 @@ export * from "./chartOfAccounts";
 export * from "./generalLedger";
 export * from "./accountsReceivable";
 export * from "./accountsPayable";
+export * from "./banking";
+export * from "./fixedAssets";
