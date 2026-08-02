@@ -15,3 +15,4 @@ export * from "./eInvoicing";
 export * from "./ewayBill";
 export * from "./purchase";
 export * from "./inventory";
+export * from "./manufacturing";

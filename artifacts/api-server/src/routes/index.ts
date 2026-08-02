@@ -18,6 +18,7 @@ import ewayBillRouter from "./ewayBill";
 import tdsRouter from "./tds";
 import purchaseRouter from "./purchase";
 import inventoryRouter from "./inventory";
+import manufacturingRouter from "./manufacturing";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use("/eway-bill", ewayBillRouter);
 router.use("/tds", tdsRouter);
 router.use("/purchase", purchaseRouter);
 router.use("/inventory", inventoryRouter);
+router.use("/manufacturing", manufacturingRouter);
 
 export default router;
