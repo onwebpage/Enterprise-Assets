@@ -20,6 +20,7 @@ import purchaseRouter from "./purchase";
 import inventoryRouter from "./inventory";
 import manufacturingRouter from "./manufacturing";
 import hrRouter from "./hr";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use("/purchase", purchaseRouter);
 router.use("/inventory", inventoryRouter);
 router.use("/manufacturing", manufacturingRouter);
 router.use("/hr", hrRouter);
+router.use("/reports", reportsRouter);
 
 export default router;

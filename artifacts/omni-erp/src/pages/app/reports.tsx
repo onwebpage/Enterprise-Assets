@@ -1,187 +1,640 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, TrendingUp, Download, Filter, Search, Plus, FileText, Clock, Star, Play, Eye, MoreHorizontal, Zap, PieChart, Activity } from 'lucide-react';
+import {
+  BarChart3, TrendingUp, TrendingDown, Download, Search, Plus,
+  FileText, Clock, Star, Play, MoreHorizontal, Loader2,
+  DollarSign, Users, Package, ShoppingCart, AlertTriangle,
+} from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RPieChart, Pie, Cell } from 'recharts';
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+} from 'recharts';
+import {
+  useReportsOverview, useReportsARaging, useReportsAPaging,
+  useReportsInventory, useReportsHR, useReportsPurchase,
+} from '@/hooks/useReports';
 
-const revenueByModule = [
-  { name: 'Finance', value: 3.2, color: '#2563EB' }, { name: 'Sales', value: 2.8, color: '#06B6D4' },
-  { name: 'Manufacturing', value: 1.4, color: '#22C55E' }, { name: 'HR', value: 0.8, color: '#F59E0B' },
-];
+// ── Formatting helpers ────────────────────────────────────────────────────────
 
-const trendData = [
-  { month: 'Jan', revenue: 4.2, profit: 1.4, expenses: 2.8 },
-  { month: 'Feb', revenue: 5.1, profit: 2.0, expenses: 3.1 },
-  { month: 'Mar', revenue: 4.8, profit: 1.9, expenses: 2.9 },
-  { month: 'Apr', revenue: 6.3, profit: 2.9, expenses: 3.4 },
-  { month: 'May', revenue: 5.9, profit: 2.7, expenses: 3.2 },
-  { month: 'Jun', revenue: 7.2, profit: 3.4, expenses: 3.8 },
-  { month: 'Jul', revenue: 8.1, profit: 4.0, expenses: 4.1 },
-];
+function fmtCurrency(v: number, compact = true): string {
+  if (!compact) return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
 
-const savedReports = [
-  { name: 'Monthly P&L Statement', category: 'Finance', lastRun: '2h ago', scheduled: true, format: 'PDF' },
-  { name: 'Sales Pipeline Summary', category: 'Sales', lastRun: '1d ago', scheduled: true, format: 'Excel' },
-  { name: 'Inventory Valuation Report', category: 'Inventory', lastRun: '3d ago', scheduled: false, format: 'PDF' },
-  { name: 'Employee Headcount Analysis', category: 'HR', lastRun: '1w ago', scheduled: false, format: 'Excel' },
-  { name: 'GST Filing Summary', category: 'Tax', lastRun: '5d ago', scheduled: true, format: 'PDF' },
-  { name: 'Cash Flow Forecast', category: 'Finance', lastRun: '12h ago', scheduled: true, format: 'PDF' },
-];
+function fmtPct(v: number): string { return `${v.toFixed(1)}%`; }
 
-const reportTemplates = [
-  { name: 'Balance Sheet', icon: BarChart3, category: 'Finance' },
-  { name: 'Income Statement', icon: TrendingUp, category: 'Finance' },
-  { name: 'Cash Flow Statement', icon: Activity, category: 'Finance' },
-  { name: 'Sales Performance', icon: PieChart, category: 'Sales' },
-  { name: 'Inventory Analysis', icon: BarChart3, category: 'Inventory' },
-  { name: 'HR Analytics', icon: BarChart3, category: 'HR' },
-  { name: 'GST Returns', icon: FileText, category: 'Tax' },
-  { name: 'Custom Report', icon: Zap, category: 'Custom' },
-];
+// ── Chart tooltip style ───────────────────────────────────────────────────────
 
-const catColors: Record<string, string> = {
-  Finance: 'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20',
-  Sales: 'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/20',
-  Inventory: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  HR: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-  Tax: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  Custom: 'bg-white/5 text-white/50 border-white/10',
+const tooltipStyle = {
+  contentStyle: {
+    background: '#0a0f1e',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: 12,
+  },
+  cursor: { fill: 'rgba(255,255,255,0.03)' },
 };
 
-export default function Reports() {
-  const [tab, setTab] = useState('dashboard');
+const COLORS = ['#2563EB', '#06B6D4', '#22C55E', '#F59E0B', '#A855F7', '#EF4444', '#F97316', '#14B8A6'];
+const AGING_COLORS = ['#22C55E', '#F59E0B', '#F97316', '#EF4444', '#991B1B'];
+
+// ── Skeleton loader ───────────────────────────────────────────────────────────
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`bg-white/[0.06] animate-pulse rounded-lg ${className}`} />;
+}
+
+// ── KPI Card ──────────────────────────────────────────────────────────────────
+
+interface KPICardProps {
+  label: string;
+  value: string;
+  sub?: string;
+  up?: boolean | null;
+  icon: React.ElementType;
+  color: string;
+  delay?: number;
+}
+
+function KPICard({ label, value, sub, up, icon: Icon, color, delay = 0 }: KPICardProps) {
   return (
-    <AppLayout breadcrumbs={[{ label: 'Intelligence' }, { label: 'Reports & Analytics' }]}>
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-between">
-          <div><h1 className="text-2xl font-bold text-white">Reports & Analytics</h1><p className="text-white/40 text-sm mt-0.5">Executive insights · Real-time data · AI-powered</p></div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]"><Download className="w-3.5 h-3.5 mr-1.5" />Export All</Button>
-            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]"><Plus className="w-3.5 h-3.5 mr-1.5" />New Report</Button>
-          </div>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center`} style={{ background: `${color}20` }}>
+          <Icon className="w-4 h-4" style={{ color }} />
         </div>
+        {up !== null && up !== undefined && (
+          <span className={`text-xs flex items-center gap-0.5 font-medium ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+            {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+          </span>
+        )}
+      </div>
+      <p className="text-xl font-bold text-white">{value}</p>
+      <p className="text-xs text-white/40 mt-0.5">{label}</p>
+      {sub && <p className="text-xs text-white/30 mt-0.5">{sub}</p>}
+    </motion.div>
+  );
+}
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <div className="flex items-center justify-between">
-            <TabsList className="bg-white/[0.04] border border-white/[0.07]">
-              {['dashboard', 'saved', 'templates', 'scheduled'].map(t => (
-                <TabsTrigger key={t} value={t} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 capitalize">{t}</TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
+// ── Section wrapper ───────────────────────────────────────────────────────────
 
-          <TabsContent value="dashboard" className="mt-4 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Total Revenue', value: '$7.2M', change: '+14.3%', up: true },
-                { label: 'Net Profit', value: '$1.8M', change: '+21.5%', up: true },
-                { label: 'Operating Expenses', value: '$2.4M', change: '+9.2%', up: false },
-                { label: 'EBITDA', value: '$2.6M', change: '+18.4%', up: true },
-              ].map((k, i) => (
-                <motion.div key={k.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-                  className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
-                  <p className="text-2xl font-bold text-white">{k.value}</p>
-                  <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
-                  <span className={`text-xs font-medium flex items-center gap-0.5 mt-1 ${k.up ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {k.up ? <TrendingUp className="w-3 h-3" /> : <TrendingUp className="w-3 h-3 rotate-180" />}{k.change}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
+function Card({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 ${className}`}>
+      <h3 className="font-semibold text-white mb-4 text-sm">{title}</h3>
+      {children}
+    </div>
+  );
+}
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-              <div className="xl:col-span-2 bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-                <h3 className="font-semibold text-white mb-4">Revenue, Profit & Expenses Trend</h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="rGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563EB" stopOpacity={0.3} /><stop offset="95%" stopColor="#2563EB" stopOpacity={0} /></linearGradient>
-                      <linearGradient id="pGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22C55E" stopOpacity={0.2} /><stop offset="95%" stopColor="#22C55E" stopOpacity={0} /></linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                    <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
-                    <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: 'white' }} />
-                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#2563EB" strokeWidth={2} fill="url(#rGrad)" />
-                    <Area type="monotone" dataKey="profit" name="Profit" stroke="#22C55E" strokeWidth={2} fill="url(#pGrad)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-                <h3 className="font-semibold text-white mb-4">Revenue by Module</h3>
+// ── Empty state ───────────────────────────────────────────────────────────────
+
+function EmptyChart({ msg }: { msg: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-40 text-white/25">
+      <BarChart3 className="w-8 h-8 mb-2" />
+      <p className="text-xs">{msg}</p>
+    </div>
+  );
+}
+
+// ── Overview Tab ──────────────────────────────────────────────────────────────
+
+function OverviewTab({ months, setMonths }: { months: number; setMonths: (m: number) => void }) {
+  const { data, isLoading } = useReportsOverview(months);
+
+  const kpis = data?.kpis;
+  const trend = data?.monthlyTrend ?? [];
+
+  return (
+    <div className="space-y-4">
+      {/* Period selector */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-white/40">Period:</span>
+        {[
+          { label: '3M', val: 3 }, { label: '6M', val: 6 },
+          { label: '12M', val: 12 }, { label: '24M', val: 24 },
+        ].map(opt => (
+          <button
+            key={opt.val}
+            onClick={() => setMonths(opt.val)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${months === opt.val ? 'bg-[#2563EB] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white hover:bg-white/[0.08]'}`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* KPI grid */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-28" />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KPICard label="Total Revenue" value={fmtCurrency(kpis?.totalRevenue ?? 0)} icon={TrendingUp} color="#22C55E" up={true} delay={0} />
+          <KPICard label="Total Expenses" value={fmtCurrency(kpis?.totalExpenses ?? 0)} icon={TrendingDown} color="#EF4444" up={false} delay={0.05} />
+          <KPICard label="Net Profit" value={fmtCurrency(kpis?.netProfit ?? 0)} sub={`${fmtPct(kpis?.grossMargin ?? 0)} margin`} icon={DollarSign} color="#2563EB" up={(kpis?.netProfit ?? 0) > 0} delay={0.1} />
+          <KPICard label="Outstanding AR" value={fmtCurrency(kpis?.outstandingAR ?? 0)} sub="Receivable" icon={FileText} color="#F59E0B" delay={0.15} />
+          <KPICard label="Outstanding AP" value={fmtCurrency(kpis?.outstandingAP ?? 0)} sub="Payable" icon={FileText} color="#F97316" delay={0.2} />
+          <KPICard label="Inventory Value" value={fmtCurrency(kpis?.inventoryValue ?? 0)} icon={Package} color="#06B6D4" delay={0.25} />
+          <KPICard label="Active Employees" value={String(kpis?.totalEmployees ?? 0)} icon={Users} color="#A855F7" delay={0.3} />
+          <KPICard label="Latest Payroll" value={fmtCurrency(kpis?.latestPayroll ?? 0)} icon={DollarSign} color="#14B8A6" delay={0.35} />
+        </div>
+      )}
+
+      {/* Revenue vs Expenses chart */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <Card title="Revenue vs Expenses Trend" className="xl:col-span-2">
+          {isLoading ? <Skeleton className="h-52" /> : trend.length === 0 ? <EmptyChart msg="No transaction data yet" /> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={trend}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22C55E" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="expGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#EF4444" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#2563EB" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+                <Tooltip {...tooltipStyle} formatter={(val: number, name: string) => [fmtCurrency(val, false), name]} />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#22C55E" strokeWidth={2} fill="url(#revGrad)" />
+                <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#EF4444" strokeWidth={2} fill="url(#expGrad)" />
+                <Area type="monotone" dataKey="profit" name="Net Profit" stroke="#2563EB" strokeWidth={2} fill="url(#profGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        <Card title="Profit Breakdown">
+          {isLoading ? <Skeleton className="h-52" /> : trend.length === 0 ? <EmptyChart msg="No data" /> : (() => {
+            const totalRev = trend.reduce((s, m) => s + m.revenue, 0);
+            const totalExp = trend.reduce((s, m) => s + m.expenses, 0);
+            const totalPro = trend.reduce((s, m) => s + m.profit, 0);
+            const pieData = [
+              { name: 'Net Profit', value: Math.max(0, totalPro) },
+              { name: 'Expenses', value: totalExp },
+            ].filter(d => d.value > 0);
+            return (
+              <>
                 <ResponsiveContainer width="100%" height={160}>
-                  <RPieChart><Pie data={revenueByModule} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="value">
-                    {revenueByModule.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie><Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: 'white' }} /></RPieChart>
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={68} paddingAngle={3} dataKey="value">
+                      {pieData.map((_, i) => <Cell key={i} fill={['#2563EB', '#EF4444'][i]} />)}
+                    </Pie>
+                    <Tooltip {...tooltipStyle} formatter={(v: number) => fmtCurrency(v, false)} />
+                  </PieChart>
                 </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
-                  {revenueByModule.map((m) => (
-                    <div key={m.name} className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: m.color }} />
-                      <span className="text-xs text-white/50 flex-1">{m.name}</span>
-                      <span className="text-xs font-semibold text-white">${m.value}M</span>
+                <div className="space-y-2 mt-2">
+                  {[
+                    { l: 'Revenue', v: totalRev, c: '#22C55E' },
+                    { l: 'Expenses', v: totalExp, c: '#EF4444' },
+                    { l: 'Net Profit', v: totalPro, c: '#2563EB' },
+                  ].map(item => (
+                    <div key={item.l} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full" style={{ background: item.c }} />
+                        <span className="text-xs text-white/50">{item.l}</span>
+                      </div>
+                      <span className="text-xs font-semibold text-white">{fmtCurrency(item.v)}</span>
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          </TabsContent>
+              </>
+            );
+          })()}
+        </Card>
+      </div>
+    </div>
+  );
+}
 
-          <TabsContent value="saved" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <div className="flex items-center gap-3 p-4 border-b border-white/[0.07]">
-                <div className="relative flex-1 max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" /><Input placeholder="Search reports..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm" /></div>
-                <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]"><Filter className="w-3.5 h-3.5 mr-1.5" />Filter</Button>
+// ── Finance Tab (AR + AP Aging) ───────────────────────────────────────────────
+
+function FinanceTab() {
+  const { data: ar, isLoading: arLoading } = useReportsARaging();
+  const { data: ap, isLoading: apLoading } = useReportsAPaging();
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* AR Aging */}
+        <Card title="Accounts Receivable Aging">
+          {arLoading ? <Skeleton className="h-52" /> : !ar || ar.invoiceCount === 0 ? <EmptyChart msg="No open AR invoices" /> : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={ar.aging} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number, _n: string, p: any) => [`${fmtCurrency(v, false)} · ${p.payload.count} inv`, 'Outstanding']} />
+                  <Bar dataKey="amount" name="Outstanding" radius={[4, 4, 0, 0]}>
+                    {ar.aging.map((_, i) => <Cell key={i} fill={AGING_COLORS[i]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-white/40">Total Outstanding</p>
+                  <p className="text-lg font-bold text-white">{fmtCurrency(ar.totalOutstanding, false)}</p>
+                </div>
+                <p className="text-xs text-white/30">{ar.invoiceCount} open invoice{ar.invoiceCount !== 1 ? 's' : ''}</p>
               </div>
-              <table className="w-full">
-                <thead><tr className="border-b border-white/[0.05]">{['Report Name', 'Category', 'Last Run', 'Scheduled', 'Format', ''].map(h => (<th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>))}</tr></thead>
-                <tbody>
-                  {savedReports.map((r) => (
-                    <tr key={r.name} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-white/30" /><span className="text-sm font-medium text-white">{r.name}</span></div></td>
-                      <td className="px-4 py-3"><Badge className={`text-[10px] border ${catColors[r.category]} px-2 py-0`}>{r.category}</Badge></td>
-                      <td className="px-4 py-3"><span className="text-sm text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" />{r.lastRun}</span></td>
-                      <td className="px-4 py-3"><Badge className={`text-[10px] border px-2 py-0 ${r.scheduled ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-white/40 border-white/10'}`}>{r.scheduled ? 'Active' : 'Manual'}</Badge></td>
-                      <td className="px-4 py-3"><Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{r.format}</Badge></td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors"><Play className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Download className="w-3.5 h-3.5" /></button>
-                          <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </td>
-                    </tr>
+              {ar.topCustomers.length > 0 && (
+                <div className="mt-3 border-t border-white/[0.05] pt-3 space-y-2">
+                  <p className="text-xs text-white/30 font-medium">Top by outstanding</p>
+                  {ar.topCustomers.map(c => (
+                    <div key={c.name} className="flex items-center justify-between">
+                      <span className="text-xs text-white/60 truncate max-w-[60%]">{c.name}</span>
+                      <span className="text-xs font-semibold text-amber-400">{fmtCurrency(c.amount)}</span>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
+                </div>
+              )}
+            </>
+          )}
+        </Card>
 
-          <TabsContent value="templates" className="mt-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {reportTemplates.map((tpl) => (
-                <div key={tpl.name} className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4 hover:border-[#2563EB]/30 transition-all cursor-pointer group">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2563EB]/20 to-[#06B6D4]/20 flex items-center justify-center mb-3 group-hover:from-[#2563EB]/30 group-hover:to-[#06B6D4]/30 transition-all">
-                    <tpl.icon className="w-5 h-5 text-[#2563EB]" />
+        {/* AP Aging */}
+        <Card title="Accounts Payable Aging">
+          {apLoading ? <Skeleton className="h-52" /> : !ap || ap.billCount === 0 ? <EmptyChart msg="No open AP bills" /> : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={ap.aging} barSize={28}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number, _n: string, p: any) => [`${fmtCurrency(v, false)} · ${p.payload.count} bills`, 'Payable']} />
+                  <Bar dataKey="amount" name="Payable" radius={[4, 4, 0, 0]}>
+                    {ap.aging.map((_, i) => <Cell key={i} fill={AGING_COLORS[i]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="mt-3 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-white/40">Total Payable</p>
+                  <p className="text-lg font-bold text-white">{fmtCurrency(ap.totalOutstanding, false)}</p>
+                </div>
+                <p className="text-xs text-white/30">{ap.billCount} open bill{ap.billCount !== 1 ? 's' : ''}</p>
+              </div>
+              {ap.topVendors.length > 0 && (
+                <div className="mt-3 border-t border-white/[0.05] pt-3 space-y-2">
+                  <p className="text-xs text-white/30 font-medium">Top by payable</p>
+                  {ap.topVendors.map(v => (
+                    <div key={v.name} className="flex items-center justify-between">
+                      <span className="text-xs text-white/60 truncate max-w-[60%]">{v.name}</span>
+                      <span className="text-xs font-semibold text-orange-400">{fmtCurrency(v.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Operations Tab (Inventory + Purchase) ─────────────────────────────────────
+
+function OperationsTab() {
+  const { data: inv, isLoading: invLoading } = useReportsInventory();
+  const { data: po, isLoading: poLoading } = useReportsPurchase();
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Inventory by category */}
+        <Card title="Inventory Value by Category">
+          {invLoading ? <Skeleton className="h-52" /> : !inv || inv.byCategory.length === 0 ? <EmptyChart msg="No inventory data" /> : (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={inv.byCategory.slice(0, 6)} layout="vertical" barSize={18}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                  <XAxis type="number" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+                  <YAxis dataKey="category" type="category" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} axisLine={false} tickLine={false} width={80} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtCurrency(v, false), 'Value']} />
+                  <Bar dataKey="totalValue" name="Value" radius={[0, 4, 4, 0]}>
+                    {inv.byCategory.slice(0, 6).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </>
+          )}
+        </Card>
+
+        {/* Low stock alert */}
+        <Card title="Low Stock Alerts">
+          {invLoading ? <Skeleton className="h-52" /> : !inv || inv.lowStock.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-40 text-white/25">
+              <Package className="w-8 h-8 mb-2 text-emerald-500/40" />
+              <p className="text-xs text-emerald-400/60">All stock levels healthy</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {inv.lowStock.map(item => (
+                <div key={item.sku} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-white/80 truncate">{item.name}</p>
+                    <p className="text-[10px] text-white/30">{item.sku}</p>
                   </div>
-                  <p className="font-semibold text-white text-sm">{tpl.name}</p>
-                  <p className="text-xs text-white/40 mt-1">{tpl.category}</p>
-                  <Button size="sm" className="w-full mt-3 bg-white/[0.04] hover:bg-[#2563EB]/20 text-white/60 hover:text-white border border-white/[0.07] hover:border-[#2563EB]/30 text-xs transition-all">Use Template</Button>
+                  <div className="text-right">
+                    <p className="text-xs text-red-400 font-semibold">{item.onHand} on hand</p>
+                    <p className="text-[10px] text-white/30">reorder @ {item.reorderPoint}</p>
+                  </div>
                 </div>
               ))}
             </div>
-          </TabsContent>
+          )}
+        </Card>
+      </div>
 
-          <TabsContent value="scheduled" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-8 text-center">
-              <Clock className="w-12 h-12 text-white/20 mx-auto mb-3" /><p className="text-white/50 font-medium">Scheduled Reports</p>
-              <p className="text-white/30 text-sm mt-1">4 reports scheduled · Next run in 6 hours</p>
+      {/* Purchase spend */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Card title="Purchase Spend Trend (6M)">
+          {poLoading ? <Skeleton className="h-52" /> : !po || po.monthlyTrend.every(m => m.amount === 0) ? <EmptyChart msg="No purchase orders" /> : (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={po.monthlyTrend}>
+                <defs>
+                  <linearGradient id="poGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#06B6D4" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+                <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtCurrency(v, false), 'Spend']} />
+                <Area type="monotone" dataKey="amount" name="Spend" stroke="#06B6D4" strokeWidth={2} fill="url(#poGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        <Card title="Top Vendors by Spend">
+          {poLoading ? <Skeleton className="h-52" /> : !po || po.byVendor.length === 0 ? <EmptyChart msg="No vendor data" /> : (
+            <div className="space-y-3">
+              {po.byVendor.slice(0, 6).map((v, i) => {
+                const max = po.byVendor[0]?.totalAmount ?? 1;
+                const pct = (v.totalAmount / max) * 100;
+                return (
+                  <div key={v.vendorName}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-white/70 truncate max-w-[60%]">{v.vendorName}</span>
+                      <span className="text-xs font-semibold text-white">{fmtCurrency(v.totalAmount)}</span>
+                    </div>
+                    <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: COLORS[i % COLORS.length] }} />
+                    </div>
+                    <p className="text-[10px] text-white/25 mt-0.5">{v.orderCount} order{v.orderCount !== 1 ? 's' : ''}</p>
+                  </div>
+                );
+              })}
             </div>
-          </TabsContent>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── HR Tab ────────────────────────────────────────────────────────────────────
+
+function HRTab() {
+  const { data, isLoading } = useReportsHR();
+
+  const statusColors: Record<string, string> = {
+    active: '#22C55E', inactive: '#6B7280', on_leave: '#F59E0B', terminated: '#EF4444',
+  };
+  const typeColors: Record<string, string> = {
+    full_time: '#2563EB', part_time: '#06B6D4', contract: '#F59E0B', intern: '#A855F7',
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Headcount by dept */}
+        <Card title="Headcount by Department" className="xl:col-span-2">
+          {isLoading ? <Skeleton className="h-52" /> : !data || data.byDept.length === 0 ? <EmptyChart msg="No employee data" /> : (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data.byDept} barSize={28}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="deptName" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip {...tooltipStyle} formatter={(v: number, _n: string, p: any) => [`${v} employees · ${fmtCurrency(p.payload.totalSalary)} salary`, '']} />
+                <Bar dataKey="count" name="Employees" radius={[4, 4, 0, 0]}>
+                  {data.byDept.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </Card>
+
+        {/* Status + Type breakdown */}
+        <div className="space-y-4">
+          <Card title="By Status">
+            {isLoading ? <Skeleton className="h-24" /> : !data ? null : (
+              <div className="space-y-2">
+                {data.byStatus.map(s => (
+                  <div key={s.status} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ background: statusColors[s.status] ?? '#666' }} />
+                      <span className="text-xs text-white/60 capitalize">{s.status.replace('_', ' ')}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-white">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+          <Card title="By Employment Type">
+            {isLoading ? <Skeleton className="h-24" /> : !data ? null : (
+              <div className="space-y-2">
+                {data.byType.map(t => (
+                  <div key={t.type} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full" style={{ background: typeColors[t.type] ?? '#666' }} />
+                      <span className="text-xs text-white/60 capitalize">{t.type.replace('_', ' ')}</span>
+                    </div>
+                    <span className="text-xs font-semibold text-white">{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      </div>
+
+      {/* Payroll trend */}
+      <Card title="Payroll Trend — Last 6 Months">
+        {isLoading ? <Skeleton className="h-48" /> : !data || data.payrollTrend.every(m => m.totalNet === 0) ? <EmptyChart msg="No payroll runs yet" /> : (
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data.payrollTrend} barSize={32}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => fmtCurrency(v)} />
+              <Tooltip {...tooltipStyle} formatter={(v: number) => [fmtCurrency(v, false), 'Net Pay']} />
+              <Bar dataKey="totalNet" name="Net Pay" fill="#A855F7" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ── Saved reports (static, as the list UI is already functional) ──────────────
+
+const savedReports = [
+  { name: 'Monthly P&L Statement',      category: 'Finance',   lastRun: '2h ago',  scheduled: true,  format: 'PDF' },
+  { name: 'Sales Pipeline Summary',      category: 'Sales',     lastRun: '1d ago',  scheduled: true,  format: 'Excel' },
+  { name: 'Inventory Valuation Report',  category: 'Inventory', lastRun: '3d ago',  scheduled: false, format: 'PDF' },
+  { name: 'Employee Headcount Analysis', category: 'HR',        lastRun: '1w ago',  scheduled: false, format: 'Excel' },
+  { name: 'GST Filing Summary',          category: 'Tax',       lastRun: '5d ago',  scheduled: true,  format: 'PDF' },
+  { name: 'Cash Flow Forecast',          category: 'Finance',   lastRun: '12h ago', scheduled: true,  format: 'PDF' },
+];
+const catColors: Record<string, string> = {
+  Finance:   'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20',
+  Sales:     'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/20',
+  Inventory: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  HR:        'bg-purple-500/15 text-purple-400 border-purple-500/20',
+  Tax:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+};
+
+function SavedTab() {
+  const [search, setSearch] = useState('');
+  const filtered = savedReports.filter(r => r.name.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+      <div className="flex items-center gap-3 p-4 border-b border-white/[0.07]">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+          <Input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search reports..."
+            className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm"
+          />
+        </div>
+      </div>
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-white/[0.05]">
+            {['Report Name', 'Category', 'Last Run', 'Scheduled', 'Format', ''].map(h => (
+              <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map(r => (
+            <tr key={r.name} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-white/30" />
+                  <span className="text-sm font-medium text-white">{r.name}</span>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <Badge className={`text-[10px] border ${catColors[r.category] ?? 'bg-white/5 text-white/40 border-white/10'} px-2 py-0`}>{r.category}</Badge>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-sm text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" />{r.lastRun}</span>
+              </td>
+              <td className="px-4 py-3">
+                <Badge className={`text-[10px] border px-2 py-0 ${r.scheduled ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-white/40 border-white/10'}`}>
+                  {r.scheduled ? 'Active' : 'Manual'}
+                </Badge>
+              </td>
+              <td className="px-4 py-3"><Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{r.format}</Badge></td>
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors"><Play className="w-3.5 h-3.5" /></button>
+                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Download className="w-3.5 h-3.5" /></button>
+                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {filtered.length === 0 && (
+            <tr><td colSpan={6} className="px-4 py-10 text-center text-white/30 text-sm">No reports match your search.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function Reports() {
+  const [tab, setTab] = useState('overview');
+  const [months, setMonths] = useState(12);
+
+  return (
+    <AppLayout breadcrumbs={[{ label: 'Intelligence' }, { label: 'Reports & Analytics' }]}>
+      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Reports & Analytics</h1>
+            <p className="text-white/40 text-sm mt-0.5">Real-time data across all modules</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
+              <Download className="w-3.5 h-3.5 mr-1.5" />Export
+            </Button>
+            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]">
+              <Plus className="w-3.5 h-3.5 mr-1.5" />New Report
+            </Button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={tab} onValueChange={setTab}>
+          <TabsList className="bg-white/[0.04] border border-white/[0.07]">
+            {[
+              { val: 'overview',    label: 'Overview' },
+              { val: 'finance',     label: 'Finance' },
+              { val: 'operations',  label: 'Operations' },
+              { val: 'hr',          label: 'HR' },
+              { val: 'saved',       label: 'Saved Reports' },
+            ].map(t => (
+              <TabsTrigger
+                key={t.val} value={t.val}
+                className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50"
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value="overview"   className="mt-4"><OverviewTab months={months} setMonths={setMonths} /></TabsContent>
+          <TabsContent value="finance"    className="mt-4"><FinanceTab /></TabsContent>
+          <TabsContent value="operations" className="mt-4"><OperationsTab /></TabsContent>
+          <TabsContent value="hr"         className="mt-4"><HRTab /></TabsContent>
+          <TabsContent value="saved"      className="mt-4"><SavedTab /></TabsContent>
         </Tabs>
       </div>
     </AppLayout>
