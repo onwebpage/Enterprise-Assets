@@ -349,7 +349,7 @@ router.post("/bills", requirePermission(MODULE, "create"), async (req: AuthReque
       orgId, vendorId: data.vendorId, billNumber, issueDate: data.issueDate, dueDate: data.dueDate,
       status: data.status ?? "draft",
       subtotal: subtotal.toFixed(2), taxAmount: taxAmount.toFixed(2), totalAmount: totalAmount.toFixed(2),
-      amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.id,
+      amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.userId,
     }).returning();
 
     const linesData = data.lines.map((l, i) => {
@@ -514,7 +514,7 @@ router.post("/payments", requirePermission(MODULE, "create"), async (req: AuthRe
       orgId, billId: data.billId, vendorId: bill.vendorId,
       paymentDate: data.paymentDate, amount: paymentAmt.toFixed(2),
       method: data.method ?? "bank_transfer", reference: data.reference ?? null,
-      notes: data.notes ?? null, createdBy: req.user!.id,
+      notes: data.notes ?? null, createdBy: req.user!.userId,
     }).returning();
 
     await db.update(apBills)

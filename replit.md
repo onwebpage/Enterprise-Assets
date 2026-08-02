@@ -1,63 +1,73 @@
 # OmniERP / BizOS
 
-Enterprise SaaS ERP platform — a React/Vite marketing + app UI paired with an Express API server, deployed as two separate Render services.
+An enterprise-grade ERP platform built with React + Vite (frontend), Express (API server), PostgreSQL + Drizzle ORM (database), and JWT-based authentication.
 
-## Run & Operate (Replit)
+## Project Structure
 
-Workflows are pre-configured and start automatically:
-- **API Server** — `pnpm --filter @workspace/api-server run dev` (reads `PORT` from Replit, preview at `/api`)
-- **Web** — `pnpm --filter @workspace/omni-erp run dev` (Vite, preview at `/`)
+```
+/
+├── artifacts/
+│   ├── omni-erp/        # React + Vite frontend (preview path: /)
+│   └── api-server/      # Express API server (preview path: /api)
+├── lib/
+│   └── db/              # Drizzle ORM schema, migrations, seeds
+│       └── src/schema/  # accountsPayable, accountsReceivable, chartOfAccounts,
+│                          generalLedger, users, roles, branches, departments, etc.
+└── packages/            # Shared packages (api-zod types, etc.)
+```
 
-Other useful commands:
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/db run seed` — seed database with default org/roles/users
+## Running the Project
 
-Required env vars (set in Replit Secrets):
-- `DATABASE_URL` — Postgres connection string
-- `SESSION_SECRET` — JWT signing secret (falls back to a dev default if absent)
+Three workflows are configured (pnpm workspace):
+- **`artifacts/omni-erp: web`** — Vite dev server for the frontend
+- **`artifacts/api-server: API Server`** — Express API (builds then starts)
+- **`artifacts/mockup-sandbox: Component Preview Server`** — Design canvas previews
 
-Default login: `admin@omnierp.io` / `Admin@1234`
+## Database Setup
 
-## Stack
+Uses Replit's managed PostgreSQL (`DATABASE_URL` secret is set automatically).
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+```bash
+# Push schema to DB
+cd lib/db && pnpm run push
 
-## Where things live
+# Seed with initial data
+cd lib/db && pnpm run seed
 
-- `artifacts/omni-erp/src/` — React frontend (Vite). Pages in `pages/`, shared components in `components/`
-- `artifacts/api-server/src/` — Express 5 API server. Routes in `routes/`, built to `dist/index.mjs`
-- `lib/db/src/schema/index.ts` — Drizzle ORM schema (source of truth for DB shape)
-- `lib/api-spec/` — OpenAPI spec; run `pnpm --filter @workspace/api-spec run codegen` to regenerate hooks
-- `artifacts/omni-erp/dist/public/` — Frontend production build output (Render publish dir)
+# Seed finance demo data
+cd lib/db && pnpm run seed:finance
 
-## Architecture decisions
+# Seed AR demo data
+cd lib/db && pnpm run seed:ar
+```
 
-- Frontend and API are separate Render services (static site + web service), not a single monolith
-- `BASE_PATH` defaults to `/` at build time; only required explicitly in dev via Replit artifact routing
-- `PORT` guard is dev-only — build mode skips the check so Render static builds work without it
-- Drizzle schema is the single source of truth; `drizzle-zod` derives Zod types from it automatically
-- Demo login uses hardcoded credentials client-side (no DB needed for the current frontend-only auth)
+## Default Credentials
 
-## Product
+- **Email:** `admin@omnierp.io`
+- **Password:** `Admin@1234`
 
-OmniERP is an enterprise ERP platform UI covering Finance, Sales, HR, Inventory, Manufacturing, Projects, GST, Banking, and more. The landing page markets the platform; `/app/*` routes are the authenticated app shell with a full sidebar and module pages.
+## Environment Secrets
 
-## User preferences
+- `DATABASE_URL` — managed by Replit PostgreSQL integration
+- `SESSION_SECRET` — used for JWT signing
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+## Tech Stack
 
-## Gotchas
+- **Frontend:** React 18, Vite, TailwindCSS, shadcn/ui, React Router, React Query
+- **Backend:** Express 5, Pino logger, CORS, cookie-parser
+- **Auth:** JWT + bcryptjs, RBAC middleware
+- **Database:** PostgreSQL, Drizzle ORM
+- **Monorepo:** pnpm workspaces
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+## Modules
 
-## Pointers
+- Chart of Accounts (CoA)
+- General Ledger (Journal Entries, posting, running balance)
+- Accounts Receivable (invoices, payments)
+- Accounts Payable (bills, payments)
+- Organizations, Branches, Departments
+- Users, Roles, Permissions (RBAC)
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+## User Preferences
+
+<!-- Add user preferences here as they are stated -->

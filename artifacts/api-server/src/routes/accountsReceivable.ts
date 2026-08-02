@@ -375,7 +375,7 @@ router.post("/invoices", requirePermission(MODULE, "create"), async (req: AuthRe
       orgId, customerId: data.customerId, invoiceNumber, issueDate: data.issueDate, dueDate: data.dueDate,
       status: data.status ?? "draft",
       subtotal: subtotal.toFixed(2), taxAmount: taxAmount.toFixed(2), totalAmount: totalAmount.toFixed(2),
-      amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.id,
+      amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.userId,
     }).returning();
 
     // Insert lines
@@ -544,7 +544,7 @@ router.post("/payments", requirePermission(MODULE, "create"), async (req: AuthRe
         orgId, invoiceId: data.invoiceId, customerId: invoice.customerId,
         paymentDate: data.paymentDate, amount: paymentAmt.toFixed(2),
         method: data.method ?? "bank_transfer", reference: data.reference ?? null,
-        notes: data.notes ?? null, createdBy: req.user!.id,
+        notes: data.notes ?? null, createdBy: req.user!.userId,
       }).returning();
       await tx.update(arInvoices)
         .set({ amountPaid: newPaid.toFixed(2), status: newStatus, updatedAt: new Date() })
