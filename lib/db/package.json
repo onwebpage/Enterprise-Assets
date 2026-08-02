@@ -12,7 +12,8 @@
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
     "seed": "tsx src/seed.ts",
     "seed:finance": "tsx src/seed-finance.ts",
-    "seed:ar": "tsx src/seed-ar.ts"
+    "seed:ar": "tsx src/seed-ar.ts",
+    "seed:inventory": "tsx src/seed-inventory.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

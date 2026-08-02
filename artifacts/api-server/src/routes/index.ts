@@ -17,6 +17,7 @@ import eInvoicingRouter from "./eInvoicing";
 import ewayBillRouter from "./ewayBill";
 import tdsRouter from "./tds";
 import purchaseRouter from "./purchase";
+import inventoryRouter from "./inventory";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use("/einvoice", eInvoicingRouter);
 router.use("/eway-bill", ewayBillRouter);
 router.use("/tds", tdsRouter);
 router.use("/purchase", purchaseRouter);
+router.use("/inventory", inventoryRouter);
 
 export default router;

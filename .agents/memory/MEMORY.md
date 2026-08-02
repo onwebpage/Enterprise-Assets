@@ -8,3 +8,4 @@
 - [E-Way Bill module](eway-bill-module.md) — single table eway_bills, /api/eway-bill routes, RBAC module name "E-Way Bill"; generate/cancel/extend actions; draft-only delete rule.
 - [GST Returns module](gst-returns-module.md) — dedicated page at /app/gst-returns; reuses /api/gst/returns backend; adds /api/gst/returns-summary endpoint; RBAC via "GST & Tax" module.
 - [Purchase & Procurement module](purchase-procurement.md) — 6 tables, /api/purchase routes, RBAC "Purchase & Procurement"; GRN creation auto-updates PO status; received/accepted/converted records are immutable.
+- [Inventory & Warehouse module](inventory-module.md) — 7 tables, /api/inventory routes, RBAC "Inventory"; stock atomically updated by movements; transfer completion applies stock changes.
