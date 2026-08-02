@@ -7,3 +7,4 @@
 - [GST & Tax module](gst-tax-module.md) — 5 tables, /api/gst routes, RBAC module name "GST & Tax"; return totals auto-recomputed from entries; filed returns and paid payments are immutable.
 - [E-Way Bill module](eway-bill-module.md) — single table eway_bills, /api/eway-bill routes, RBAC module name "E-Way Bill"; generate/cancel/extend actions; draft-only delete rule.
 - [GST Returns module](gst-returns-module.md) — dedicated page at /app/gst-returns; reuses /api/gst/returns backend; adds /api/gst/returns-summary endpoint; RBAC via "GST & Tax" module.
+- [Purchase & Procurement module](purchase-procurement.md) — 6 tables, /api/purchase routes, RBAC "Purchase & Procurement"; GRN creation auto-updates PO status; received/accepted/converted records are immutable.

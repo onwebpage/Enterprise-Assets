@@ -1,185 +1,286 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ShoppingCart, Package, TrendingUp, Clock, Plus, Download, Filter,
-  Search, MoreHorizontal, Eye, Edit, Truck, CheckCircle, AlertCircle,
-  XCircle, ArrowUpRight, FileText, Zap, DollarSign
+  ShoppingCart, Users, PackageCheck, FileSearch,
+  TrendingUp, Clock, CheckCircle, AlertCircle,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { cn } from '@/lib/utils';
+import { usePurchaseSummary, usePurchasePermissions } from '@/hooks/usePurchase';
+import VendorsTab  from '@/components/app/purchase/VendorsTab';
+import OrdersTab   from '@/components/app/purchase/OrdersTab';
+import GRNTab      from '@/components/app/purchase/GRNTab';
+import RFQTab      from '@/components/app/purchase/RFQTab';
 
-const spendData = [
-  { month: 'Jan', spend: 1.8 }, { month: 'Feb', spend: 2.1 }, { month: 'Mar', spend: 1.9 },
-  { month: 'Apr', spend: 2.6 }, { month: 'May', spend: 2.4 }, { month: 'Jun', spend: 3.0 }, { month: 'Jul', spend: 2.8 },
-];
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const orders = [
-  { id: 'PO-1092', vendor: 'TechParts Ltd.', items: 8, amount: 12400, status: 'pending', date: 'Jul 26, 2026', delivery: 'Aug 3', category: 'Electronics' },
-  { id: 'PO-1091', vendor: 'Omega Supplies', items: 24, amount: 8900, status: 'approved', date: 'Jul 24, 2026', delivery: 'Jul 31', category: 'Raw Materials' },
-  { id: 'PO-1090', vendor: 'MegaDistrib Co.', items: 3, amount: 45600, status: 'received', date: 'Jul 20, 2026', delivery: 'Jul 28', category: 'Machinery' },
-  { id: 'PO-1089', vendor: 'FastFreight Inc.', items: 12, amount: 6200, status: 'approved', date: 'Jul 18, 2026', delivery: 'Jul 30', category: 'Packaging' },
-  { id: 'PO-1088', vendor: 'Global Sourcing', items: 6, amount: 31800, status: 'cancelled', date: 'Jul 15, 2026', delivery: 'N/A', category: 'Equipment' },
-  { id: 'PO-1087', vendor: 'SteelCore Ltd.', items: 50, amount: 22100, status: 'received', date: 'Jul 12, 2026', delivery: 'Jul 25', category: 'Raw Materials' },
-];
+type Tab = 'overview' | 'vendors' | 'orders' | 'grn' | 'rfq';
 
-const vendors = [
-  { name: 'TechParts Ltd.', category: 'Electronics', spend: '$84,200', rating: 4.8, onTime: 96, orders: 42, status: 'preferred' },
-  { name: 'Omega Supplies', category: 'Raw Materials', spend: '$61,500', rating: 4.5, onTime: 92, orders: 38, status: 'approved' },
-  { name: 'MegaDistrib Co.', category: 'Machinery', spend: '$112,400', rating: 4.2, onTime: 88, orders: 21, status: 'preferred' },
-  { name: 'FastFreight Inc.', category: 'Packaging', spend: '$29,800', rating: 3.9, onTime: 84, orders: 17, status: 'approved' },
-  { name: 'SteelCore Ltd.', category: 'Raw Materials', spend: '$98,700', rating: 4.7, onTime: 94, orders: 31, status: 'preferred' },
-];
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const statusStyle: Record<string, string> = {
-  pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  approved: 'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20',
-  received: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  cancelled: 'bg-red-500/15 text-red-400 border-red-500/20',
-};
+function fmtMoney(v: string | undefined) {
+  if (!v) return '₹0';
+  const n = parseFloat(v);
+  if (n >= 1_00_00_000) return `₹${(n / 1_00_00_000).toFixed(2)}Cr`;
+  if (n >= 10_00_000)   return `₹${(n / 10_00_000).toFixed(2)}L`;
+  if (n >= 1_000)       return `₹${(n / 1_000).toFixed(1)}K`;
+  return `₹${n.toFixed(2)}`;
+}
 
-export default function Purchase() {
-  const [tab, setTab] = useState('orders');
+// ── KPI Card ──────────────────────────────────────────────────────────────────
+
+interface KpiCardProps {
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ElementType;
+  accent: string;
+  loading?: boolean;
+}
+
+function KpiCard({ label, value, sub, icon: Icon, accent, loading }: KpiCardProps) {
   return (
-    <AppLayout breadcrumbs={[{ label: 'Operations' }, { label: 'Purchase & Procurement' }]}>
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Purchase & Procurement</h1>
-            <p className="text-white/40 text-sm mt-0.5">6 active purchase orders · $2.8M YTD spend</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]"><Download className="w-3.5 h-3.5 mr-1.5" />Export</Button>
-            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]"><Plus className="w-3.5 h-3.5 mr-1.5" />New PO</Button>
-          </div>
-        </div>
+    <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 flex items-start gap-4">
+      <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center shrink-0', accent)}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-white/40 font-medium">{label}</p>
+        {loading ? (
+          <div className="h-6 w-24 bg-white/[0.04] rounded animate-pulse mt-1" />
+        ) : (
+          <p className="text-2xl font-bold text-white mt-0.5 tabular-nums">{value}</p>
+        )}
+        {sub && !loading && <p className="text-[11px] text-white/30 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  );
+}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'YTD Spend', value: '$2.8M', change: '+9.2%', icon: DollarSign, color: 'text-[#2563EB]', bg: 'from-[#2563EB]/20 to-[#2563EB]/5' },
-            { label: 'Open Orders', value: '24', change: '8 pending approval', icon: ShoppingCart, color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-500/5' },
-            { label: 'On-Time Delivery', value: '91.4%', change: '+2.1% vs target', icon: Truck, color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-500/5' },
-            { label: 'Active Vendors', value: '48', change: '5 preferred', icon: Package, color: 'text-[#06B6D4]', bg: 'from-[#06B6D4]/20 to-[#06B6D4]/5' },
-          ].map((k, i) => (
-            <motion.div key={k.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4 hover:border-white/[0.12] transition-all">
-              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${k.bg} flex items-center justify-center mb-3`}>
-                <k.icon className={`w-4 h-4 ${k.color}`} />
-              </div>
-              <p className="text-xl font-bold text-white">{k.value}</p>
-              <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
-              <p className="text-xs text-white/25 mt-0.5">{k.change}</p>
-            </motion.div>
-          ))}
-        </div>
+// ── Overview Tab ──────────────────────────────────────────────────────────────
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-            <h3 className="font-semibold text-white mb-4">Monthly Procurement Spend</h3>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={spendData} barSize={28}>
-                <defs><linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563EB" stopOpacity={0.8} /><stop offset="100%" stopColor="#2563EB" stopOpacity={0.4} /></linearGradient></defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="month" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
-                <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '12px', color: 'white' }} formatter={(v: any) => [`$${v}M`, 'Spend']} />
-                <Bar dataKey="spend" fill="url(#spendGrad)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
-            <h3 className="font-semibold text-white mb-4">Vendor Performance</h3>
-            <div className="space-y-3">
-              {vendors.slice(0, 4).map((v) => (
-                <div key={v.name} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB]/20 to-[#06B6D4]/20 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">{v.name[0]}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-white truncate">{v.name}</span>
-                      <span className="text-xs text-white/50">{v.onTime}% on-time</span>
+function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
+  const { data: summaryRes, isLoading } = usePurchaseSummary();
+  const s = summaryRes?.data;
+
+  const kpis: KpiCardProps[] = [
+    {
+      label:   'Total PO Value',
+      value:   fmtMoney(s?.totalValue),
+      sub:     s ? `${s.totalOrders} orders` : '',
+      icon:    ShoppingCart,
+      accent:  'bg-[#2563EB]/20 text-[#60a5fa]',
+      loading: isLoading,
+    },
+    {
+      label:   'Active Vendors',
+      value:   String(s?.activeVendors ?? 0),
+      sub:     s ? `${s.totalVendors} total vendors` : '',
+      icon:    Users,
+      accent:  'bg-violet-500/15 text-violet-400',
+      loading: isLoading,
+    },
+    {
+      label:   'Goods Receipts',
+      value:   String(s?.totalGRNs ?? 0),
+      sub:     s ? `${s.pendingGRNs} pending review` : '',
+      icon:    PackageCheck,
+      accent:  'bg-emerald-500/15 text-emerald-400',
+      loading: isLoading,
+    },
+    {
+      label:   'Open RFQs',
+      value:   String(s?.openRFQs ?? 0),
+      sub:     s ? `${s.totalRFQs} total RFQs` : '',
+      icon:    FileSearch,
+      accent:  'bg-amber-500/15 text-amber-400',
+      loading: isLoading,
+    },
+  ];
+
+  const statusBreakdown = s?.statusBreakdown ?? [];
+  const topVendors      = s?.topVendors ?? [];
+  const recentOrders    = s?.recentOrders ?? [];
+
+  const STATUS_COLORS: Record<string, string> = {
+    draft:     'bg-white/30',
+    sent:      'bg-[#2563EB]',
+    confirmed: 'bg-violet-500',
+    partial:   'bg-amber-500',
+    received:  'bg-emerald-500',
+    cancelled: 'bg-red-500',
+  };
+
+  const PO_STATUS_BADGE: Record<string, string> = {
+    draft:     'bg-white/[0.06] text-white/40 border-white/[0.1]',
+    sent:      'bg-blue-500/12 text-blue-400 border-blue-500/25',
+    confirmed: 'bg-violet-500/12 text-violet-400 border-violet-500/25',
+    partial:   'bg-amber-500/12 text-amber-400 border-amber-500/25',
+    received:  'bg-emerald-500/12 text-emerald-400 border-emerald-500/25',
+    cancelled: 'bg-red-500/12 text-red-400 border-red-500/25',
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* PO Status Breakdown */}
+        <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white/70 mb-4">Order Status</h3>
+          {isLoading ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-8 bg-white/[0.04] rounded animate-pulse" />)}</div>
+          ) : statusBreakdown.length === 0 ? (
+            <p className="text-white/25 text-sm">No orders yet</p>
+          ) : (
+            <div className="space-y-2">
+              {statusBreakdown.map((row) => {
+                const total = statusBreakdown.reduce((a, b) => a + b.count, 0);
+                const pct   = total > 0 ? (row.count / total) * 100 : 0;
+                return (
+                  <div key={row.status} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="capitalize text-white/60">{row.status}</span>
+                      <span className="text-white/40">{row.count} orders</span>
                     </div>
-                    <Progress value={v.onTime} className="h-1.5 bg-white/[0.07]" />
+                    <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className={cn('h-full rounded-full transition-all', STATUS_COLORS[row.status] ?? 'bg-white/30')}
+                        style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Top Vendors */}
+        <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white/70">Top Vendors</h3>
+            <button onClick={() => onNavigate('vendors')}
+              className="text-[11px] text-[#60a5fa] hover:text-[#93c5fd] transition-colors">View all →</button>
+          </div>
+          {isLoading ? (
+            <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-7 bg-white/[0.04] rounded animate-pulse" />)}</div>
+          ) : topVendors.length === 0 ? (
+            <p className="text-white/25 text-sm">No vendors yet</p>
+          ) : (
+            <div className="space-y-2">
+              {topVendors.map((v) => (
+                <div key={v.vendorId} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-white/70 font-medium truncate">{v.vendorName}</p>
+                    <p className="text-[11px] text-white/35">{v.poCount} orders</p>
+                  </div>
+                  <span className="text-xs font-semibold text-[#60a5fa] tabular-nums shrink-0">{fmtMoney(v.totalValue)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Recent POs */}
+        <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white/70">Recent Orders</h3>
+            <button onClick={() => onNavigate('orders')}
+              className="text-[11px] text-[#60a5fa] hover:text-[#93c5fd] transition-colors">View all →</button>
+          </div>
+          {isLoading ? (
+            <div className="space-y-3">{[1,2,3,4,5].map(i => <div key={i} className="h-10 bg-white/[0.04] rounded animate-pulse" />)}</div>
+          ) : recentOrders.length === 0 ? (
+            <p className="text-white/25 text-sm">No orders yet</p>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.map((o) => (
+                <div key={o.id} className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#60a5fa] font-mono">{o.poNumber}</p>
+                    <p className="text-[11px] text-white/40 truncate">{o.vendorName}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-xs font-semibold text-white/70 tabular-nums">{fmtMoney(o.totalAmount)}</p>
+                    <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-semibold capitalize border', PO_STATUS_BADGE[o.status] ?? '')}>
+                      {o.status}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Add Vendor',    sub: 'Register a new supplier',       tab: 'vendors' as Tab, color: 'text-violet-400',  bg: 'bg-violet-500/10 hover:bg-violet-500/15' },
+          { label: 'New PO',        sub: 'Create a purchase order',       tab: 'orders'  as Tab, color: 'text-[#60a5fa]',   bg: 'bg-[#2563EB]/10  hover:bg-[#2563EB]/15' },
+          { label: 'Receive Goods', sub: 'Record a goods receipt',        tab: 'grn'     as Tab, color: 'text-emerald-400', bg: 'bg-emerald-500/10 hover:bg-emerald-500/15' },
+          { label: 'New RFQ',       sub: 'Request for quotation',         tab: 'rfq'     as Tab, color: 'text-amber-400',   bg: 'bg-amber-500/10   hover:bg-amber-500/15' },
+        ].map((a) => (
+          <button key={a.label} onClick={() => onNavigate(a.tab)}
+            className={cn('rounded-xl p-4 text-left border border-white/[0.07] transition-colors', a.bg)}>
+            <p className={cn('text-sm font-semibold', a.color)}>{a.label}</p>
+            <p className="text-xs text-white/35 mt-0.5">{a.sub}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'overview', label: 'Overview'        },
+  { id: 'vendors',  label: 'Vendors'         },
+  { id: 'orders',   label: 'Purchase Orders' },
+  { id: 'grn',      label: 'Goods Receipts'  },
+  { id: 'rfq',      label: 'RFQ'             },
+];
+
+export default function PurchasePage() {
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
+
+  return (
+    <AppLayout breadcrumbs={[{ label: 'Operations' }, { label: 'Purchase & Procurement' }]}>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-white">Purchase & Procurement</h1>
+          <p className="text-sm text-white/40 mt-1">
+            Manage vendors, purchase orders, goods receipts, and request for quotations
+          </p>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
-          <div className="flex items-center justify-between">
-            <TabsList className="bg-white/[0.04] border border-white/[0.07]">
-              {['orders', 'vendors', 'rfq'].map(t => (
-                <TabsTrigger key={t} value={t} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 capitalize">{t === 'rfq' ? 'RFQ' : t}</TabsTrigger>
-              ))}
-            </TabsList>
-            <div className="flex items-center gap-2">
-              <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" /><Input placeholder="Search..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm w-48" /></div>
-              <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]"><Filter className="w-3.5 h-3.5 mr-1.5" />Filter</Button>
-            </div>
-          </div>
+        {/* Tab bar */}
+        <div className="flex items-center gap-1 border-b border-white/[0.06] pb-0 overflow-x-auto">
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)}
+              className={cn(
+                'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                activeTab === t.id
+                  ? 'border-[#2563EB] text-white'
+                  : 'border-transparent text-white/40 hover:text-white/70',
+              )}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-          <TabsContent value="orders" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead><tr className="border-b border-white/[0.05]">{['PO #', 'Vendor', 'Category', 'Items', 'Amount', 'Status', 'Expected Delivery', ''].map(h => (<th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>))}</tr></thead>
-                <tbody>
-                  {orders.map((o) => (
-                    <tr key={o.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-[#2563EB]">{o.id}</td>
-                      <td className="px-4 py-3 text-sm text-white/80">{o.vendor}</td>
-                      <td className="px-4 py-3"><Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{o.category}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-white/60">{o.items}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">${o.amount.toLocaleString()}</td>
-                      <td className="px-4 py-3"><Badge className={`text-[10px] border ${statusStyle[o.status]} px-2 py-0`}>{o.status}</Badge></td>
-                      <td className="px-4 py-3 text-sm text-white/50">{o.delivery}</td>
-                      <td className="px-4 py-3"><button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.05]">
-                <p className="text-xs text-white/30">Showing 6 of 124 records</p>
-                <div className="flex items-center gap-1">{[1, 2, 3, '...', 21].map((p, i) => (<button key={i} className={`w-7 h-7 rounded text-xs ${p === 1 ? 'bg-[#2563EB] text-white' : 'text-white/40 hover:bg-white/[0.05]'}`}>{p}</button>))}</div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="vendors" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
-              <table className="w-full">
-                <thead><tr className="border-b border-white/[0.05]">{['Vendor', 'Category', 'Total Spend', 'Rating', 'On-Time %', 'Orders', 'Status', ''].map(h => (<th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>))}</tr></thead>
-                <tbody>
-                  {vendors.map((v) => (
-                    <tr key={v.name} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#2563EB]/20 to-[#06B6D4]/20 flex items-center justify-center text-xs font-bold text-white">{v.name[0]}</div><span className="text-sm font-medium text-white">{v.name}</span></div></td>
-                      <td className="px-4 py-3"><Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{v.category}</Badge></td>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">{v.spend}</td>
-                      <td className="px-4 py-3 text-sm text-amber-400 font-medium">★ {v.rating}</td>
-                      <td className="px-4 py-3"><div className="flex items-center gap-2"><Progress value={v.onTime} className="w-16 h-1.5 bg-white/[0.07]" /><span className="text-xs text-white/50">{v.onTime}%</span></div></td>
-                      <td className="px-4 py-3 text-sm text-white/60">{v.orders}</td>
-                      <td className="px-4 py-3"><Badge className={`text-[10px] border px-2 py-0 ${v.status === 'preferred' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20'}`}>{v.status}</Badge></td>
-                      <td className="px-4 py-3"><button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="rfq" className="mt-4">
-            <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-8 text-center">
-              <FileText className="w-12 h-12 text-white/20 mx-auto mb-3" />
-              <p className="text-white/50 font-medium">Request for Quotations</p>
-              <p className="text-white/30 text-sm mt-1">3 active RFQs awaiting vendor responses</p>
-              <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] mt-4"><Plus className="w-3.5 h-3.5 mr-1.5" />New RFQ</Button>
-            </div>
-          </TabsContent>
-        </Tabs>
+        {/* Tab content */}
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+          {activeTab === 'overview' && <OverviewTab onNavigate={setActiveTab} />}
+          {activeTab === 'vendors'  && <VendorsTab />}
+          {activeTab === 'orders'   && <OrdersTab />}
+          {activeTab === 'grn'      && <GRNTab />}
+          {activeTab === 'rfq'      && <RFQTab />}
+        </motion.div>
       </div>
     </AppLayout>
   );

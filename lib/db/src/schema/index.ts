@@ -13,3 +13,4 @@ export * from "./fixedAssets";
 export * from "./gst";
 export * from "./eInvoicing";
 export * from "./ewayBill";
+export * from "./purchase";
