@@ -10,3 +10,4 @@ export * from "./accountsReceivable";
 export * from "./accountsPayable";
 export * from "./banking";
 export * from "./fixedAssets";
+export * from "./gst";

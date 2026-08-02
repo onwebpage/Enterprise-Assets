@@ -12,6 +12,7 @@ import accountsReceivableRouter from "./accountsReceivable";
 import accountsPayableRouter from "./accountsPayable";
 import bankingRouter from "./banking";
 import fixedAssetsRouter from "./fixedAssets";
+import gstRouter from "./gst";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use("/ar", accountsReceivableRouter);
 router.use("/ap", accountsPayableRouter);
 router.use("/banking", bankingRouter);
 router.use("/assets", fixedAssetsRouter);
+router.use("/gst", gstRouter);
 
 export default router;

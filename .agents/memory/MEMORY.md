@@ -4,3 +4,4 @@
 - [Accounts Receivable module](accounts-receivable.md) — AR schema, RBAC module name, payment-balance atomicity rule, invoice deletion policy.
 - [Accounts Payable module](accounts-payable.md) — AP schema, RBAC module name, payment-balance atomicity rule, bill deletion policy.
 - [Banking & Fixed Assets modules](banking-fixed-assets.md) — schemas, routes, frontend; lib/db must be recompiled after schema changes; Express 5 params casting.
+- [GST & Tax module](gst-tax-module.md) — 5 tables, /api/gst routes, RBAC module name "GST & Tax"; return totals auto-recomputed from entries; filed returns and paid payments are immutable.
