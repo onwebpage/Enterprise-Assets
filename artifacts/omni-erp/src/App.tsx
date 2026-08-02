@@ -34,6 +34,7 @@ import AccountsReceivable from '@/pages/app/accounts-receivable';
 import AccountsPayable from '@/pages/app/accounts-payable';
 import FixedAssets from '@/pages/app/fixed-assets';
 import EInvoicing from '@/pages/app/e-invoicing';
+import EWayBill from '@/pages/app/eway-bill';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -123,6 +124,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/einvoicing">
         <ProtectedRoute><EInvoicing /></ProtectedRoute>
+      </Route>
+      <Route path="/app/eway-bill">
+        <ProtectedRoute><EWayBill /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

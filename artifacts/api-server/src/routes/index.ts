@@ -14,6 +14,7 @@ import bankingRouter from "./banking";
 import fixedAssetsRouter from "./fixedAssets";
 import gstRouter from "./gst";
 import eInvoicingRouter from "./eInvoicing";
+import ewayBillRouter from "./ewayBill";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/banking", bankingRouter);
 router.use("/assets", fixedAssetsRouter);
 router.use("/gst", gstRouter);
 router.use("/einvoice", eInvoicingRouter);
+router.use("/eway-bill", ewayBillRouter);
 
 export default router;

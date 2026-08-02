@@ -5,3 +5,4 @@
 - [Accounts Payable module](accounts-payable.md) — AP schema, RBAC module name, payment-balance atomicity rule, bill deletion policy.
 - [Banking & Fixed Assets modules](banking-fixed-assets.md) — schemas, routes, frontend; lib/db must be recompiled after schema changes; Express 5 params casting.
 - [GST & Tax module](gst-tax-module.md) — 5 tables, /api/gst routes, RBAC module name "GST & Tax"; return totals auto-recomputed from entries; filed returns and paid payments are immutable.
+- [E-Way Bill module](eway-bill-module.md) — single table eway_bills, /api/eway-bill routes, RBAC module name "E-Way Bill"; generate/cancel/extend actions; draft-only delete rule.

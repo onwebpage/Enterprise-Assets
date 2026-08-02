@@ -12,3 +12,4 @@ export * from "./banking";
 export * from "./fixedAssets";
 export * from "./gst";
 export * from "./eInvoicing";
+export * from "./ewayBill";
