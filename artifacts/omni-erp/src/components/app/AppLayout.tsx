@@ -38,6 +38,7 @@ const navGroups = [
       { icon: CreditCard, label: 'Bank Reconciliation', path: '/app/banking' },
       { icon: Package,   label: 'Fixed Assets',        path: '/app/fixed-assets' },
       { icon: Receipt,   label: 'GST & Tax',           path: '/app/gst' },
+      { icon: FileText,  label: 'GST Returns',         path: '/app/gst-returns' },
       { icon: FileText,  label: 'E-Invoicing',         path: '/app/einvoicing' },
       { icon: Truck,     label: 'E-Way Bill',          path: '/app/eway-bill' },
     ]

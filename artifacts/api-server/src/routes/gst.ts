@@ -58,6 +58,99 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
   }
 });
 
+// ── Returns Summary (dedicated endpoint for GST Returns module) ───────────────
+
+router.get("/returns-summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Counts by status
+    const [{ totalReturns }] = await db
+      .select({ totalReturns: sql<number>`count(*)::int` })
+      .from(gstReturns).where(eq(gstReturns.orgId, orgId));
+
+    const [{ draftCount }] = await db
+      .select({ draftCount: sql<number>`count(*)::int` })
+      .from(gstReturns).where(and(eq(gstReturns.orgId, orgId), eq(gstReturns.status, "draft")));
+
+    const [{ pendingCount }] = await db
+      .select({ pendingCount: sql<number>`count(*)::int` })
+      .from(gstReturns).where(and(eq(gstReturns.orgId, orgId), eq(gstReturns.status, "pending")));
+
+    const [{ filedCount }] = await db
+      .select({ filedCount: sql<number>`count(*)::int` })
+      .from(gstReturns).where(and(eq(gstReturns.orgId, orgId), eq(gstReturns.status, "filed")));
+
+    const [{ overdueCount }] = await db
+      .select({ overdueCount: sql<number>`count(*)::int` })
+      .from(gstReturns).where(and(eq(gstReturns.orgId, orgId), eq(gstReturns.status, "overdue")));
+
+    // Tax aggregates
+    const [agg] = await db
+      .select({
+        totalTaxLiability: sql<string>`coalesce(sum(total_tax_liability), 0)::text`,
+        totalItc:          sql<string>`coalesce(sum(total_itc), 0)::text`,
+        netPayable:        sql<string>`coalesce(sum(net_payable), 0)::text`,
+        totalTaxableValue: sql<string>`coalesce(sum(total_taxable_value), 0)::text`,
+        totalCgst:         sql<string>`coalesce(sum(total_cgst), 0)::text`,
+        totalSgst:         sql<string>`coalesce(sum(total_sgst), 0)::text`,
+        totalIgst:         sql<string>`coalesce(sum(total_igst), 0)::text`,
+        totalCess:         sql<string>`coalesce(sum(total_cess), 0)::text`,
+      })
+      .from(gstReturns)
+      .where(and(eq(gstReturns.orgId, orgId), sql`status != 'cancelled'`));
+
+    // By return type
+    const byType = await db
+      .select({
+        returnType: gstReturns.returnType,
+        count: sql<number>`count(*)::int`,
+        filed: sql<number>`sum(case when status='filed' then 1 else 0 end)::int`,
+        pending: sql<number>`sum(case when status in ('draft','pending') then 1 else 0 end)::int`,
+        overdue: sql<number>`sum(case when status='overdue' then 1 else 0 end)::int`,
+        totalTax: sql<string>`coalesce(sum(total_tax_liability),0)::text`,
+      })
+      .from(gstReturns)
+      .where(eq(gstReturns.orgId, orgId))
+      .groupBy(gstReturns.returnType)
+      .orderBy(gstReturns.returnType);
+
+    // Due soon (next 7 days, not filed)
+    const in7days = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+    const dueSoon = await db
+      .select({ id: gstReturns.id, returnType: gstReturns.returnType, period: gstReturns.period, dueDate: gstReturns.dueDate, status: gstReturns.status })
+      .from(gstReturns)
+      .where(and(
+        eq(gstReturns.orgId, orgId),
+        sql`status not in ('filed')`,
+        sql`due_date >= ${today}`,
+        sql`due_date <= ${in7days}`,
+      ))
+      .orderBy(gstReturns.dueDate)
+      .limit(5);
+
+    res.json({
+      success: true,
+      data: {
+        totalReturns, draftCount, pendingCount, filedCount, overdueCount,
+        totalTaxLiability: agg.totalTaxLiability,
+        totalItc: agg.totalItc,
+        netPayable: agg.netPayable,
+        totalTaxableValue: agg.totalTaxableValue,
+        totalCgst: agg.totalCgst,
+        totalSgst: agg.totalSgst,
+        totalIgst: agg.totalIgst,
+        totalCess: agg.totalCess,
+        byType,
+        dueSoon,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Failed to fetch GST returns summary" });
+  }
+});
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {

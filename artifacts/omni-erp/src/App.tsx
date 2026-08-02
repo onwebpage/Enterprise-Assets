@@ -35,6 +35,7 @@ import AccountsPayable from '@/pages/app/accounts-payable';
 import FixedAssets from '@/pages/app/fixed-assets';
 import EInvoicing from '@/pages/app/e-invoicing';
 import EWayBill from '@/pages/app/eway-bill';
+import GSTReturns from '@/pages/app/gst-returns';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -127,6 +128,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/eway-bill">
         <ProtectedRoute><EWayBill /></ProtectedRoute>
+      </Route>
+      <Route path="/app/gst-returns">
+        <ProtectedRoute><GSTReturns /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />
