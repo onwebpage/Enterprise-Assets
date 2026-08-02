@@ -21,6 +21,7 @@ import inventoryRouter from "./inventory";
 import manufacturingRouter from "./manufacturing";
 import hrRouter from "./hr";
 import reportsRouter from "./reports";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use("/inventory", inventoryRouter);
 router.use("/manufacturing", manufacturingRouter);
 router.use("/hr", hrRouter);
 router.use("/reports", reportsRouter);
+router.use("/ai", aiRouter);
 
 export default router;
