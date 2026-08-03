@@ -28,6 +28,7 @@ import customerPortalRouter from "./customerPortal";
 import vendorPortalRouter from "./vendorPortal";
 import notificationsRouter from "./notifications";
 import settingsRouter from "./settings";
+import auditRouter from "./audit";
 
 const router: IRouter = Router();
 
@@ -60,5 +61,6 @@ router.use("/customer-portal", customerPortalRouter);
 router.use("/vendor-portal", vendorPortalRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/settings", settingsRouter);
+router.use("/audit", auditRouter);
 
 export default router;

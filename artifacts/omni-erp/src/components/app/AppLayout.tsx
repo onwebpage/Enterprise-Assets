@@ -10,7 +10,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building, Landmark
+  Building, Landmark, ClipboardList
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -84,6 +84,7 @@ const navGroups = [
       { icon: Building2, label: 'Organization', path: '/app/organization' },
       { icon: User, label: 'User Management', path: '/app/users' },
       { icon: Shield, label: 'Roles & Permissions', path: '/app/roles' },
+      { icon: ClipboardList, label: 'Audit Logs', path: '/app/audit-logs' },
       { icon: Settings, label: 'Settings', path: '/app/settings' },
       { icon: BillingIcon, label: 'Subscription & Billing', path: '/app/billing' },
     ]
