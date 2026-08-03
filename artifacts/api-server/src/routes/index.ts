@@ -23,6 +23,7 @@ import hrRouter from "./hr";
 import reportsRouter from "./reports";
 import aiRouter from "./ai";
 import workflowRouter from "./workflowAutomation";
+import documentsRouter from "./documents";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use("/hr", hrRouter);
 router.use("/reports", reportsRouter);
 router.use("/ai", aiRouter);
 router.use("/workflow", workflowRouter);
+router.use("/docs", documentsRouter);
 
 export default router;
