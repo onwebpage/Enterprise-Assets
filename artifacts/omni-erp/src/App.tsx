@@ -39,6 +39,7 @@ import GSTReturns from '@/pages/app/gst-returns';
 import TDS from '@/pages/app/tds';
 import NotificationsPage from '@/pages/app/notifications';
 import AuditLogs from '@/pages/app/audit-logs';
+import SaasPlatform from '@/pages/app/saas';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -143,6 +144,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/audit-logs">
         <ProtectedRoute><AuditLogs /></ProtectedRoute>
+      </Route>
+      <Route path="/app/saas">
+        <ProtectedRoute><SaasPlatform /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

@@ -25,3 +25,4 @@ export * from "./vendorPortal";
 export * from "./notifications";
 export * from "./userPreferences";
 export * from "./auditLogs";
+export * from "./saas";

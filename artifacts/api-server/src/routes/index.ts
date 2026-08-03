@@ -29,6 +29,7 @@ import vendorPortalRouter from "./vendorPortal";
 import notificationsRouter from "./notifications";
 import settingsRouter from "./settings";
 import auditRouter from "./audit";
+import saasRouter from "./saas";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use("/vendor-portal", vendorPortalRouter);
 router.use("/notifications", notificationsRouter);
 router.use("/settings", settingsRouter);
 router.use("/audit", auditRouter);
+router.use("/saas", saasRouter);
 
 export default router;

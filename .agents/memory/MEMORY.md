@@ -18,3 +18,4 @@
 - [Vendor Portal module](vendor-portal-module.md) — 4 tables, /api/vendor-portal routes, RBAC "Vendor Portal"; vendors + bills + tickets + messages; same pattern as Customer Portal.
 - [Settings module](settings-module.md) — user_preferences table (psql, not drizzle-kit), /api/settings routes; 7-tab frontend; profile/org/prefs/mfa/change-password all real API.
 - [Audit Logs module](audit-logs-module.md) — audit_logs table (psql), /api/audit routes; stats/list/single/create/export-csv; 56 seed entries; clickable detail drawer; module+action+status+date filters.
+- [SaaS Multi-Tenant module](saas-module.md) — /app/saas page; saas_plans + saas_subscriptions tables (psql-only, not drizzle-kit); /api/saas routes; sql<> templates must use Drizzle column refs not alias names.
