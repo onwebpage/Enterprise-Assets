@@ -16,3 +16,4 @@
 - [Document Management module](documents-module.md) — 4 tables, /api/docs routes, RBAC "Documents"; star/archive/move/share/versions; POST for star toggle (not PATCH); base64 file content.
 - [Customer Portal module](customer-portal-module.md) — 4 tables, /api/customer-portal routes, RBAC "Customer Portal"; customers + invoices + tickets + threaded messages; invite/toggle actions.
 - [Vendor Portal module](vendor-portal-module.md) — 4 tables, /api/vendor-portal routes, RBAC "Vendor Portal"; vendors + bills + tickets + messages; same pattern as Customer Portal.
+- [Settings module](settings-module.md) — user_preferences table (psql, not drizzle-kit), /api/settings routes; 7-tab frontend; profile/org/prefs/mfa/change-password all real API.
