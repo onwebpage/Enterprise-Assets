@@ -24,6 +24,7 @@ import reportsRouter from "./reports";
 import aiRouter from "./ai";
 import workflowRouter from "./workflowAutomation";
 import documentsRouter from "./documents";
+import customerPortalRouter from "./customerPortal";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use("/reports", reportsRouter);
 router.use("/ai", aiRouter);
 router.use("/workflow", workflowRouter);
 router.use("/docs", documentsRouter);
+router.use("/customer-portal", customerPortalRouter);
 
 export default router;

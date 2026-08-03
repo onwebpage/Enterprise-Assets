@@ -20,3 +20,4 @@ export * from "./hr";
 export * from "./ai";
 export * from "./workflowAutomation";
 export * from "./documents";
+export * from "./customerPortal";
