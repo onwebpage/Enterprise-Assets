@@ -37,6 +37,7 @@ import EInvoicing from '@/pages/app/e-invoicing';
 import EWayBill from '@/pages/app/eway-bill';
 import GSTReturns from '@/pages/app/gst-returns';
 import TDS from '@/pages/app/tds';
+import NotificationsPage from '@/pages/app/notifications';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +136,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/tds">
         <ProtectedRoute><TDS /></ProtectedRoute>
+      </Route>
+      <Route path="/app/notifications">
+        <ProtectedRoute><NotificationsPage /></ProtectedRoute>
       </Route>
 
       <Route component={NotFound} />

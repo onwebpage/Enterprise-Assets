@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useAuth } from '@/contexts/auth';
+import { useNotificationSummary, useNotifications, useMarkRead, useMarkAllRead, TYPE_COLORS, timeAgo } from '@/hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard, Building2, DollarSign, Users, ShoppingCart,
@@ -79,6 +80,7 @@ const navGroups = [
   {
     label: 'Administration',
     items: [
+      { icon: Bell, label: 'Notifications', path: '/app/notifications' },
       { icon: Building2, label: 'Organization', path: '/app/organization' },
       { icon: User, label: 'User Management', path: '/app/users' },
       { icon: Shield, label: 'Roles & Permissions', path: '/app/roles' },
@@ -94,13 +96,6 @@ const companies = [
   { name: 'Stratford Industries', plan: 'Enterprise', logo: 'SI' },
 ];
 
-const notifications = [
-  { id: 1, title: 'Invoice #INV-4821 paid', desc: 'Stratford Industries · $48,200', time: '2m ago', color: 'bg-emerald-500', unread: true },
-  { id: 2, title: 'Low stock alert', desc: 'SKU-2841 below reorder point', time: '18m ago', color: 'bg-amber-500', unread: true },
-  { id: 3, title: 'New purchase order', desc: 'PO-1092 awaiting approval', time: '1h ago', color: 'bg-[#2563EB]', unread: true },
-  { id: 4, title: 'Payroll processed', desc: '342 employees · July 2026', time: '3h ago', color: 'bg-[#06B6D4]', unread: false },
-  { id: 5, title: 'AI Insight ready', desc: 'Q3 revenue forecast updated', time: '5h ago', color: 'bg-purple-500', unread: false },
-];
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -113,8 +108,13 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentCompany, setCurrentCompany] = useState(companies[0]);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [unreadCount] = useState(3);
   const { user, logout } = useAuth();
+  const { data: notifSummary } = useNotificationSummary();
+  const { data: notifList } = useNotifications({ filter: 'all', limit: 5 });
+  const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
+  const unreadCount = notifSummary?.unread ?? 0;
+  const recentNotifs = notifList?.data ?? [];
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -359,22 +359,45 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
             <DropdownMenuContent align="end" className="w-80 bg-[#0a0f1e] border-white/[0.07] text-white p-0">
               <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.07]">
                 <p className="font-semibold text-sm">Notifications</p>
-                <Badge className="bg-[#2563EB]/20 text-[#2563EB] border-0 text-xs">{unreadCount} new</Badge>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <>
+                      <Badge className="bg-[#2563EB]/20 text-[#2563EB] border-0 text-xs">{unreadCount} new</Badge>
+                      <button
+                        onClick={() => markAllRead.mutate()}
+                        className="text-[10px] text-white/30 hover:text-white/60 transition-colors"
+                        title="Mark all as read"
+                      >
+                        Mark all read
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               <div className="py-1">
-                {notifications.map((n) => (
-                  <div key={n.id} className={`flex gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors cursor-pointer ${n.unread ? 'bg-white/[0.02]' : ''}`}>
-                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.color}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white">{n.title}</p>
-                      <p className="text-xs text-white/40 truncate">{n.desc}</p>
-                      <p className="text-xs text-white/25 mt-0.5">{n.time}</p>
+                {recentNotifs.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-xs text-white/30">No notifications</div>
+                ) : (
+                  recentNotifs.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`flex gap-3 px-4 py-3 hover:bg-white/[0.04] transition-colors cursor-pointer ${!n.read ? 'bg-white/[0.02]' : ''}`}
+                      onClick={() => { if (!n.read) markRead.mutate(n.id); }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.read ? (TYPE_COLORS[n.type] ?? 'bg-[#2563EB]') : 'bg-white/10'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${!n.read ? 'text-white' : 'text-white/60'}`}>{n.title}</p>
+                        {n.body && <p className="text-xs text-white/40 truncate">{n.body}</p>}
+                        <p className="text-xs text-white/25 mt-0.5">{timeAgo(n.createdAt)}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <div className="px-4 py-3 border-t border-white/[0.07]">
-                <button className="text-xs text-[#2563EB] hover:underline">View all notifications</button>
+                <Link href="/app/notifications">
+                  <button className="text-xs text-[#2563EB] hover:underline">View all notifications</button>
+                </Link>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>

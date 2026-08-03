@@ -22,3 +22,4 @@ export * from "./workflowAutomation";
 export * from "./documents";
 export * from "./customerPortal";
 export * from "./vendorPortal";
+export * from "./notifications";

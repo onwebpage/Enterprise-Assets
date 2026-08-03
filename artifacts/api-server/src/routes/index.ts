@@ -26,6 +26,7 @@ import workflowRouter from "./workflowAutomation";
 import documentsRouter from "./documents";
 import customerPortalRouter from "./customerPortal";
 import vendorPortalRouter from "./vendorPortal";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use("/workflow", workflowRouter);
 router.use("/docs", documentsRouter);
 router.use("/customer-portal", customerPortalRouter);
 router.use("/vendor-portal", vendorPortalRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;
