@@ -15,3 +15,4 @@
 - [Workflow Automation module](workflow-automation-module.md) — 4 tables, /api/workflow routes, RBAC "Workflow Automation"; simulated execution engine; psql for schema; draft→publish→toggle lifecycle.
 - [Document Management module](documents-module.md) — 4 tables, /api/docs routes, RBAC "Documents"; star/archive/move/share/versions; POST for star toggle (not PATCH); base64 file content.
 - [Customer Portal module](customer-portal-module.md) — 4 tables, /api/customer-portal routes, RBAC "Customer Portal"; customers + invoices + tickets + threaded messages; invite/toggle actions.
+- [Vendor Portal module](vendor-portal-module.md) — 4 tables, /api/vendor-portal routes, RBAC "Vendor Portal"; vendors + bills + tickets + messages; same pattern as Customer Portal.
