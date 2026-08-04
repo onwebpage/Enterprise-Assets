@@ -37,5 +37,34 @@ export const saasSubscriptions = pgTable("saas_subscriptions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const saasWhitelabel = pgTable("saas_whitelabel", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().unique().references(() => organizations.id),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  productName: text("product_name").notNull().default("OmniERP"),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  primaryColor: text("primary_color").notNull().default("#2563EB"),
+  accentColor: text("accent_color").notNull().default("#06B6D4"),
+  customDomain: text("custom_domain"),
+  domainStatus: text("domain_status").notNull().default("unverified"),
+  supportEmail: text("support_email"),
+  supportUrl: text("support_url"),
+  loginHeadline: text("login_headline"),
+  loginSubline: text("login_subline"),
+  loginBackgroundColor: text("login_background_color").default("#050816"),
+  footerText: text("footer_text"),
+  hidePoweredBy: boolean("hide_powered_by").notNull().default(false),
+  customCss: text("custom_css"),
+  emailSenderName: text("email_sender_name"),
+  emailReplyTo: text("email_reply_to"),
+  navTheme: text("nav_theme").notNull().default("dark"),
+  fontFamily: text("font_family").default("Inter"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export type SaasPlan = typeof saasPlans.$inferSelect;
 export type SaasSubscription = typeof saasSubscriptions.$inferSelect;
+export type SaasWhitelabel = typeof saasWhitelabel.$inferSelect;

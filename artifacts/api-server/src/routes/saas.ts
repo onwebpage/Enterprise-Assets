@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, sql, and } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { saasPlans, saasSubscriptions, organizations } from "@workspace/db/schema";
+import { saasPlans, saasSubscriptions, saasWhitelabel, organizations } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -328,6 +328,186 @@ router.get("/subscriptions", async (_req, res) => {
     res.json({ success: true, data });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch subscriptions" });
+  }
+});
+
+// ── White Label ──────────────────────────────────────────────────────────────
+
+router.get("/whitelabel", async (_req, res) => {
+  try {
+    const data = await db
+      .select({
+        id: saasWhitelabel.id,
+        orgId: saasWhitelabel.orgId,
+        orgName: organizations.name,
+        isEnabled: saasWhitelabel.isEnabled,
+        productName: saasWhitelabel.productName,
+        logoUrl: saasWhitelabel.logoUrl,
+        faviconUrl: saasWhitelabel.faviconUrl,
+        primaryColor: saasWhitelabel.primaryColor,
+        accentColor: saasWhitelabel.accentColor,
+        customDomain: saasWhitelabel.customDomain,
+        domainStatus: saasWhitelabel.domainStatus,
+        supportEmail: saasWhitelabel.supportEmail,
+        supportUrl: saasWhitelabel.supportUrl,
+        loginHeadline: saasWhitelabel.loginHeadline,
+        loginSubline: saasWhitelabel.loginSubline,
+        loginBackgroundColor: saasWhitelabel.loginBackgroundColor,
+        footerText: saasWhitelabel.footerText,
+        hidePoweredBy: saasWhitelabel.hidePoweredBy,
+        customCss: saasWhitelabel.customCss,
+        emailSenderName: saasWhitelabel.emailSenderName,
+        emailReplyTo: saasWhitelabel.emailReplyTo,
+        navTheme: saasWhitelabel.navTheme,
+        fontFamily: saasWhitelabel.fontFamily,
+        notes: saasWhitelabel.notes,
+        createdAt: saasWhitelabel.createdAt,
+        updatedAt: saasWhitelabel.updatedAt,
+      })
+      .from(saasWhitelabel)
+      .leftJoin(organizations, eq(organizations.id, saasWhitelabel.orgId))
+      .orderBy(desc(saasWhitelabel.updatedAt));
+    res.json({ success: true, data });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch white label configs" });
+  }
+});
+
+router.get("/whitelabel/:orgId", async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const rows = await db
+      .select()
+      .from(saasWhitelabel)
+      .where(eq(saasWhitelabel.orgId, orgId));
+    if (!rows.length) {
+      res.status(404).json({ success: false, error: "No white label config found" });
+      return;
+    }
+    res.json({ success: true, data: rows[0] });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch white label config" });
+  }
+});
+
+router.post("/whitelabel", async (req, res) => {
+  try {
+    const {
+      orgId, productName, logoUrl, faviconUrl, primaryColor, accentColor,
+      customDomain, supportEmail, supportUrl, loginHeadline, loginSubline,
+      loginBackgroundColor, footerText, hidePoweredBy, customCss,
+      emailSenderName, emailReplyTo, navTheme, fontFamily, notes,
+    } = req.body;
+    const [config] = await db
+      .insert(saasWhitelabel)
+      .values({
+        orgId: parseInt(orgId),
+        productName: productName || "OmniERP",
+        logoUrl, faviconUrl,
+        primaryColor: primaryColor || "#2563EB",
+        accentColor: accentColor || "#06B6D4",
+        customDomain, supportEmail, supportUrl,
+        loginHeadline, loginSubline,
+        loginBackgroundColor: loginBackgroundColor || "#050816",
+        footerText,
+        hidePoweredBy: !!hidePoweredBy,
+        customCss, emailSenderName, emailReplyTo,
+        navTheme: navTheme || "dark",
+        fontFamily: fontFamily || "Inter",
+        notes,
+      })
+      .returning();
+    res.status(201).json({ success: true, data: config });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to create white label config" });
+  }
+});
+
+router.put("/whitelabel/:orgId", async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const updates = { ...req.body, updatedAt: new Date() };
+    if (updates.orgId) delete updates.orgId; // prevent changing orgId
+    if (typeof updates.hidePoweredBy !== "undefined") {
+      updates.hidePoweredBy = !!updates.hidePoweredBy;
+    }
+    const [config] = await db
+      .update(saasWhitelabel)
+      .set(updates)
+      .where(eq(saasWhitelabel.orgId, orgId))
+      .returning();
+    if (!config) {
+      res.status(404).json({ success: false, error: "Config not found" });
+      return;
+    }
+    res.json({ success: true, data: config });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update white label config" });
+  }
+});
+
+router.patch("/whitelabel/:orgId/domain-verify", async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    // Simulate DNS verification check (would be a real DNS lookup in production)
+    const [existing] = await db
+      .select()
+      .from(saasWhitelabel)
+      .where(eq(saasWhitelabel.orgId, orgId));
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Config not found" });
+      return;
+    }
+    if (!existing.customDomain) {
+      res.status(400).json({ success: false, error: "No custom domain configured" });
+      return;
+    }
+    // Transition: unverified -> verifying -> verified (cycle for demo purposes)
+    const nextStatus =
+      existing.domainStatus === "unverified" ? "verifying" :
+      existing.domainStatus === "verifying" ? "verified" : "verifying";
+    const [updated] = await db
+      .update(saasWhitelabel)
+      .set({ domainStatus: nextStatus, updatedAt: new Date() })
+      .where(eq(saasWhitelabel.orgId, orgId))
+      .returning();
+    res.json({ success: true, data: updated });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to verify domain" });
+  }
+});
+
+router.patch("/whitelabel/:orgId/toggle", async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    const [existing] = await db
+      .select({ isEnabled: saasWhitelabel.isEnabled })
+      .from(saasWhitelabel)
+      .where(eq(saasWhitelabel.orgId, orgId));
+    if (!existing) {
+      res.status(404).json({ success: false, error: "Config not found" });
+      return;
+    }
+    const [updated] = await db
+      .update(saasWhitelabel)
+      .set({ isEnabled: !existing.isEnabled, updatedAt: new Date() })
+      .where(eq(saasWhitelabel.orgId, orgId))
+      .returning();
+    res.json({ success: true, data: updated });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to toggle white label" });
+  }
+});
+
+router.delete("/whitelabel/:orgId", async (req, res) => {
+  try {
+    const orgId = parseInt(req.params.orgId);
+    await db.delete(saasWhitelabel).where(eq(saasWhitelabel.orgId, orgId));
+    res.json({ success: true, data: null });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to delete white label config" });
   }
 });
 

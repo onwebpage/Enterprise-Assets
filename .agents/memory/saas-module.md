@@ -8,6 +8,7 @@ description: Two new DB tables, /api/saas routes, /app/saas frontend page — mu
 ## DB Tables (psql-created — drizzle-kit push hangs)
 - `saas_plans` — plan catalog (Starter/Professional/Enterprise/Custom); slug is unique key
 - `saas_subscriptions` — links org_id → plan_id; status: active/trial/suspended/cancelled; has mrr column
+- `saas_whitelabel` — per-tenant branding config; org_id is UNIQUE (one config per tenant); seeded for orgs 1-10
 
 ## Drizzle Schema
 `lib/db/src/schema/saas.ts` — exported from `lib/db/src/schema/index.ts`
