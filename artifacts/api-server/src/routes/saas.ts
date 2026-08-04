@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, lt, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { saasPlans, saasSubscriptions, saasWhitelabel, organizations } from "@workspace/db/schema";
+import { saasPlans, saasSubscriptions, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -508,6 +508,362 @@ router.delete("/whitelabel/:orgId", async (req, res) => {
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete white label config" });
+  }
+});
+
+// ── Trial Management ─────────────────────────────────────────────────────────
+
+// GET /saas/trials — all trial subscriptions with metadata
+router.get("/trials", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        subId: saasSubscriptions.id,
+        orgId: organizations.id,
+        orgName: organizations.name,
+        industry: organizations.industry,
+        country: organizations.country,
+        planId: saasPlans.id,
+        planName: saasPlans.name,
+        planSlug: saasPlans.slug,
+        priceMonthly: saasPlans.priceMonthly,
+        billingCycle: saasSubscriptions.billingCycle,
+        startedAt: saasSubscriptions.startedAt,
+        trialEndsAt: saasSubscriptions.trialEndsAt,
+        status: saasSubscriptions.status,
+        currentUsers: saasSubscriptions.currentUsers,
+        notes: saasSubscriptions.notes,
+        createdAt: saasSubscriptions.createdAt,
+      })
+      .from(saasSubscriptions)
+      .leftJoin(organizations, eq(organizations.id, saasSubscriptions.orgId))
+      .leftJoin(saasPlans, eq(saasPlans.id, saasSubscriptions.planId))
+      .where(eq(saasSubscriptions.status, "trial"))
+      .orderBy(saasSubscriptions.trialEndsAt);
+
+    // Attach event counts and last event per sub
+    const subIds = rows.map((r) => r.subId);
+    let eventData: {
+      subscriptionId: number;
+      eventCount: number;
+      extensionCount: number;
+      lastEvent: string | null;
+    }[] = [];
+
+    if (subIds.length > 0) {
+      eventData = await Promise.all(
+        subIds.map(async (sid) => {
+          const events = await db
+            .select()
+            .from(saasTrialEvents)
+            .where(eq(saasTrialEvents.subscriptionId, sid))
+            .orderBy(desc(saasTrialEvents.createdAt));
+          return {
+            subscriptionId: sid,
+            eventCount: events.length,
+            extensionCount: events.filter((e) => e.eventType === "extended").length,
+            lastEvent: events[0]?.eventType ?? null,
+          };
+        })
+      );
+    }
+
+    const eventMap = Object.fromEntries(eventData.map((e) => [e.subscriptionId, e]));
+    const enriched = rows.map((r) => ({
+      ...r,
+      ...(eventMap[r.subId] ?? { eventCount: 0, extensionCount: 0, lastEvent: null }),
+      daysRemaining: r.trialEndsAt
+        ? Math.ceil((new Date(r.trialEndsAt).getTime() - Date.now()) / 86400000)
+        : null,
+    }));
+
+    res.json({ success: true, data: enriched });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch trials" });
+  }
+});
+
+// GET /saas/trials/stats — aggregated conversion metrics
+router.get("/trials/stats", async (_req, res) => {
+  try {
+    const [activeCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.status, "trial"));
+
+    const [expiringCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasSubscriptions)
+      .where(
+        and(
+          eq(saasSubscriptions.status, "trial"),
+          lt(saasSubscriptions.trialEndsAt, new Date(Date.now() + 7 * 86400000))
+        )
+      );
+
+    // Historical conversion: converted events / (converted + cancelled + expired)
+    const convertedEvents = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasTrialEvents)
+      .where(eq(saasTrialEvents.eventType, "converted"));
+
+    const endedEvents = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasTrialEvents)
+      .where(
+        sql`${saasTrialEvents.eventType} IN ('converted','cancelled','expired')`
+      );
+
+    const converted = convertedEvents[0]?.count ?? 0;
+    const ended = endedEvents[0]?.count ?? 0;
+    const conversionRate = ended > 0 ? Math.round((converted / ended) * 100) : 0;
+
+    // Average trial duration (days from startedAt to trialEndsAt for active trials)
+    const [avgDuration] = await db
+      .select({
+        avg: sql<number>`avg(extract(day from trial_ends_at - started_at))::int`,
+      })
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.status, "trial"));
+
+    res.json({
+      success: true,
+      data: {
+        activeTrials: activeCount?.count ?? 0,
+        expiringIn7Days: expiringCount?.count ?? 0,
+        conversionRate,
+        avgTrialDays: avgDuration?.avg ?? 14,
+        totalConverted: converted,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch trial stats" });
+  }
+});
+
+// GET /saas/trials/:subId/events — event log for a trial
+router.get("/trials/:subId/events", async (req, res) => {
+  try {
+    const subId = parseInt(req.params.subId);
+    const events = await db
+      .select()
+      .from(saasTrialEvents)
+      .where(eq(saasTrialEvents.subscriptionId, subId))
+      .orderBy(desc(saasTrialEvents.createdAt));
+    res.json({ success: true, data: events });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch trial events" });
+  }
+});
+
+// POST /saas/trials/:subId/extend — extend a trial
+router.post("/trials/:subId/extend", async (req: AuthRequest, res) => {
+  try {
+    const subId = parseInt(req.params.subId);
+    const { days, note } = req.body;
+    const daysNum = parseInt(days) || 7;
+
+    const [sub] = await db
+      .select()
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.id, subId));
+    if (!sub) { res.status(404).json({ success: false, error: "Subscription not found" }); return; }
+    if (sub.status !== "trial") { res.status(400).json({ success: false, error: "Subscription is not in trial" }); return; }
+
+    const currentEnd = sub.trialEndsAt ? new Date(sub.trialEndsAt) : new Date();
+    const newEnd = new Date(currentEnd.getTime() + daysNum * 86400000);
+
+    const [updated] = await db
+      .update(saasSubscriptions)
+      .set({ trialEndsAt: newEnd, updatedAt: new Date() })
+      .where(eq(saasSubscriptions.id, subId))
+      .returning();
+
+    await db.insert(saasTrialEvents).values({
+      subscriptionId: subId,
+      eventType: "extended",
+      daysAdded: daysNum,
+      note: note || `Extended by ${daysNum} days`,
+      createdBy: req.user?.email ?? "system",
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to extend trial" });
+  }
+});
+
+// POST /saas/trials/:subId/convert — convert trial to paid
+router.post("/trials/:subId/convert", async (req: AuthRequest, res) => {
+  try {
+    const subId = parseInt(req.params.subId);
+    const { billingCycle, planId, note } = req.body;
+
+    const [sub] = await db
+      .select()
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.id, subId));
+    if (!sub) { res.status(404).json({ success: false, error: "Subscription not found" }); return; }
+
+    const targetPlanId = planId ? parseInt(planId) : sub.planId;
+    const [plan] = await db.select().from(saasPlans).where(eq(saasPlans.id, targetPlanId));
+
+    const cycle = billingCycle ?? sub.billingCycle ?? "monthly";
+    const mrr = cycle === "yearly"
+      ? String(Number(plan?.priceYearly ?? 0) / 12)
+      : String(plan?.priceMonthly ?? 0);
+
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setMonth(periodEnd.getMonth() + (cycle === "yearly" ? 12 : 1));
+
+    await db
+      .update(organizations)
+      .set({ status: "active", updatedAt: now })
+      .where(eq(organizations.id, sub.orgId));
+
+    const [updated] = await db
+      .update(saasSubscriptions)
+      .set({
+        status: "active",
+        planId: targetPlanId,
+        billingCycle: cycle,
+        mrr,
+        trialEndsAt: null,
+        startedAt: now,
+        expiresAt: periodEnd,
+        updatedAt: now,
+      })
+      .where(eq(saasSubscriptions.id, subId))
+      .returning();
+
+    await db.insert(saasTrialEvents).values({
+      subscriptionId: subId,
+      eventType: "converted",
+      note: note || `Converted to ${cycle} ${plan?.name ?? "plan"}`,
+      createdBy: req.user?.email ?? "system",
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to convert trial" });
+  }
+});
+
+// POST /saas/trials/:subId/cancel — cancel a trial
+router.post("/trials/:subId/cancel", async (req: AuthRequest, res) => {
+  try {
+    const subId = parseInt(req.params.subId);
+    const { note } = req.body;
+
+    const [sub] = await db
+      .select()
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.id, subId));
+    if (!sub) { res.status(404).json({ success: false, error: "Subscription not found" }); return; }
+
+    const now = new Date();
+    await db
+      .update(saasSubscriptions)
+      .set({ status: "cancelled", cancelledAt: now, updatedAt: now })
+      .where(eq(saasSubscriptions.id, subId));
+
+    await db
+      .update(organizations)
+      .set({ status: "suspended", updatedAt: now })
+      .where(eq(organizations.id, sub.orgId));
+
+    await db.insert(saasTrialEvents).values({
+      subscriptionId: subId,
+      eventType: "cancelled",
+      note: note || "Trial cancelled",
+      createdBy: req.user?.email ?? "system",
+    });
+
+    res.json({ success: true, data: { status: "cancelled" } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to cancel trial" });
+  }
+});
+
+// POST /saas/trials/:subId/reminder — log a reminder
+router.post("/trials/:subId/reminder", async (req: AuthRequest, res) => {
+  try {
+    const subId = parseInt(req.params.subId);
+    const { note } = req.body;
+
+    const [sub] = await db
+      .select({ id: saasSubscriptions.id })
+      .from(saasSubscriptions)
+      .where(eq(saasSubscriptions.id, subId));
+    if (!sub) { res.status(404).json({ success: false, error: "Subscription not found" }); return; }
+
+    await db.insert(saasTrialEvents).values({
+      subscriptionId: subId,
+      eventType: "reminder_sent",
+      note: note || "Manual reminder sent",
+      createdBy: req.user?.email ?? "system",
+    });
+
+    res.json({ success: true, data: { sent: true } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to log reminder" });
+  }
+});
+
+// GET /saas/trial-config
+router.get("/trial-config", async (_req, res) => {
+  try {
+    const [config] = await db.select().from(saasTrialConfig).orderBy(saasTrialConfig.id).limit(1);
+    res.json({ success: true, data: config ?? null });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch trial config" });
+  }
+});
+
+// PUT /saas/trial-config
+router.put("/trial-config", async (_req, res) => {
+  try {
+    const { defaultTrialDays, maxExtensions, autoExpireAction, reminderDaysBefore, requireCreditCard } = _req.body;
+    const now = new Date();
+
+    const [existing] = await db.select({ id: saasTrialConfig.id }).from(saasTrialConfig).limit(1);
+    let config;
+    if (existing) {
+      [config] = await db
+        .update(saasTrialConfig)
+        .set({
+          defaultTrialDays: parseInt(defaultTrialDays) || 14,
+          maxExtensions: parseInt(maxExtensions) || 2,
+          autoExpireAction: autoExpireAction || "suspend",
+          reminderDaysBefore: reminderDaysBefore ?? [7, 3, 1],
+          requireCreditCard: !!requireCreditCard,
+          updatedAt: now,
+        })
+        .where(eq(saasTrialConfig.id, existing.id))
+        .returning();
+    } else {
+      [config] = await db
+        .insert(saasTrialConfig)
+        .values({
+          defaultTrialDays: parseInt(defaultTrialDays) || 14,
+          maxExtensions: parseInt(maxExtensions) || 2,
+          autoExpireAction: autoExpireAction || "suspend",
+          reminderDaysBefore: reminderDaysBefore ?? [7, 3, 1],
+          requireCreditCard: !!requireCreditCard,
+        })
+        .returning();
+    }
+    res.json({ success: true, data: config });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update trial config" });
   }
 });
 

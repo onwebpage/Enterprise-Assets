@@ -65,6 +65,30 @@ export const saasWhitelabel = pgTable("saas_whitelabel", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── Trial Events ──────────────────────────────────────────────────────────────
+export const saasTrialEvents = pgTable("saas_trial_events", {
+  id: serial("id").primaryKey(),
+  subscriptionId: integer("subscription_id").notNull().references(() => saasSubscriptions.id),
+  eventType: text("event_type").notNull(), // created | extended | reminder_sent | converted | cancelled | expired
+  daysAdded: integer("days_added"),
+  note: text("note"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── Trial Config (single-row settings) ────────────────────────────────────────
+export const saasTrialConfig = pgTable("saas_trial_config", {
+  id: serial("id").primaryKey(),
+  defaultTrialDays: integer("default_trial_days").notNull().default(14),
+  maxExtensions: integer("max_extensions").notNull().default(2),
+  autoExpireAction: text("auto_expire_action").notNull().default("suspend"),
+  reminderDaysBefore: jsonb("reminder_days_before").notNull().default([7, 3, 1]),
+  requireCreditCard: boolean("require_credit_card").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export type SaasPlan = typeof saasPlans.$inferSelect;
 export type SaasSubscription = typeof saasSubscriptions.$inferSelect;
 export type SaasWhitelabel = typeof saasWhitelabel.$inferSelect;
+export type SaasTrialEvent = typeof saasTrialEvents.$inferSelect;
+export type SaasTrialConfig = typeof saasTrialConfig.$inferSelect;

@@ -8,7 +8,7 @@ import {
   BarChart3, Package, Globe, CreditCard, Trash2, X, PieChart,
   Activity, Star, Download, Palette, Eye, EyeOff, Link2, Mail,
   Monitor, Brush, Type, Code2, ToggleLeft, ToggleRight, ExternalLink,
-  Check, Loader2, Save
+  Check, Loader2, Save, Bell
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +85,65 @@ function useWhitelabels() {
   });
 }
 
+function useTrials() {
+  return useQuery({
+    queryKey: ['saas-trials'],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const r = await fetch(api('/saas/trials'), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const j = await r.json();
+      return j.data as TrialRow[];
+    },
+    refetchInterval: 30000,
+  });
+}
+
+function useTrialStats() {
+  return useQuery({
+    queryKey: ['saas-trial-stats'],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const r = await fetch(api('/saas/trials/stats'), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const j = await r.json();
+      return j.data as TrialStats;
+    },
+  });
+}
+
+function useTrialConfig() {
+  return useQuery({
+    queryKey: ['saas-trial-config'],
+    queryFn: async () => {
+      const token = localStorage.getItem('auth_token');
+      const r = await fetch(api('/saas/trial-config'), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const j = await r.json();
+      return j.data as TrialConfig | null;
+    },
+  });
+}
+
+function useTrialEvents(subId: number | null) {
+  return useQuery({
+    queryKey: ['saas-trial-events', subId],
+    queryFn: async () => {
+      if (!subId) return [];
+      const token = localStorage.getItem('auth_token');
+      const r = await fetch(api(`/saas/trials/${subId}/events`), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const j = await r.json();
+      return j.data as TrialEvent[];
+    },
+    enabled: !!subId,
+  });
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Plan {
   id: number; name: string; slug: string;
@@ -122,6 +181,29 @@ interface WhitelabelRow {
   customCss: string | null; emailSenderName: string | null;
   emailReplyTo: string | null; navTheme: string; fontFamily: string | null;
   notes: string | null; createdAt: string; updatedAt: string;
+}
+interface TrialRow {
+  subId: number; orgId: number; orgName: string; industry: string | null;
+  country: string | null; planId: number; planName: string; planSlug: string;
+  priceMonthly: string; billingCycle: string;
+  startedAt: string; trialEndsAt: string | null; status: string;
+  currentUsers: number | null; notes: string | null; createdAt: string;
+  eventCount: number; extensionCount: number; lastEvent: string | null;
+  daysRemaining: number | null;
+}
+interface TrialEvent {
+  id: number; subscriptionId: number; eventType: string;
+  daysAdded: number | null; note: string | null;
+  createdBy: string | null; createdAt: string;
+}
+interface TrialStats {
+  activeTrials: number; expiringIn7Days: number;
+  conversionRate: number; avgTrialDays: number; totalConverted: number;
+}
+interface TrialConfig {
+  id: number; defaultTrialDays: number; maxExtensions: number;
+  autoExpireAction: string; reminderDaysBefore: number[];
+  requireCreditCard: boolean; updatedAt: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1595,6 +1677,672 @@ function WhiteLabelTab() {
   );
 }
 
+// ── Trial Management Tab ───────────────────────────────────────────────────
+const EVENT_LABELS: Record<string, { label: string; color: string }> = {
+  created:        { label: 'Trial Started',    color: 'text-[#2563EB]' },
+  extended:       { label: 'Trial Extended',   color: 'text-amber-400' },
+  reminder_sent:  { label: 'Reminder Sent',    color: 'text-[#06B6D4]' },
+  converted:      { label: 'Converted',        color: 'text-emerald-400' },
+  cancelled:      { label: 'Cancelled',        color: 'text-red-400' },
+  expired:        { label: 'Expired',          color: 'text-white/40' },
+};
+
+function daysColor(days: number | null) {
+  if (days === null) return 'text-white/40';
+  if (days <= 2) return 'text-red-400';
+  if (days <= 7) return 'text-amber-400';
+  return 'text-emerald-400';
+}
+
+function TrialEventLog({ subId, onClose }: { subId: number; onClose: () => void }) {
+  const { data: events = [], isLoading } = useTrialEvents(subId);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <motion.div initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }}
+        className="bg-[#07091a] border-l border-white/[0.07] w-80 h-full overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.07] sticky top-0 bg-[#07091a]">
+          <h3 className="font-semibold text-white text-sm">Trial Event Log</h3>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-4">
+          {isLoading
+            ? <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-[#2563EB]" /></div>
+            : events.length === 0
+            ? <p className="text-white/30 text-sm text-center py-8">No events recorded.</p>
+            : (
+              <div className="relative pl-4">
+                <div className="absolute left-1.5 top-2 bottom-2 w-px bg-white/[0.07]" />
+                {events.map((ev, i) => {
+                  const meta = EVENT_LABELS[ev.eventType] ?? { label: ev.eventType, color: 'text-white/60' };
+                  return (
+                    <div key={ev.id} className="relative mb-5 last:mb-0">
+                      <div className="absolute -left-[11px] top-1 w-2 h-2 rounded-full bg-[#07091a] border border-white/20" />
+                      <p className={`text-xs font-semibold ${meta.color}`}>{meta.label}</p>
+                      {ev.daysAdded && <p className="text-[10px] text-white/40 mt-0.5">+{ev.daysAdded} days added</p>}
+                      {ev.note && <p className="text-xs text-white/50 mt-1 leading-relaxed">{ev.note}</p>}
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-[10px] text-white/25">{new Date(ev.createdAt).toLocaleString()}</p>
+                        {ev.createdBy && <p className="text-[10px] text-white/20">· {ev.createdBy}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ExtendDialog({ trial, onClose, onSubmit, loading }: {
+  trial: TrialRow; onClose: () => void;
+  onSubmit: (days: number, note: string) => void; loading: boolean;
+}) {
+  const [days, setDays] = useState('7');
+  const [note, setNote] = useState('');
+  const newDate = trial.trialEndsAt
+    ? new Date(new Date(trial.trialEndsAt).getTime() + parseInt(days || '0') * 86400000)
+    : null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="bg-[#0a0f1e] border border-white/[0.1] rounded-2xl w-full max-w-sm shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.07]">
+          <div>
+            <h3 className="font-bold text-white">Extend Trial</h3>
+            <p className="text-xs text-white/40 mt-0.5">{trial.orgName}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-xs text-white/40 mb-1.5 block">Days to Add</label>
+            <div className="flex gap-2 mb-2">
+              {[3, 7, 14, 30].map(d => (
+                <button key={d} onClick={() => setDays(String(d))}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-all ${days === String(d) ? 'border-[#2563EB] bg-[#2563EB]/10 text-white' : 'border-white/[0.07] text-white/50 hover:border-white/20 hover:text-white'}`}>
+                  +{d}d
+                </button>
+              ))}
+            </div>
+            <Input value={days} onChange={e => setDays(e.target.value)} type="number" min="1" max="90"
+              className="bg-white/[0.04] border-white/[0.1] text-white focus:border-[#2563EB]" />
+          </div>
+          {newDate && (
+            <div className="bg-white/[0.03] rounded-xl p-3 flex items-center justify-between">
+              <span className="text-xs text-white/40">New end date</span>
+              <span className="text-sm font-semibold text-white">
+                {newDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            </div>
+          )}
+          <div>
+            <label className="text-xs text-white/40 mb-1.5 block">Reason (optional)</label>
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Sales team request"
+              className="bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/20 focus:border-[#2563EB]" />
+          </div>
+        </div>
+        <div className="flex gap-2 p-5 border-t border-white/[0.07]">
+          <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60 bg-transparent hover:text-white" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={() => onSubmit(parseInt(days) || 7, note)} disabled={loading || !days || parseInt(days) < 1}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Extend Trial'}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ConvertDialog({ trial, plans, onClose, onSubmit, loading }: {
+  trial: TrialRow; plans: Plan[]; onClose: () => void;
+  onSubmit: (planId: number, cycle: string) => void; loading: boolean;
+}) {
+  const [planId, setPlanId] = useState(trial.planId);
+  const [cycle, setCycle] = useState('monthly');
+  const selectedPlan = plans.find(p => p.id === planId);
+  const mrr = cycle === 'yearly'
+    ? Number(selectedPlan?.priceYearly ?? 0) / 12
+    : Number(selectedPlan?.priceMonthly ?? 0);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="bg-[#0a0f1e] border border-white/[0.1] rounded-2xl w-full max-w-md shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.07]">
+          <div>
+            <h3 className="font-bold text-white">Convert to Paid</h3>
+            <p className="text-xs text-white/40 mt-0.5">{trial.orgName}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="text-xs text-white/40 mb-2 block">Select Plan</label>
+            <div className="grid grid-cols-1 gap-2">
+              {plans.filter(p => p.isActive).map(p => (
+                <button key={p.id} onClick={() => setPlanId(p.id)}
+                  className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${planId === p.id ? 'border-[#2563EB]/50 bg-[#2563EB]/8 ring-1 ring-[#2563EB]/20' : 'border-white/[0.07] hover:border-white/20'}`}>
+                  <div>
+                    <p className={`text-sm font-semibold ${PLAN_COLORS[p.slug] ?? 'text-white'}`}>{p.name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">{(p.features as string[]).slice(0, 2).join(' · ')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-white">${Number(p.priceMonthly).toLocaleString()}/mo</p>
+                    {planId === p.id && <CheckCircle className="w-4 h-4 text-[#2563EB] ml-auto mt-1" />}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-white/40 mb-2 block">Billing Cycle</label>
+            <div className="flex gap-2">
+              {(['monthly', 'yearly'] as const).map(c => (
+                <button key={c} onClick={() => setCycle(c)}
+                  className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${cycle === c ? 'border-[#2563EB] bg-[#2563EB]/10 text-white' : 'border-white/[0.07] text-white/50 hover:border-white/20 hover:text-white'}`}>
+                  {c === 'monthly' ? 'Monthly' : 'Yearly'}
+                  {c === 'yearly' && <span className="ml-1 text-xs text-emerald-400">Save ~20%</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white/[0.03] rounded-xl p-4 flex items-center justify-between border border-white/[0.05]">
+            <div>
+              <p className="text-xs text-white/40">New MRR</p>
+              <p className="text-sm font-semibold text-white mt-0.5">{selectedPlan?.name} · {cycle}</p>
+            </div>
+            <p className="text-xl font-bold text-emerald-400">
+              ${mrr.toLocaleString(undefined, { maximumFractionDigits: 0 })}<span className="text-xs font-normal text-white/40">/mo</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2 p-5 border-t border-white/[0.07]">
+          <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60 bg-transparent hover:text-white" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => onSubmit(planId, cycle)} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Convert to Paid'}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function ReminderDialog({ trial, onClose, onSubmit, loading }: {
+  trial: TrialRow; onClose: () => void;
+  onSubmit: (note: string) => void; loading: boolean;
+}) {
+  const [note, setNote] = useState(`Hi ${trial.orgName}, your trial ends in ${trial.daysRemaining ?? '?'} days. Upgrade now to keep access to all features.`);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+        className="bg-[#0a0f1e] border border-white/[0.1] rounded-2xl w-full max-w-sm shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-white/[0.07]">
+          <div>
+            <h3 className="font-bold text-white">Send Reminder</h3>
+            <p className="text-xs text-white/40 mt-0.5">{trial.orgName}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-300/80">This logs a reminder event. In production, this would send an email to the tenant admin.</p>
+          </div>
+          <div>
+            <label className="text-xs text-white/40 mb-1.5 block">Reminder Message</label>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={4}
+              className="w-full bg-white/[0.04] border border-white/[0.1] text-white text-sm rounded-xl px-3 py-2.5 resize-none outline-none focus:border-[#2563EB] placeholder:text-white/20" />
+          </div>
+        </div>
+        <div className="flex gap-2 p-5 border-t border-white/[0.07]">
+          <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60 bg-transparent hover:text-white" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-[#06B6D4] hover:bg-[#0891b2]" onClick={() => onSubmit(note)} disabled={loading}>
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Reminder'}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function TrialConfigPanel({ config, onSave, loading }: {
+  config: TrialConfig | null | undefined;
+  onSave: (data: Partial<TrialConfig>) => void;
+  loading: boolean;
+}) {
+  const [form, setForm] = useState({
+    defaultTrialDays: String(config?.defaultTrialDays ?? 14),
+    maxExtensions: String(config?.maxExtensions ?? 2),
+    autoExpireAction: config?.autoExpireAction ?? 'suspend',
+    reminderDaysBefore: (config?.reminderDaysBefore ?? [7, 3, 1]).join(', '),
+    requireCreditCard: config?.requireCreditCard ?? false,
+  });
+  useEffect(() => {
+    if (config) setForm({
+      defaultTrialDays: String(config.defaultTrialDays),
+      maxExtensions: String(config.maxExtensions),
+      autoExpireAction: config.autoExpireAction,
+      reminderDaysBefore: (config.reminderDaysBefore ?? [7, 3, 1]).join(', '),
+      requireCreditCard: config.requireCreditCard,
+    });
+  }, [config]);
+
+  const handleSave = () => {
+    const days = form.reminderDaysBefore
+      .split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n) && n > 0);
+    onSave({
+      defaultTrialDays: parseInt(form.defaultTrialDays) || 14,
+      maxExtensions: parseInt(form.maxExtensions) || 2,
+      autoExpireAction: form.autoExpireAction as TrialConfig['autoExpireAction'],
+      reminderDaysBefore: days,
+      requireCreditCard: form.requireCreditCard,
+    });
+  };
+
+  return (
+    <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 space-y-4">
+      <h3 className="font-semibold text-white flex items-center gap-2">
+        <Zap className="w-4 h-4 text-white/40" />Trial Settings
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Default Trial Duration (days)</label>
+          <Input value={form.defaultTrialDays} onChange={e => setForm(f => ({ ...f, defaultTrialDays: e.target.value }))}
+            type="number" min="1" max="90"
+            className="bg-[#050816] border-white/[0.08] text-white h-9 text-sm focus:border-[#2563EB]" />
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Max Extensions Allowed</label>
+          <Input value={form.maxExtensions} onChange={e => setForm(f => ({ ...f, maxExtensions: e.target.value }))}
+            type="number" min="0" max="10"
+            className="bg-[#050816] border-white/[0.08] text-white h-9 text-sm focus:border-[#2563EB]" />
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">On Trial Expiry</label>
+          <select value={form.autoExpireAction} onChange={e => setForm(f => ({ ...f, autoExpireAction: e.target.value }))}
+            className="w-full bg-[#050816] border border-white/[0.08] text-white text-sm rounded-md px-3 h-9 outline-none focus:border-[#2563EB]/50">
+            <option value="suspend">Suspend account</option>
+            <option value="cancel">Cancel subscription</option>
+            <option value="notify">Send notification only</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-white/40 mb-1.5 block">Auto-Reminder Days Before Expiry</label>
+          <Input value={form.reminderDaysBefore} onChange={e => setForm(f => ({ ...f, reminderDaysBefore: e.target.value }))}
+            placeholder="7, 3, 1"
+            className="bg-[#050816] border-white/[0.08] text-white h-9 text-sm placeholder:text-white/20 focus:border-[#2563EB]" />
+          <p className="text-[10px] text-white/25 mt-1">Comma-separated days before expiry</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between py-3 border-t border-white/[0.05]">
+        <div>
+          <p className="text-sm font-medium text-white">Require Credit Card for Trial</p>
+          <p className="text-xs text-white/30 mt-0.5">Collect payment info before starting a trial</p>
+        </div>
+        <button onClick={() => setForm(f => ({ ...f, requireCreditCard: !f.requireCreditCard }))}
+          className={`w-11 h-6 rounded-full transition-all relative ${form.requireCreditCard ? 'bg-[#2563EB]' : 'bg-white/[0.12]'}`}>
+          <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${form.requireCreditCard ? 'left-[22px]' : 'left-0.5'}`} />
+        </button>
+      </div>
+      <div className="flex justify-end pt-2">
+        <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={handleSave} disabled={loading}>
+          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+          Save Settings
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function TrialManagementTab() {
+  const { data: trials = [], isLoading } = useTrials();
+  const { data: stats } = useTrialStats();
+  const { data: config } = useTrialConfig();
+  const { data: plans = [] } = usePlans();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const [filter, setFilter] = useState<'all' | 'expiring' | 'healthy'>('all');
+  const [search, setSearch] = useState('');
+  const [eventLogSub, setEventLogSub] = useState<number | null>(null);
+  const [extendTarget, setExtendTarget] = useState<TrialRow | null>(null);
+  const [convertTarget, setConvertTarget] = useState<TrialRow | null>(null);
+  const [reminderTarget, setReminderTarget] = useState<TrialRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<TrialRow | null>(null);
+
+  const filtered = trials.filter(t => {
+    const matchSearch = !search || t.orgName.toLowerCase().includes(search.toLowerCase()) || t.planName.toLowerCase().includes(search.toLowerCase());
+    const matchFilter =
+      filter === 'all' ? true :
+      filter === 'expiring' ? (t.daysRemaining !== null && t.daysRemaining <= 7) :
+      (t.daysRemaining === null || t.daysRemaining > 7);
+    return matchSearch && matchFilter;
+  });
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['saas-trials'] });
+    qc.invalidateQueries({ queryKey: ['saas-trial-stats'] });
+    qc.invalidateQueries({ queryKey: ['saas-metrics'] });
+    qc.invalidateQueries({ queryKey: ['saas-tenants'] });
+  };
+
+  const authHeaders = () => {
+    const token = localStorage.getItem('auth_token');
+    return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+  };
+
+  const extendMut = useMutation({
+    mutationFn: async ({ subId, days, note }: { subId: number; days: number; note: string }) => {
+      const r = await fetch(api(`/saas/trials/${subId}/extend`), {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ days, note }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      invalidate(); setExtendTarget(null);
+      toast({ title: 'Trial extended successfully' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const convertMut = useMutation({
+    mutationFn: async ({ subId, planId, cycle }: { subId: number; planId: number; cycle: string }) => {
+      const r = await fetch(api(`/saas/trials/${subId}/convert`), {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ planId, billingCycle: cycle }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      invalidate(); setConvertTarget(null);
+      toast({ title: 'Trial converted to paid 🎉' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const reminderMut = useMutation({
+    mutationFn: async ({ subId, note }: { subId: number; note: string }) => {
+      const r = await fetch(api(`/saas/trials/${subId}/reminder`), {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({ note }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      if (reminderTarget) qc.invalidateQueries({ queryKey: ['saas-trial-events', reminderTarget.subId] });
+      qc.invalidateQueries({ queryKey: ['saas-trials'] });
+      setReminderTarget(null);
+      toast({ title: 'Reminder logged' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: async (subId: number) => {
+      const r = await fetch(api(`/saas/trials/${subId}/cancel`), {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify({}),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      invalidate(); setCancelTarget(null);
+      toast({ title: 'Trial cancelled' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const configMut = useMutation({
+    mutationFn: async (data: Partial<TrialConfig>) => {
+      const r = await fetch(api('/saas/trial-config'), {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify(data),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saas-trial-config'] });
+      toast({ title: 'Trial settings saved' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const kpis = [
+    { label: 'Active Trials', value: stats?.activeTrials ?? trials.length, icon: Clock, color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-500/5' },
+    { label: 'Expiring in 7 Days', value: stats?.expiringIn7Days ?? 0, icon: AlertCircle, color: 'text-red-400', bg: 'from-red-500/20 to-red-500/5' },
+    { label: 'Conversion Rate', value: `${stats?.conversionRate ?? 0}%`, icon: TrendingUp, color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-500/5' },
+    { label: 'Avg Trial Duration', value: `${stats?.avgTrialDays ?? 14}d`, icon: BarChart3, color: 'text-[#2563EB]', bg: 'from-[#2563EB]/20 to-[#2563EB]/5' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k, i) => (
+          <motion.div key={k.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${k.bg} flex items-center justify-center mb-3`}>
+              <k.icon className={`w-4 h-4 ${k.color}`} />
+            </div>
+            <p className="text-2xl font-bold text-white">{k.value}</p>
+            <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Conversion funnel bar */}
+      {(stats?.totalConverted ?? 0) > 0 && (
+        <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-white flex items-center gap-2"><Activity className="w-4 h-4 text-white/40" />Conversion Funnel</p>
+            <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/20 text-xs">{stats?.conversionRate ?? 0}% conversion</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center text-xs text-amber-400 font-medium border border-amber-500/20">
+              {(stats?.activeTrials ?? 0) + (stats?.totalConverted ?? 0)} Trials Started
+            </div>
+            <ChevronDown className="w-4 h-4 text-white/20 rotate-[-90deg] shrink-0" />
+            <div className="flex-1 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center text-xs text-emerald-400 font-medium border border-emerald-500/20">
+              {stats?.totalConverted ?? 0} Converted
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filters + search */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search trials…"
+            className="pl-9 bg-[#0a0f1e] border-white/[0.08] text-white placeholder:text-white/30 h-9 text-sm" />
+        </div>
+        {([
+          { v: 'all', l: 'All Trials' },
+          { v: 'expiring', l: '⚠️ Expiring ≤7d' },
+          { v: 'healthy', l: 'Healthy' },
+        ] as const).map(f => (
+          <button key={f.v} onClick={() => setFilter(f.v)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f.v ? 'bg-[#2563EB] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white hover:bg-white/[0.07]'}`}>
+            {f.l}
+          </button>
+        ))}
+        <p className="ml-auto text-xs text-white/30">{filtered.length} trials</p>
+      </div>
+
+      {/* Trials table */}
+      <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.05]">
+              {['Tenant', 'Plan', 'Days Left', 'Progress', 'Extensions', 'Last Event', 'Actions'].map(h => (
+                <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3 first:pl-5">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr><td colSpan={7} className="text-center py-12">
+                <Loader2 className="w-5 h-5 animate-spin text-[#2563EB] mx-auto" />
+              </td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} className="text-center py-12 text-white/30 text-sm">
+                {trials.length === 0 ? 'No active trials' : 'No trials match this filter'}
+              </td></tr>
+            ) : filtered.map((t, i) => {
+              const startedTs = new Date(t.startedAt).getTime();
+              const endTs = t.trialEndsAt ? new Date(t.trialEndsAt).getTime() : startedTs + 14 * 86400000;
+              const totalDuration = (endTs - startedTs) / 86400000;
+              const elapsed = (Date.now() - startedTs) / 86400000;
+              const pct = Math.min(100, Math.max(0, Math.round((elapsed / totalDuration) * 100)));
+              const lastEv = EVENT_LABELS[t.lastEvent ?? ''];
+              const maxExt = config?.maxExtensions ?? 2;
+
+              return (
+                <motion.tr key={t.subId} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                  className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
+                  <td className="px-4 pl-5 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500/30 to-amber-600/20 flex items-center justify-center text-xs font-bold text-amber-300 shrink-0">
+                        {t.orgName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{t.orgName}</p>
+                        <p className="text-[10px] text-white/30">{t.industry ?? t.country ?? '—'}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-sm font-medium ${PLAN_COLORS[t.planSlug] ?? 'text-white/60'}`}>{t.planName}</span>
+                    <p className="text-[10px] text-white/25 capitalize">{t.billingCycle}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className={`w-3.5 h-3.5 ${daysColor(t.daysRemaining)}`} />
+                      <span className={`text-sm font-bold ${daysColor(t.daysRemaining)}`}>
+                        {t.daysRemaining !== null ? `${t.daysRemaining}d` : '—'}
+                      </span>
+                    </div>
+                    {t.daysRemaining !== null && t.daysRemaining <= 3 && (
+                      <p className="text-[10px] text-red-400 mt-0.5">Urgent</p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="w-28">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-white/30">{Math.round(elapsed)}d elapsed</span>
+                        <span className="text-[10px] text-white/30">{pct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-white/[0.07] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${pct >= 80 ? 'bg-red-500' : pct >= 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                          style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: maxExt }).map((_, idx) => (
+                        <div key={idx} className={`w-2.5 h-2.5 rounded-sm ${idx < t.extensionCount ? 'bg-amber-400' : 'bg-white/[0.08]'}`} />
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-white/25 mt-0.5">{t.extensionCount}/{maxExt} used</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    {lastEv
+                      ? <span className={`text-xs ${lastEv.color}`}>{lastEv.label}</span>
+                      : <span className="text-xs text-white/20">—</span>}
+                  </td>
+                  <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-[#0a0f1e] border-white/[0.07] text-white w-48">
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-xs"
+                          onClick={() => setEventLogSub(t.subId)}>
+                          <Activity className="w-3.5 h-3.5 mr-2 text-white/40" />View Event Log
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/[0.07]" />
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-xs text-emerald-400"
+                          onClick={() => setConvertTarget(t)}>
+                          <CheckCircle className="w-3.5 h-3.5 mr-2" />Convert to Paid
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className={`hover:bg-white/[0.05] cursor-pointer text-xs ${t.extensionCount >= maxExt ? 'text-white/20 pointer-events-none' : 'text-amber-400'}`}
+                          onClick={() => t.extensionCount < maxExt && setExtendTarget(t)}>
+                          <RefreshCw className="w-3.5 h-3.5 mr-2" />Extend Trial
+                          {t.extensionCount >= maxExt && <span className="ml-auto text-white/20">(limit reached)</span>}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-xs text-[#06B6D4]"
+                          onClick={() => setReminderTarget(t)}>
+                          <Bell className="w-3.5 h-3.5 mr-2" />Send Reminder
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="bg-white/[0.07]" />
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-xs text-red-400"
+                          onClick={() => setCancelTarget(t)}>
+                          <XCircle className="w-3.5 h-3.5 mr-2" />Cancel Trial
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                </motion.tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Trial Config */}
+      <TrialConfigPanel config={config} onSave={(data) => configMut.mutate(data)} loading={configMut.isPending} />
+
+      {/* Dialogs */}
+      <AnimatePresence>
+        {extendTarget && (
+          <ExtendDialog trial={extendTarget} onClose={() => setExtendTarget(null)}
+            onSubmit={(days, note) => extendMut.mutate({ subId: extendTarget.subId, days, note })}
+            loading={extendMut.isPending} />
+        )}
+        {convertTarget && (
+          <ConvertDialog trial={convertTarget} plans={plans} onClose={() => setConvertTarget(null)}
+            onSubmit={(planId, cycle) => convertMut.mutate({ subId: convertTarget.subId, planId, cycle })}
+            loading={convertMut.isPending} />
+        )}
+        {reminderTarget && (
+          <ReminderDialog trial={reminderTarget} onClose={() => setReminderTarget(null)}
+            onSubmit={(note) => reminderMut.mutate({ subId: reminderTarget.subId, note })}
+            loading={reminderMut.isPending} />
+        )}
+        {cancelTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.96, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+              className="bg-[#0a0f1e] border border-white/[0.1] rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto">
+                <XCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-white">Cancel Trial?</h3>
+                <p className="text-sm text-white/40 mt-1">This will cancel the trial for <span className="text-white">{cancelTarget.orgName}</span> and suspend their account.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 border-white/[0.1] text-white/60 bg-transparent hover:text-white" onClick={() => setCancelTarget(null)}>Keep Trial</Button>
+                <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={() => cancelMut.mutate(cancelTarget.subId)} disabled={cancelMut.isPending}>
+                  {cancelMut.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cancel Trial'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {eventLogSub !== null && (
+          <TrialEventLog subId={eventLogSub} onClose={() => setEventLogSub(null)} />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SaasPlatform() {
   const [tab, setTab] = useState('overview');
@@ -1621,12 +2369,13 @@ export default function SaasPlatform() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-white/[0.04] border border-white/[0.07] flex-wrap h-auto gap-0.5">
             {[
-              { v: 'overview',     l: 'Overview',    icon: BarChart3 },
-              { v: 'tenants',      l: 'Tenants',     icon: Building2 },
-              { v: 'plans',        l: 'Plans',        icon: Star },
-              { v: 'subscriptions',l: 'Subscriptions',icon: CreditCard },
-              { v: 'onboarding',   l: 'Onboarding',   icon: Zap },
-              { v: 'whitelabel',   l: 'White Label',  icon: Palette },
+              { v: 'overview',     l: 'Overview',         icon: BarChart3 },
+              { v: 'tenants',      l: 'Tenants',          icon: Building2 },
+              { v: 'plans',        l: 'Plans',            icon: Star },
+              { v: 'subscriptions',l: 'Subscriptions',    icon: CreditCard },
+              { v: 'trials',       l: 'Trial Management', icon: Clock },
+              { v: 'onboarding',   l: 'Onboarding',       icon: Zap },
+              { v: 'whitelabel',   l: 'White Label',      icon: Palette },
             ].map(({ v, l, icon: Icon }) => (
               <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 flex items-center gap-1.5">
                 <Icon className="w-3.5 h-3.5" />{l}
@@ -1638,6 +2387,7 @@ export default function SaasPlatform() {
           <TabsContent value="tenants"       className="mt-5"><TenantsTab onAdd={() => { setTab('onboarding'); }} /></TabsContent>
           <TabsContent value="plans"         className="mt-5"><PlansTab /></TabsContent>
           <TabsContent value="subscriptions" className="mt-5"><SubscriptionsTab /></TabsContent>
+          <TabsContent value="trials"        className="mt-5"><TrialManagementTab /></TabsContent>
           <TabsContent value="onboarding"    className="mt-5"><OnboardingTab /></TabsContent>
           <TabsContent value="whitelabel"    className="mt-5"><WhiteLabelTab /></TabsContent>
         </Tabs>
