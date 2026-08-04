@@ -27,13 +27,21 @@ import { useToast } from '@/hooks/use-toast';
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const api = (path: string) => `${BASE}/api${path}`;
 
+// Auth-aware fetch — reads JWT from localStorage and adds Bearer header
+function authFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem('auth_token');
+  const headers: Record<string, string> = { ...(init.headers as Record<string, string> ?? {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return fetch(url, { ...init, headers });
+}
+
 // ── API hooks ──────────────────────────────────────────────────────────────
 
 function useMetrics() {
   return useQuery({
     queryKey: ['saas-metrics'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/metrics'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/metrics'));
       const j = await r.json();
       return j.data as {
         totalTenants: number; activeTenants: number; trialTenants: number;
@@ -48,7 +56,7 @@ function useTenants() {
   return useQuery({
     queryKey: ['saas-tenants'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/tenants'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/tenants'));
       const j = await r.json();
       return j.data as TenantRow[];
     },
@@ -59,7 +67,7 @@ function usePlans() {
   return useQuery({
     queryKey: ['saas-plans'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/plans'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/plans'));
       const j = await r.json();
       return j.data as Plan[];
     },
@@ -70,7 +78,7 @@ function useSubscriptions() {
   return useQuery({
     queryKey: ['saas-subscriptions'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/subscriptions'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/subscriptions'));
       const j = await r.json();
       return j.data as SubRow[];
     },
@@ -81,7 +89,7 @@ function useWhitelabels() {
   return useQuery({
     queryKey: ['saas-whitelabel'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/whitelabel'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/whitelabel'));
       const j = await r.json();
       return j.data as WhitelabelRow[];
     },
@@ -93,7 +101,7 @@ function useTrials() {
     queryKey: ['saas-trials'],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
-      const r = await fetch(api('/saas/trials'), {
+      const r = await authFetch(api('/saas/trials'), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await r.json();
@@ -108,7 +116,7 @@ function useTrialStats() {
     queryKey: ['saas-trial-stats'],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
-      const r = await fetch(api('/saas/trials/stats'), {
+      const r = await authFetch(api('/saas/trials/stats'), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await r.json();
@@ -122,7 +130,7 @@ function useTrialConfig() {
     queryKey: ['saas-trial-config'],
     queryFn: async () => {
       const token = localStorage.getItem('auth_token');
-      const r = await fetch(api('/saas/trial-config'), {
+      const r = await authFetch(api('/saas/trial-config'), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await r.json();
@@ -137,7 +145,7 @@ function useTrialEvents(subId: number | null) {
     queryFn: async () => {
       if (!subId) return [];
       const token = localStorage.getItem('auth_token');
-      const r = await fetch(api(`/saas/trials/${subId}/events`), {
+      const r = await authFetch(api(`/saas/trials/${subId}/events`), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const j = await r.json();
@@ -151,7 +159,7 @@ function useAgencyMetrics() {
   return useQuery({
     queryKey: ['saas-agency-metrics'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/agency-metrics'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/agency-metrics'));
       const j = await r.json();
       return j.data as {
         totalAgencies: number; activeAgencies: number; totalClients: number;
@@ -165,7 +173,7 @@ function useAgencies() {
   return useQuery({
     queryKey: ['saas-agencies'],
     queryFn: async () => {
-      const r = await fetch(api('/saas/agencies'), { credentials: 'include' });
+      const r = await authFetch(api('/saas/agencies'));
       const j = await r.json();
       return j.data as AgencyRow[];
     },
@@ -176,7 +184,7 @@ function useAgencyClients(agencyId: number | null) {
   return useQuery({
     queryKey: ['saas-agency-clients', agencyId],
     queryFn: async () => {
-      const r = await fetch(api(`/saas/agencies/${agencyId}/clients`), { credentials: 'include' });
+      const r = await authFetch(api(`/saas/agencies/${agencyId}/clients`));
       const j = await r.json();
       return j.data as AgencyClientRow[];
     },
@@ -188,7 +196,7 @@ function useAgencyPayouts(agencyId: number | null) {
   return useQuery({
     queryKey: ['saas-agency-payouts', agencyId],
     queryFn: async () => {
-      const r = await fetch(api(`/saas/agencies/${agencyId}/payouts`), { credentials: 'include' });
+      const r = await authFetch(api(`/saas/agencies/${agencyId}/payouts`));
       const j = await r.json();
       return j.data as AgencyPayoutRow[];
     },
@@ -200,7 +208,7 @@ function useTenantDashboard(id: number | null) {
   return useQuery({
     queryKey: ['saas-tenant-dashboard', id],
     queryFn: async () => {
-      const r = await fetch(api(`/saas/tenants/${id}/dashboard`), { credentials: 'include' });
+      const r = await authFetch(api(`/saas/tenants/${id}/dashboard`));
       const j = await r.json();
       return j.data as TenantDashboardData;
     },
@@ -472,8 +480,8 @@ function TenantsTab({ onAdd, onViewDashboard }: { onAdd: () => void; onViewDashb
 
   const changeStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const r = await fetch(api(`/saas/tenants/${id}/status`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/tenants/${id}/status`), {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
@@ -705,8 +713,8 @@ function PlansTab() {
         maxApiCallsMonthly: parseInt(form.maxApiCallsMonthly) || -1,
       };
       const url = isEdit && editPlan ? api(`/saas/plans/${editPlan.id}`) : api('/saas/plans');
-      const r = await fetch(url, {
-        method: isEdit ? 'PUT' : 'POST', credentials: 'include',
+      const r = await authFetch(url, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       return r.json();
@@ -922,8 +930,8 @@ function OnboardingTab() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const r = await fetch(api('/saas/tenants'), {
-        method: 'POST', credentials: 'include',
+      const r = await authFetch(api('/saas/tenants'), {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
@@ -1258,9 +1266,9 @@ function WhiteLabelTab() {
       const isNew = !currentConfig;
       const url = isNew ? api('/saas/whitelabel') : api(`/saas/whitelabel/${selectedOrgId}`);
       const body = isNew ? { ...form, orgId: selectedOrgId } : form;
-      const r = await fetch(url, {
+      const r = await authFetch(url, {
         method: isNew ? 'POST' : 'PUT',
-        credentials: 'include',
+        
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -1276,8 +1284,8 @@ function WhiteLabelTab() {
 
   const toggleEnabled = useMutation({
     mutationFn: async (orgId: number) => {
-      const r = await fetch(api(`/saas/whitelabel/${orgId}/toggle`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/whitelabel/${orgId}/toggle`), {
+        method: 'PATCH',
       });
       return r.json();
     },
@@ -1289,8 +1297,8 @@ function WhiteLabelTab() {
 
   const verifyDomain = useMutation({
     mutationFn: async (orgId: number) => {
-      const r = await fetch(api(`/saas/whitelabel/${orgId}/domain-verify`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/whitelabel/${orgId}/domain-verify`), {
+        method: 'PATCH',
       });
       return r.json();
     },
@@ -1302,8 +1310,8 @@ function WhiteLabelTab() {
 
   const deleteConfig = useMutation({
     mutationFn: async (orgId: number) => {
-      const r = await fetch(api(`/saas/whitelabel/${orgId}`), {
-        method: 'DELETE', credentials: 'include',
+      const r = await authFetch(api(`/saas/whitelabel/${orgId}`), {
+        method: 'DELETE',
       });
       return r.json();
     },
@@ -2151,7 +2159,7 @@ function TrialManagementTab() {
 
   const extendMut = useMutation({
     mutationFn: async ({ subId, days, note }: { subId: number; days: number; note: string }) => {
-      const r = await fetch(api(`/saas/trials/${subId}/extend`), {
+      const r = await authFetch(api(`/saas/trials/${subId}/extend`), {
         method: 'POST', headers: authHeaders(), body: JSON.stringify({ days, note }),
       });
       const j = await r.json();
@@ -2166,7 +2174,7 @@ function TrialManagementTab() {
 
   const convertMut = useMutation({
     mutationFn: async ({ subId, planId, cycle }: { subId: number; planId: number; cycle: string }) => {
-      const r = await fetch(api(`/saas/trials/${subId}/convert`), {
+      const r = await authFetch(api(`/saas/trials/${subId}/convert`), {
         method: 'POST', headers: authHeaders(), body: JSON.stringify({ planId, billingCycle: cycle }),
       });
       const j = await r.json();
@@ -2181,7 +2189,7 @@ function TrialManagementTab() {
 
   const reminderMut = useMutation({
     mutationFn: async ({ subId, note }: { subId: number; note: string }) => {
-      const r = await fetch(api(`/saas/trials/${subId}/reminder`), {
+      const r = await authFetch(api(`/saas/trials/${subId}/reminder`), {
         method: 'POST', headers: authHeaders(), body: JSON.stringify({ note }),
       });
       const j = await r.json();
@@ -2198,7 +2206,7 @@ function TrialManagementTab() {
 
   const cancelMut = useMutation({
     mutationFn: async (subId: number) => {
-      const r = await fetch(api(`/saas/trials/${subId}/cancel`), {
+      const r = await authFetch(api(`/saas/trials/${subId}/cancel`), {
         method: 'POST', headers: authHeaders(), body: JSON.stringify({}),
       });
       const j = await r.json();
@@ -2213,7 +2221,7 @@ function TrialManagementTab() {
 
   const configMut = useMutation({
     mutationFn: async (data: Partial<TrialConfig>) => {
-      const r = await fetch(api('/saas/trial-config'), {
+      const r = await authFetch(api('/saas/trial-config'), {
         method: 'PUT', headers: authHeaders(), body: JSON.stringify(data),
       });
       const j = await r.json();
@@ -2492,8 +2500,8 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
 
   const changeStatus = useMutation({
     mutationFn: async (status: string) => {
-      const r = await fetch(api(`/saas/tenants/${id}/status`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/tenants/${id}/status`), {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
@@ -2517,8 +2525,8 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
         currentUsers: editForm.currentUsers ? parseInt(editForm.currentUsers) : undefined,
         currentStorageGb: editForm.currentStorageGb ? editForm.currentStorageGb : undefined,
       };
-      const r = await fetch(api(`/saas/tenants/${id}`), {
-        method: 'PUT', credentials: 'include',
+      const r = await authFetch(api(`/saas/tenants/${id}`), {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -3133,8 +3141,8 @@ function AgencyDrawer({
 
   const assignClient = useMutation({
     mutationFn: async () => {
-      const r = await fetch(api(`/saas/agencies/${agency.id}/clients`), {
-        method: 'POST', credentials: 'include',
+      const r = await authFetch(api(`/saas/agencies/${agency.id}/clients`), {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orgId: parseInt(assignOrgId), notes: assignNotes || undefined }),
       });
@@ -3151,8 +3159,8 @@ function AgencyDrawer({
 
   const removeClient = useMutation({
     mutationFn: async (orgId: number) => {
-      const r = await fetch(api(`/saas/agencies/${agency.id}/clients/${orgId}`), {
-        method: 'DELETE', credentials: 'include',
+      const r = await authFetch(api(`/saas/agencies/${agency.id}/clients/${orgId}`), {
+        method: 'DELETE',
       });
       return r.json();
     },
@@ -3169,8 +3177,8 @@ function AgencyDrawer({
       const commission = payoutForm.commissionAmount
         ? parseFloat(payoutForm.commissionAmount)
         : (mrr * Number(agency.commissionRate)) / 100;
-      const r = await fetch(api(`/saas/agencies/${agency.id}/payouts`), {
-        method: 'POST', credentials: 'include',
+      const r = await authFetch(api(`/saas/agencies/${agency.id}/payouts`), {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ period: payoutForm.period, totalMrr: mrr, commissionAmount: commission, notes: payoutForm.notes || undefined }),
       });
@@ -3187,8 +3195,8 @@ function AgencyDrawer({
 
   const updatePayout = useMutation({
     mutationFn: async ({ payoutId, status }: { payoutId: number; status: string }) => {
-      const r = await fetch(api(`/saas/agencies/${agency.id}/payouts/${payoutId}`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/agencies/${agency.id}/payouts/${payoutId}`), {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
@@ -3539,8 +3547,8 @@ function AgencyPanelTab() {
     mutationFn: async (data: Record<string, string | number>) => {
       const url = editAgency ? api(`/saas/agencies/${editAgency.id}`) : api('/saas/agencies');
       const method = editAgency ? 'PUT' : 'POST';
-      const r = await fetch(url, {
-        method, credentials: 'include',
+      const r = await authFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -3559,8 +3567,8 @@ function AgencyPanelTab() {
 
   const changeStatus = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const r = await fetch(api(`/saas/agencies/${id}/status`), {
-        method: 'PATCH', credentials: 'include',
+      const r = await authFetch(api(`/saas/agencies/${id}/status`), {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
