@@ -9,7 +9,9 @@ import {
   Activity, Star, Download, Palette, Eye, EyeOff, Link2, Mail,
   Monitor, Brush, Type, Code2, ToggleLeft, ToggleRight, ExternalLink,
   Check, Loader2, Save, Bell, LayoutDashboard, HardDrive,
-  ArrowLeft, Calendar, Cpu, Database, Layers, Info, Settings2
+  ArrowLeft, Calendar, Cpu, Database, Layers, Info, Settings2,
+  UserPlus, UserMinus, Banknote, Percent, Briefcase, Phone, AtSign,
+  Handshake, Wallet, Receipt
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -145,6 +147,55 @@ function useTrialEvents(subId: number | null) {
   });
 }
 
+function useAgencyMetrics() {
+  return useQuery({
+    queryKey: ['saas-agency-metrics'],
+    queryFn: async () => {
+      const r = await fetch(api('/saas/agency-metrics'), { credentials: 'include' });
+      const j = await r.json();
+      return j.data as {
+        totalAgencies: number; activeAgencies: number; totalClients: number;
+        managedMrr: number; totalCommissions: number; pendingCommissions: number;
+      };
+    },
+  });
+}
+
+function useAgencies() {
+  return useQuery({
+    queryKey: ['saas-agencies'],
+    queryFn: async () => {
+      const r = await fetch(api('/saas/agencies'), { credentials: 'include' });
+      const j = await r.json();
+      return j.data as AgencyRow[];
+    },
+  });
+}
+
+function useAgencyClients(agencyId: number | null) {
+  return useQuery({
+    queryKey: ['saas-agency-clients', agencyId],
+    queryFn: async () => {
+      const r = await fetch(api(`/saas/agencies/${agencyId}/clients`), { credentials: 'include' });
+      const j = await r.json();
+      return j.data as AgencyClientRow[];
+    },
+    enabled: !!agencyId,
+  });
+}
+
+function useAgencyPayouts(agencyId: number | null) {
+  return useQuery({
+    queryKey: ['saas-agency-payouts', agencyId],
+    queryFn: async () => {
+      const r = await fetch(api(`/saas/agencies/${agencyId}/payouts`), { credentials: 'include' });
+      const j = await r.json();
+      return j.data as AgencyPayoutRow[];
+    },
+    enabled: !!agencyId,
+  });
+}
+
 function useTenantDashboard(id: number | null) {
   return useQuery({
     queryKey: ['saas-tenant-dashboard', id],
@@ -159,6 +210,29 @@ function useTenantDashboard(id: number | null) {
 }
 
 // ── Types ──────────────────────────────────────────────────────────────────
+interface AgencyRow {
+  id: number; name: string; slug: string;
+  contactName: string | null; contactEmail: string | null; contactPhone: string | null;
+  country: string | null; website: string | null;
+  commissionRate: string; status: string; notes: string | null;
+  createdAt: string; updatedAt: string;
+  clientCount: number; managedMrr: number;
+  estimatedMonthlyCommission: number; totalEarned: number; pendingPayout: number;
+}
+interface AgencyClientRow {
+  id: number; agencyId: number; orgId: number;
+  assignedAt: string; notes: string | null;
+  orgName: string | null; orgIndustry: string | null; orgCountry: string | null; orgStatus: string | null;
+  subId: number | null; subStatus: string | null;
+  planName: string | null; planSlug: string | null;
+  mrr: string | null; billingCycle: string | null; currentUsers: number | null;
+}
+interface AgencyPayoutRow {
+  id: number; agencyId: number; period: string;
+  totalMrr: string; commissionAmount: string;
+  status: string; paidAt: string | null; notes: string | null;
+  createdAt: string; updatedAt: string;
+}
 interface Plan {
   id: number; name: string; slug: string;
   priceMonthly: string; priceYearly: string;
@@ -2933,6 +3007,752 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
   );
 }
 
+// ── Agency Panel ───────────────────────────────────────────────────────────
+const AGENCY_STATUS_STYLES: Record<string, string> = {
+  active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  inactive: 'bg-white/10 text-white/40 border-white/10',
+  suspended: 'bg-red-500/15 text-red-400 border-red-500/20',
+};
+const PAYOUT_STATUS_STYLES: Record<string, string> = {
+  pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  paid: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  cancelled: 'bg-white/10 text-white/30 border-white/10',
+};
+
+function AgencyForm({
+  initial, plans: _plans, onClose, onSave,
+}: {
+  initial?: AgencyRow | null;
+  plans?: Plan[];
+  onClose: () => void;
+  onSave: (data: Record<string, string | number>) => void;
+  loading?: boolean;
+}) {
+  const [form, setForm] = useState({
+    name: initial?.name ?? '',
+    slug: initial?.slug ?? '',
+    contactName: initial?.contactName ?? '',
+    contactEmail: initial?.contactEmail ?? '',
+    contactPhone: initial?.contactPhone ?? '',
+    country: initial?.country ?? '',
+    website: initial?.website ?? '',
+    commissionRate: initial?.commissionRate ?? '10',
+    notes: initial?.notes ?? '',
+  });
+  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm(x => ({ ...x, [k]: e.target.value }));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-[#07091a] border border-white/[0.1] rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-semibold text-white text-lg">{initial ? 'Edit Agency' : 'New Agency'}</h3>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Agency Name <span className="text-red-400">*</span></label>
+              <Input value={form.name} onChange={f('name')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="TechBridge Solutions" />
+            </div>
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Slug <span className="text-red-400">*</span></label>
+              <Input value={form.slug} onChange={f('slug')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="techbridge" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Contact Name</label>
+              <Input value={form.contactName} onChange={f('contactName')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Contact Email</label>
+              <Input type="email" value={form.contactEmail} onChange={f('contactEmail')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Phone</label>
+              <Input value={form.contactPhone} onChange={f('contactPhone')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Country</label>
+              <Input value={form.country} onChange={f('country')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="United States" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Website</label>
+              <Input value={form.website} onChange={f('website')} className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="https://..." />
+            </div>
+            <div>
+              <label className="text-xs text-white/40 mb-1 block">Commission Rate (%)</label>
+              <Input type="number" step="0.5" min="0" max="100" value={form.commissionRate} onChange={f('commissionRate')}
+                className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-white/40 mb-1 block">Notes</label>
+            <textarea value={form.notes} onChange={f('notes')} rows={3}
+              className="w-full bg-[#0a0f1e] border border-white/[0.08] text-white text-sm rounded-md px-3 py-2 resize-none outline-none focus:border-[#2563EB]/50" />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-5">
+          <Button variant="outline" className="flex-1 border-white/[0.08] text-white/60 bg-transparent" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1 bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={() => onSave(form)} disabled={!form.name.trim() || !form.slug.trim()}>
+            <Save className="w-3.5 h-3.5 mr-1.5" />{initial ? 'Save Changes' : 'Create Agency'}
+          </Button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function AgencyDrawer({
+  agency, onClose, onStatusChange,
+}: {
+  agency: AgencyRow;
+  onClose: () => void;
+  onStatusChange: (status: string) => void;
+}) {
+  const [drawerTab, setDrawerTab] = useState<'clients' | 'payouts'>('clients');
+  const { data: clients = [], isLoading: clientsLoading, refetch: refetchClients } = useAgencyClients(agency.id);
+  const { data: payouts = [], isLoading: payoutsLoading, refetch: refetchPayouts } = useAgencyPayouts(agency.id);
+  const { data: tenants = [] } = useTenants();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [showAssign, setShowAssign] = useState(false);
+  const [assignOrgId, setAssignOrgId] = useState('');
+  const [assignNotes, setAssignNotes] = useState('');
+  const [showNewPayout, setShowNewPayout] = useState(false);
+  const [payoutForm, setPayoutForm] = useState({ period: '', totalMrr: '', commissionAmount: '', notes: '' });
+
+  const assignedOrgIds = new Set(clients.map(c => c.orgId));
+  const availableTenants = tenants.filter(t => !assignedOrgIds.has(t.id));
+
+  const assignClient = useMutation({
+    mutationFn: async () => {
+      const r = await fetch(api(`/saas/agencies/${agency.id}/clients`), {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId: parseInt(assignOrgId), notes: assignNotes || undefined }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      refetchClients(); qc.invalidateQueries({ queryKey: ['saas-agencies'] }); qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      setShowAssign(false); setAssignOrgId(''); setAssignNotes('');
+      toast({ title: 'Client assigned successfully' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const removeClient = useMutation({
+    mutationFn: async (orgId: number) => {
+      const r = await fetch(api(`/saas/agencies/${agency.id}/clients/${orgId}`), {
+        method: 'DELETE', credentials: 'include',
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      refetchClients(); qc.invalidateQueries({ queryKey: ['saas-agencies'] }); qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      toast({ title: 'Client removed' });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to remove client', variant: 'destructive' }),
+  });
+
+  const createPayout = useMutation({
+    mutationFn: async () => {
+      const mrr = parseFloat(payoutForm.totalMrr) || 0;
+      const commission = payoutForm.commissionAmount
+        ? parseFloat(payoutForm.commissionAmount)
+        : (mrr * Number(agency.commissionRate)) / 100;
+      const r = await fetch(api(`/saas/agencies/${agency.id}/payouts`), {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period: payoutForm.period, totalMrr: mrr, commissionAmount: commission, notes: payoutForm.notes || undefined }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      refetchPayouts(); qc.invalidateQueries({ queryKey: ['saas-agencies'] }); qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      setShowNewPayout(false); setPayoutForm({ period: '', totalMrr: '', commissionAmount: '', notes: '' });
+      toast({ title: 'Payout record created' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const updatePayout = useMutation({
+    mutationFn: async ({ payoutId, status }: { payoutId: number; status: string }) => {
+      const r = await fetch(api(`/saas/agencies/${agency.id}/payouts/${payoutId}`), {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+    },
+    onSuccess: () => {
+      refetchPayouts(); qc.invalidateQueries({ queryKey: ['saas-agencies'] }); qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      toast({ title: 'Payout updated' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const totalClientMrr = clients.reduce((s, c) => s + Number(c.mrr ?? 0), 0);
+  const estCommission = (totalClientMrr * Number(agency.commissionRate)) / 100;
+
+  return (
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="fixed right-0 top-0 bottom-0 w-[480px] bg-[#07091a] border-l border-white/[0.07] z-50 flex flex-col">
+        {/* Drawer header */}
+        <div className="p-5 border-b border-white/[0.06] flex-shrink-0">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/30 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                {agency.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-white text-base">{agency.name}</h3>
+                  <Badge className={`${AGENCY_STATUS_STYLES[agency.status] ?? AGENCY_STATUS_STYLES.inactive} text-[10px] capitalize`}>
+                    {agency.status}
+                  </Badge>
+                </div>
+                <p className="text-xs text-white/30 mt-0.5">{agency.country ?? '—'} · {Number(agency.commissionRate)}% commission</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+
+          {/* Contact info */}
+          <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+            {agency.contactEmail && (
+              <a href={`mailto:${agency.contactEmail}`} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-[#2563EB] transition-colors">
+                <AtSign className="w-3 h-3" />{agency.contactEmail}
+              </a>
+            )}
+            {agency.contactPhone && (
+              <span className="flex items-center gap-1.5 text-xs text-white/40">
+                <Phone className="w-3 h-3" />{agency.contactPhone}
+              </span>
+            )}
+            {agency.website && (
+              <a href={agency.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-white/40 hover:text-[#2563EB] transition-colors">
+                <Globe className="w-3 h-3" />{agency.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+          </div>
+
+          {/* Mini KPIs */}
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              { label: 'Clients', value: String(agency.clientCount), color: 'text-[#2563EB]' },
+              { label: 'Managed MRR', value: fmt(totalClientMrr || agency.managedMrr), color: 'text-emerald-400' },
+              { label: 'Est. Commission', value: fmt(estCommission || agency.estimatedMonthlyCommission), color: 'text-amber-400' },
+            ].map(k => (
+              <div key={k.label} className="bg-white/[0.03] rounded-lg p-2.5 text-center">
+                <p className={`text-base font-bold ${k.color}`}>{k.value}</p>
+                <p className="text-[10px] text-white/30 mt-0.5">{k.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Status actions */}
+          <div className="mt-3 flex gap-2">
+            {agency.status !== 'active' && (
+              <Button size="sm" variant="outline" className="flex-1 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 bg-transparent text-xs"
+                onClick={() => onStatusChange('active')}>
+                <CheckCircle className="w-3 h-3 mr-1.5" />Activate
+              </Button>
+            )}
+            {agency.status === 'active' && (
+              <Button size="sm" variant="outline" className="flex-1 border-amber-500/30 text-amber-400 hover:bg-amber-500/10 bg-transparent text-xs"
+                onClick={() => onStatusChange('suspended')}>
+                <Ban className="w-3 h-3 mr-1.5" />Suspend
+              </Button>
+            )}
+            {agency.status !== 'inactive' && (
+              <Button size="sm" variant="outline" className="flex-1 border-white/[0.1] text-white/40 hover:bg-white/[0.05] bg-transparent text-xs"
+                onClick={() => onStatusChange('inactive')}>
+                <XCircle className="w-3 h-3 mr-1.5" />Deactivate
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Sub-tabs */}
+        <div className="flex border-b border-white/[0.06] flex-shrink-0">
+          {[
+            { key: 'clients', label: `Clients (${clients.length})`, icon: Building2 },
+            { key: 'payouts', label: `Payouts (${payouts.length})`, icon: Receipt },
+          ].map(t => (
+            <button key={t.key} onClick={() => setDrawerTab(t.key as 'clients' | 'payouts')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors ${drawerTab === t.key ? 'text-white border-b-2 border-[#2563EB]' : 'text-white/40 hover:text-white/70'}`}>
+              <t.icon className="w-3.5 h-3.5" />{t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Drawer body */}
+        <div className="flex-1 overflow-y-auto">
+          {drawerTab === 'clients' && (
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-white/40">{clients.length} assigned client{clients.length !== 1 ? 's' : ''}</p>
+                <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-7 text-xs" onClick={() => setShowAssign(true)}>
+                  <UserPlus className="w-3 h-3 mr-1.5" />Assign Client
+                </Button>
+              </div>
+              {clientsLoading ? (
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-14 bg-white/[0.03] rounded-lg animate-pulse" />)}</div>
+              ) : clients.length === 0 ? (
+                <div className="text-center py-12 text-white/20 text-xs">
+                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />No clients assigned yet
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {clients.map(c => {
+                    const statusKey = c.subStatus ?? 'active';
+                    const SI = STATUS_ICON[statusKey] ?? CheckCircle;
+                    return (
+                      <div key={c.id} className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3 flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB]/25 to-[#06B6D4]/20 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                          {(c.orgName ?? '?').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-white truncate">{c.orgName}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <SI className={`w-3 h-3 flex-shrink-0 ${statusKey === 'active' ? 'text-emerald-400' : statusKey === 'trial' ? 'text-amber-400' : 'text-red-400'}`} />
+                            <span className="text-[10px] text-white/30 capitalize">{statusKey}</span>
+                            {c.planName && <span className="text-[10px] text-white/20">· {c.planName}</span>}
+                            {c.mrr && <span className="text-[10px] font-medium text-emerald-400/80">· {fmt(Number(c.mrr))}/mo</span>}
+                          </div>
+                        </div>
+                        <button onClick={() => removeClient.mutate(c.orgId)}
+                          className="p-1.5 rounded hover:bg-red-500/10 text-white/20 hover:text-red-400 transition-colors flex-shrink-0"
+                          title="Remove from agency">
+                          <UserMinus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {drawerTab === 'payouts' && (
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-white/40">{payouts.length} payout record{payouts.length !== 1 ? 's' : ''}</p>
+                <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-7 text-xs" onClick={() => setShowNewPayout(true)}>
+                  <Plus className="w-3 h-3 mr-1.5" />New Payout
+                </Button>
+              </div>
+
+              {/* Summary row */}
+              {payouts.length > 0 && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-emerald-500/10 rounded-lg p-2.5 text-center">
+                    <p className="text-sm font-bold text-emerald-400">
+                      {fmt(payouts.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.commissionAmount), 0))}
+                    </p>
+                    <p className="text-[10px] text-emerald-400/60 mt-0.5">Total Paid</p>
+                  </div>
+                  <div className="bg-amber-500/10 rounded-lg p-2.5 text-center">
+                    <p className="text-sm font-bold text-amber-400">
+                      {fmt(payouts.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.commissionAmount), 0))}
+                    </p>
+                    <p className="text-[10px] text-amber-400/60 mt-0.5">Pending</p>
+                  </div>
+                </div>
+              )}
+
+              {payoutsLoading ? (
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-white/[0.03] rounded-lg animate-pulse" />)}</div>
+              ) : payouts.length === 0 ? (
+                <div className="text-center py-12 text-white/20 text-xs">
+                  <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />No payout records yet
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {payouts.map(p => (
+                    <div key={p.id} className="bg-white/[0.03] border border-white/[0.05] rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-white">{p.period}</span>
+                          <Badge className={`${PAYOUT_STATUS_STYLES[p.status] ?? PAYOUT_STATUS_STYLES.pending} text-[10px] capitalize`}>{p.status}</Badge>
+                        </div>
+                        <span className="text-base font-bold text-emerald-400">{fmt(Number(p.commissionAmount))}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] text-white/30">MRR: {fmt(Number(p.totalMrr))}</p>
+                          {p.paidAt && <p className="text-[10px] text-white/20">Paid {timeAgo(p.paidAt)}</p>}
+                          {p.notes && <p className="text-[10px] text-white/25 mt-0.5 italic">{p.notes}</p>}
+                        </div>
+                        {p.status === 'pending' && (
+                          <div className="flex gap-1">
+                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-6 text-[10px] px-2"
+                              onClick={() => updatePayout.mutate({ payoutId: p.id, status: 'paid' })}
+                              disabled={updatePayout.isPending}>
+                              <Check className="w-3 h-3 mr-1" />Mark Paid
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-white/[0.08] text-white/40 hover:text-red-400 bg-transparent h-6 text-[10px] px-2"
+                              onClick={() => updatePayout.mutate({ payoutId: p.id, status: 'cancelled' })}
+                              disabled={updatePayout.isPending}>
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Assign client modal */}
+        <AnimatePresence>
+          {showAssign && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#07091a] border border-white/[0.1] rounded-2xl p-5 w-full max-w-sm shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-white">Assign Client</h4>
+                  <button onClick={() => setShowAssign(false)} className="p-1 text-white/30 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Select Tenant</label>
+                    <select value={assignOrgId} onChange={e => setAssignOrgId(e.target.value)}
+                      className="w-full bg-[#0a0f1e] border border-white/[0.08] text-white h-9 text-sm rounded-md px-3">
+                      <option value="">— Choose tenant —</option>
+                      {availableTenants.map(t => (
+                        <option key={t.id} value={String(t.id)}>{t.name}{t.planName ? ` (${t.planName})` : ''}</option>
+                      ))}
+                    </select>
+                    {availableTenants.length === 0 && (
+                      <p className="text-[10px] text-white/30 mt-1">All tenants are already assigned to this agency.</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Notes (optional)</label>
+                    <Input value={assignNotes} onChange={e => setAssignNotes(e.target.value)}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="e.g. Enterprise upsell" />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" className="flex-1 border-white/[0.08] text-white/60 bg-transparent" onClick={() => setShowAssign(false)}>Cancel</Button>
+                  <Button className="flex-1 bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={() => assignClient.mutate()}
+                    disabled={!assignOrgId || assignClient.isPending}>
+                    {assignClient.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Assign'}
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* New payout modal */}
+        <AnimatePresence>
+          {showNewPayout && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 p-4">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#07091a] border border-white/[0.1] rounded-2xl p-5 w-full max-w-sm shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-semibold text-white">New Payout Record</h4>
+                  <button onClick={() => setShowNewPayout(false)} className="p-1 text-white/30 hover:text-white"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Period <span className="text-red-400">*</span></label>
+                    <Input value={payoutForm.period} onChange={e => setPayoutForm(x => ({ ...x, period: e.target.value }))}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="2026-07" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-white/40 mb-1 block">Total MRR ($)</label>
+                      <Input type="number" step="0.01" value={payoutForm.totalMrr} onChange={e => setPayoutForm(x => ({ ...x, totalMrr: e.target.value }))}
+                        className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-white/40 mb-1 block">Commission ($) <span className="text-white/20 font-normal">auto</span></label>
+                      <Input type="number" step="0.01" value={payoutForm.commissionAmount}
+                        onChange={e => setPayoutForm(x => ({ ...x, commissionAmount: e.target.value }))}
+                        className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm"
+                        placeholder={payoutForm.totalMrr ? fmt((parseFloat(payoutForm.totalMrr) * Number(agency.commissionRate)) / 100).replace('$', '') : '—'} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Notes</label>
+                    <Input value={payoutForm.notes} onChange={e => setPayoutForm(x => ({ ...x, notes: e.target.value }))}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button variant="outline" className="flex-1 border-white/[0.08] text-white/60 bg-transparent" onClick={() => setShowNewPayout(false)}>Cancel</Button>
+                  <Button className="flex-1 bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={() => createPayout.mutate()}
+                    disabled={!payoutForm.period.trim() || createPayout.isPending}>
+                    {createPayout.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </>
+  );
+}
+
+function AgencyPanelTab() {
+  const { data: metrics, isLoading: metricsLoading } = useAgencyMetrics();
+  const { data: agencies = [], isLoading: agenciesLoading, refetch } = useAgencies();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedAgency, setSelectedAgency] = useState<AgencyRow | null>(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editAgency, setEditAgency] = useState<AgencyRow | null>(null);
+
+  const filtered = agencies.filter(a => {
+    const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.contactEmail?.toLowerCase().includes(search.toLowerCase()) ||
+      a.country?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || a.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const saveAgency = useMutation({
+    mutationFn: async (data: Record<string, string | number>) => {
+      const url = editAgency ? api(`/saas/agencies/${editAgency.id}`) : api('/saas/agencies');
+      const method = editAgency ? 'PUT' : 'POST';
+      const r = await fetch(url, {
+        method, credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+      return j.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saas-agencies'] });
+      qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      setShowForm(false); setEditAgency(null);
+      toast({ title: editAgency ? 'Agency updated' : 'Agency created' });
+    },
+    onError: (e: Error) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+  });
+
+  const changeStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const r = await fetch(api(`/saas/agencies/${id}/status`), {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      return r.json();
+    },
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['saas-agencies'] });
+      qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      // Update selected agency in drawer if open
+      if (selectedAgency?.id === id) {
+        refetch().then(r => {
+          const updated = r.data?.find(a => a.id === id);
+          if (updated) setSelectedAgency(updated);
+        });
+      }
+      toast({ title: 'Agency status updated' });
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' }),
+  });
+
+  const kpis = [
+    { label: 'Total Agencies', value: metrics?.totalAgencies ?? 0, sub: `${metrics?.activeAgencies ?? 0} active`, icon: Handshake, color: 'text-[#2563EB]', bg: 'from-[#2563EB]/20 to-[#2563EB]/5' },
+    { label: 'Managed Clients', value: metrics?.totalClients ?? 0, sub: 'Across all agencies', icon: Building2, color: 'text-[#06B6D4]', bg: 'from-[#06B6D4]/20 to-[#06B6D4]/5' },
+    { label: 'Managed MRR', value: fmt(metrics?.managedMrr ?? 0), sub: 'Via agency channels', icon: DollarSign, color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-500/5' },
+    { label: 'Pending Commissions', value: fmt(metrics?.pendingCommissions ?? 0), sub: `${fmt(metrics?.totalCommissions ?? 0)} total paid`, icon: Wallet, color: 'text-amber-400', bg: 'from-amber-500/20 to-amber-500/5' },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k, i) => (
+          <motion.div key={k.label} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${k.bg} flex items-center justify-center mb-3`}>
+              <k.icon className={`w-4 h-4 ${k.color}`} />
+            </div>
+            <p className="text-2xl font-bold text-white">{metricsLoading ? '—' : k.value}</p>
+            <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
+            <p className="text-[10px] text-white/25 mt-0.5">{k.sub}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agencies…"
+            className="pl-9 bg-[#0a0f1e] border-white/[0.08] text-white placeholder:text-white/30 h-9 text-sm" />
+        </div>
+        {(['all', 'active', 'inactive', 'suspended'] as const).map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${statusFilter === s ? 'bg-[#2563EB] text-white' : 'bg-white/[0.04] text-white/50 hover:text-white hover:bg-white/[0.07]'}`}>
+            {s}
+          </button>
+        ))}
+        <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] ml-auto" onClick={() => { setEditAgency(null); setShowForm(true); }}>
+          <Plus className="w-3.5 h-3.5 mr-1.5" />New Agency
+        </Button>
+      </div>
+
+      {/* Agency table */}
+      <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.05]">
+              {['Agency', 'Contact', 'Commission', 'Clients', 'Managed MRR', 'Est. /mo', 'Pending', 'Status', 'Actions'].map(h => (
+                <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3 first:pl-5">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {agenciesLoading ? (
+              <tr><td colSpan={9} className="text-center py-12 text-white/30 text-sm">Loading agencies…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={9} className="text-center py-12 text-white/30 text-sm">
+                {search || statusFilter !== 'all' ? 'No agencies match your filters' : 'No agencies yet — create your first one'}
+              </td></tr>
+            ) : filtered.map((ag, i) => (
+              <motion.tr key={ag.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
+                className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer"
+                onClick={() => setSelectedAgency(ag)}>
+                <td className="px-4 pl-5 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB]/30 to-[#06B6D4]/20 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                      {ag.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{ag.name}</p>
+                      <p className="text-[10px] text-white/30">{ag.country ?? ag.slug}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-xs text-white/60 truncate max-w-[140px]">{ag.contactName ?? '—'}</p>
+                  {ag.contactEmail && <p className="text-[10px] text-white/30 truncate max-w-[140px]">{ag.contactEmail}</p>}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1">
+                    <Percent className="w-3 h-3 text-white/30" />
+                    <span className="text-sm font-semibold text-white">{Number(ag.commissionRate).toFixed(1)}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-sm text-white/70">{ag.clientCount}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-sm font-semibold text-white">{ag.managedMrr > 0 ? fmt(ag.managedMrr) : '—'}</span>
+                  {ag.managedMrr > 0 && <span className="text-[10px] text-white/30 block">/mo</span>}
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-sm font-medium text-amber-400">
+                    {ag.estimatedMonthlyCommission > 0 ? fmt(ag.estimatedMonthlyCommission) : '—'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className={`text-sm font-medium ${ag.pendingPayout > 0 ? 'text-amber-400' : 'text-white/30'}`}>
+                    {ag.pendingPayout > 0 ? fmt(ag.pendingPayout) : '—'}
+                  </span>
+                </td>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <Badge className={`${AGENCY_STATUS_STYLES[ag.status] ?? AGENCY_STATUS_STYLES.inactive} text-[10px] capitalize`}>
+                    {ag.status}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-[#0a0f1e] border-white/[0.07] text-white w-44">
+                      <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer" onClick={() => setSelectedAgency(ag)}>
+                        <ArrowUpRight className="w-3.5 h-3.5 mr-2" />View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer" onClick={() => { setEditAgency(ag); setShowForm(true); }}>
+                        <Edit2 className="w-3.5 h-3.5 mr-2" />Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-white/[0.07]" />
+                      {ag.status !== 'active' && (
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-emerald-400"
+                          onClick={() => changeStatus.mutate({ id: ag.id, status: 'active' })}>
+                          <CheckCircle className="w-3.5 h-3.5 mr-2" />Activate
+                        </DropdownMenuItem>
+                      )}
+                      {ag.status === 'active' && (
+                        <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-amber-400"
+                          onClick={() => changeStatus.mutate({ id: ag.id, status: 'suspended' })}>
+                          <Ban className="w-3.5 h-3.5 mr-2" />Suspend
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-white/40"
+                        onClick={() => changeStatus.mutate({ id: ag.id, status: 'inactive' })}>
+                        <XCircle className="w-3.5 h-3.5 mr-2" />Deactivate
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Agency detail drawer */}
+      <AnimatePresence>
+        {selectedAgency && (
+          <AgencyDrawer
+            key={selectedAgency.id}
+            agency={selectedAgency}
+            onClose={() => setSelectedAgency(null)}
+            onStatusChange={(status) => changeStatus.mutate({ id: selectedAgency.id, status })}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Create / Edit agency modal */}
+      <AnimatePresence>
+        {showForm && (
+          <AgencyForm
+            initial={editAgency}
+            onClose={() => { setShowForm(false); setEditAgency(null); }}
+            onSave={(data) => saveAgency.mutate(data)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SaasPlatform() {
   const [tab, setTab] = useState('overview');
@@ -2972,6 +3792,7 @@ export default function SaasPlatform() {
               { v: 'trials',       l: 'Trial Management', icon: Clock },
               { v: 'onboarding',   l: 'Onboarding',       icon: Zap },
               { v: 'whitelabel',   l: 'White Label',      icon: Palette },
+              { v: 'agency',       l: 'Agency Panel',     icon: Handshake },
               ...(tab === 'tenant-dashboard' ? [{ v: 'tenant-dashboard', l: 'Tenant Dashboard', icon: LayoutDashboard }] : []),
             ].map(({ v, l, icon: Icon }) => (
               <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 flex items-center gap-1.5">
@@ -2987,6 +3808,7 @@ export default function SaasPlatform() {
           <TabsContent value="trials"            className="mt-5"><TrialManagementTab /></TabsContent>
           <TabsContent value="onboarding"        className="mt-5"><OnboardingTab /></TabsContent>
           <TabsContent value="whitelabel"        className="mt-5"><WhiteLabelTab /></TabsContent>
+          <TabsContent value="agency"            className="mt-5"><AgencyPanelTab /></TabsContent>
           <TabsContent value="tenant-dashboard"  className="mt-5">
             <TenantDashboardTab id={tenantDashboardId} onBack={() => setTab('tenants')} />
           </TabsContent>

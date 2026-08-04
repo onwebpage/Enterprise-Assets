@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, desc, sql, and, lt, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { saasPlans, saasSubscriptions, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations } from "@workspace/db/schema";
+import { saasPlans, saasSubscriptions, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations, saasAgencies, saasAgencyClients, saasAgencyPayouts } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -975,6 +975,344 @@ router.put("/trial-config", async (_req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to update trial config" });
+  }
+});
+
+// ── Agency Panel ─────────────────────────────────────────────────────────────
+
+// GET /saas/agency-metrics — overall platform-wide agency stats
+router.get("/agency-metrics", async (_req, res) => {
+  try {
+    const [totalAgencies] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasAgencies);
+
+    const [activeAgencies] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasAgencies)
+      .where(eq(saasAgencies.status, "active"));
+
+    const [totalClients] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasAgencyClients);
+
+    // Total MRR managed by all agencies (sum MRR of subscribed orgs that belong to any agency)
+    const [managedMrr] = await db
+      .select({ total: sql<number>`coalesce(sum(cast(${saasSubscriptions.mrr} as numeric)), 0)` })
+      .from(saasAgencyClients)
+      .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, saasAgencyClients.orgId))
+      .where(eq(saasSubscriptions.status, "active"));
+
+    // Total commissions paid + pending
+    const [totalCommissions] = await db
+      .select({ total: sql<number>`coalesce(sum(commission_amount::numeric), 0)::numeric` })
+      .from(saasAgencyPayouts);
+
+    const [pendingCommissions] = await db
+      .select({ total: sql<number>`coalesce(sum(commission_amount::numeric), 0)::numeric` })
+      .from(saasAgencyPayouts)
+      .where(eq(saasAgencyPayouts.status, "pending"));
+
+    res.json({
+      success: true,
+      data: {
+        totalAgencies: totalAgencies?.count ?? 0,
+        activeAgencies: activeAgencies?.count ?? 0,
+        totalClients: totalClients?.count ?? 0,
+        managedMrr: Number(managedMrr?.total ?? 0),
+        totalCommissions: Number(totalCommissions?.total ?? 0),
+        pendingCommissions: Number(pendingCommissions?.total ?? 0),
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch agency metrics" });
+  }
+});
+
+// GET /saas/agencies — list all agencies with client count + MRR
+router.get("/agencies", async (_req, res) => {
+  try {
+    const agencies = await db.select().from(saasAgencies).orderBy(desc(saasAgencies.createdAt));
+
+    // Enrich each agency with client count and managed MRR
+    const enriched = await Promise.all(
+      agencies.map(async (ag) => {
+        const [clientCount] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(saasAgencyClients)
+          .where(eq(saasAgencyClients.agencyId, ag.id));
+
+        const [mrrResult] = await db
+          .select({ total: sql<number>`coalesce(sum(cast(${saasSubscriptions.mrr} as numeric)), 0)` })
+          .from(saasAgencyClients)
+          .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, saasAgencyClients.orgId))
+          .where(
+            and(
+              eq(saasAgencyClients.agencyId, ag.id),
+              eq(saasSubscriptions.status, "active")
+            )
+          );
+
+        const [payoutResult] = await db
+          .select({ total: sql<number>`coalesce(sum(cast(${saasAgencyPayouts.commissionAmount} as numeric)), 0)` })
+          .from(saasAgencyPayouts)
+          .where(eq(saasAgencyPayouts.agencyId, ag.id));
+
+        const [pendingResult] = await db
+          .select({ total: sql<number>`coalesce(sum(cast(${saasAgencyPayouts.commissionAmount} as numeric)), 0)` })
+          .from(saasAgencyPayouts)
+          .where(
+            and(eq(saasAgencyPayouts.agencyId, ag.id), eq(saasAgencyPayouts.status, "pending"))
+          );
+
+        const mrr = Number(mrrResult?.total ?? 0);
+        const commissionRate = Number(ag.commissionRate ?? 10);
+        const totalEarned = Number(payoutResult?.total ?? 0);
+        const pendingPayout = Number(pendingResult?.total ?? 0);
+
+        return {
+          ...ag,
+          clientCount: clientCount?.count ?? 0,
+          managedMrr: mrr,
+          estimatedMonthlyCommission: (mrr * commissionRate) / 100,
+          totalEarned,
+          pendingPayout,
+        };
+      })
+    );
+
+    res.json({ success: true, data: enriched });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch agencies" });
+  }
+});
+
+// POST /saas/agencies — create agency
+router.post("/agencies", async (req, res) => {
+  try {
+    const { name, slug, contactName, contactEmail, contactPhone, country, website, commissionRate, notes } = req.body;
+    if (!name || !slug) {
+      res.status(400).json({ success: false, error: "name and slug are required" });
+      return;
+    }
+    const [agency] = await db
+      .insert(saasAgencies)
+      .values({ name, slug, contactName, contactEmail, contactPhone, country, website, commissionRate: String(commissionRate ?? 10), notes })
+      .returning();
+    res.status(201).json({ success: true, data: agency });
+  } catch (e: any) {
+    if (e?.code === "23505") {
+      res.status(409).json({ success: false, error: "Slug already taken" });
+      return;
+    }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to create agency" });
+  }
+});
+
+// GET /saas/agencies/:id — single agency detail
+router.get("/agencies/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [agency] = await db.select().from(saasAgencies).where(eq(saasAgencies.id, id));
+    if (!agency) { res.status(404).json({ success: false, error: "Agency not found" }); return; }
+
+    const [clientCount] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(saasAgencyClients)
+      .where(eq(saasAgencyClients.agencyId, id));
+
+    const [mrrResult] = await db
+      .select({ total: sql<number>`coalesce(sum(cast(${saasSubscriptions.mrr} as numeric)), 0)` })
+      .from(saasAgencyClients)
+      .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, saasAgencyClients.orgId))
+      .where(and(eq(saasAgencyClients.agencyId, id), eq(saasSubscriptions.status, "active")));
+
+    res.json({
+      success: true,
+      data: {
+        ...agency,
+        clientCount: clientCount?.count ?? 0,
+        managedMrr: Number(mrrResult?.total ?? 0),
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch agency" });
+  }
+});
+
+// PUT /saas/agencies/:id — update agency
+router.put("/agencies/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { name, slug, contactName, contactEmail, contactPhone, country, website, commissionRate, notes } = req.body;
+    const [agency] = await db
+      .update(saasAgencies)
+      .set({ name, slug, contactName, contactEmail, contactPhone, country, website, commissionRate: String(commissionRate ?? 10), notes, updatedAt: new Date() })
+      .where(eq(saasAgencies.id, id))
+      .returning();
+    if (!agency) { res.status(404).json({ success: false, error: "Agency not found" }); return; }
+    res.json({ success: true, data: agency });
+  } catch (e: any) {
+    if (e?.code === "23505") { res.status(409).json({ success: false, error: "Slug already taken" }); return; }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update agency" });
+  }
+});
+
+// PATCH /saas/agencies/:id/status — change agency status
+router.patch("/agencies/:id/status", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { status } = req.body;
+    const [agency] = await db
+      .update(saasAgencies)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(saasAgencies.id, id))
+      .returning();
+    if (!agency) { res.status(404).json({ success: false, error: "Agency not found" }); return; }
+    res.json({ success: true, data: agency });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update agency status" });
+  }
+});
+
+// DELETE /saas/agencies/:id — deactivate agency
+router.delete("/agencies/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    await db.update(saasAgencies).set({ status: "inactive", updatedAt: new Date() }).where(eq(saasAgencies.id, id));
+    res.json({ success: true, data: null });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to deactivate agency" });
+  }
+});
+
+// GET /saas/agencies/:id/clients — list clients for an agency
+router.get("/agencies/:id/clients", async (req, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const rows = await db
+      .select({
+        id: saasAgencyClients.id,
+        agencyId: saasAgencyClients.agencyId,
+        orgId: saasAgencyClients.orgId,
+        assignedAt: saasAgencyClients.assignedAt,
+        notes: saasAgencyClients.notes,
+        orgName: organizations.name,
+        orgIndustry: organizations.industry,
+        orgCountry: organizations.country,
+        orgStatus: organizations.status,
+        subId: saasSubscriptions.id,
+        subStatus: saasSubscriptions.status,
+        planName: saasPlans.name,
+        planSlug: saasPlans.slug,
+        mrr: saasSubscriptions.mrr,
+        billingCycle: saasSubscriptions.billingCycle,
+        currentUsers: saasSubscriptions.currentUsers,
+      })
+      .from(saasAgencyClients)
+      .leftJoin(organizations, eq(organizations.id, saasAgencyClients.orgId))
+      .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, saasAgencyClients.orgId))
+      .leftJoin(saasPlans, eq(saasPlans.id, saasSubscriptions.planId))
+      .where(eq(saasAgencyClients.agencyId, agencyId))
+      .orderBy(desc(saasAgencyClients.assignedAt));
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch agency clients" });
+  }
+});
+
+// POST /saas/agencies/:id/clients — assign a tenant to agency
+router.post("/agencies/:id/clients", async (req, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const { orgId, notes } = req.body;
+    if (!orgId) { res.status(400).json({ success: false, error: "orgId is required" }); return; }
+    const [row] = await db
+      .insert(saasAgencyClients)
+      .values({ agencyId, orgId: parseInt(orgId), notes })
+      .returning();
+    res.status(201).json({ success: true, data: row });
+  } catch (e: any) {
+    if (e?.code === "23505") { res.status(409).json({ success: false, error: "Tenant already assigned to this agency" }); return; }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to assign client" });
+  }
+});
+
+// DELETE /saas/agencies/:id/clients/:orgId — remove client from agency
+router.delete("/agencies/:id/clients/:orgId", async (req, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const orgId = parseInt(req.params.orgId);
+    await db
+      .delete(saasAgencyClients)
+      .where(and(eq(saasAgencyClients.agencyId, agencyId), eq(saasAgencyClients.orgId, orgId)));
+    res.json({ success: true, data: null });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to remove client" });
+  }
+});
+
+// GET /saas/agencies/:id/payouts — payout history
+router.get("/agencies/:id/payouts", async (req, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const rows = await db
+      .select()
+      .from(saasAgencyPayouts)
+      .where(eq(saasAgencyPayouts.agencyId, agencyId))
+      .orderBy(desc(saasAgencyPayouts.period));
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch payouts" });
+  }
+});
+
+// POST /saas/agencies/:id/payouts — create payout record
+router.post("/agencies/:id/payouts", async (req, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const { period, totalMrr, commissionAmount, status, notes } = req.body;
+    if (!period) { res.status(400).json({ success: false, error: "period is required" }); return; }
+    const [row] = await db
+      .insert(saasAgencyPayouts)
+      .values({ agencyId, period, totalMrr: String(totalMrr ?? 0), commissionAmount: String(commissionAmount ?? 0), status: status ?? "pending", notes })
+      .returning();
+    res.status(201).json({ success: true, data: row });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to create payout" });
+  }
+});
+
+// PATCH /saas/agencies/:id/payouts/:payoutId — update payout status
+router.patch("/agencies/:id/payouts/:payoutId", async (req, res) => {
+  try {
+    const payoutId = parseInt(req.params.payoutId);
+    const { status, notes } = req.body;
+    const updates: Record<string, unknown> = { status, updatedAt: new Date() };
+    if (notes !== undefined) updates.notes = notes;
+    if (status === "paid") updates.paidAt = new Date();
+    const [row] = await db
+      .update(saasAgencyPayouts)
+      .set(updates)
+      .where(eq(saasAgencyPayouts.id, payoutId))
+      .returning();
+    if (!row) { res.status(404).json({ success: false, error: "Payout not found" }); return; }
+    res.json({ success: true, data: row });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update payout" });
   }
 });
 

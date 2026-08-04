@@ -87,8 +87,49 @@ export const saasTrialConfig = pgTable("saas_trial_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── Agencies ──────────────────────────────────────────────────────────────────
+export const saasAgencies = pgTable("saas_agencies", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
+  contactName: text("contact_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  country: text("country"),
+  website: text("website"),
+  commissionRate: numeric("commission_rate", { precision: 5, scale: 2 }).notNull().default("10"),
+  status: text("status").notNull().default("active"), // active | inactive | suspended
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const saasAgencyClients = pgTable("saas_agency_clients", {
+  id: serial("id").primaryKey(),
+  agencyId: integer("agency_id").notNull().references(() => saasAgencies.id, { onDelete: "cascade" }),
+  orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").notNull().defaultNow(),
+  notes: text("notes"),
+});
+
+export const saasAgencyPayouts = pgTable("saas_agency_payouts", {
+  id: serial("id").primaryKey(),
+  agencyId: integer("agency_id").notNull().references(() => saasAgencies.id, { onDelete: "cascade" }),
+  period: text("period").notNull(), // e.g. "2026-06"
+  totalMrr: numeric("total_mrr", { precision: 10, scale: 2 }).notNull().default("0"),
+  commissionAmount: numeric("commission_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  status: text("status").notNull().default("pending"), // pending | paid | cancelled
+  paidAt: timestamp("paid_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export type SaasPlan = typeof saasPlans.$inferSelect;
 export type SaasSubscription = typeof saasSubscriptions.$inferSelect;
 export type SaasWhitelabel = typeof saasWhitelabel.$inferSelect;
 export type SaasTrialEvent = typeof saasTrialEvents.$inferSelect;
 export type SaasTrialConfig = typeof saasTrialConfig.$inferSelect;
+export type SaasAgency = typeof saasAgencies.$inferSelect;
+export type SaasAgencyClient = typeof saasAgencyClients.$inferSelect;
+export type SaasAgencyPayout = typeof saasAgencyPayouts.$inferSelect;
