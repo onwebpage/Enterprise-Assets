@@ -204,6 +204,17 @@ function useAgencyPayouts(agencyId: number | null) {
   });
 }
 
+function useAllPayouts() {
+  return useQuery({
+    queryKey: ['saas-all-payouts'],
+    queryFn: async () => {
+      const r = await authFetch(api('/saas/payouts'));
+      const j = await r.json();
+      return j.data as AllPayoutRow[];
+    },
+  });
+}
+
 function useTenantDashboard(id: number | null) {
   return useQuery({
     queryKey: ['saas-tenant-dashboard', id],
@@ -238,6 +249,13 @@ interface AgencyClientRow {
 interface AgencyPayoutRow {
   id: number; agencyId: number; period: string;
   totalMrr: string; commissionAmount: string;
+  status: string; paidAt: string | null; notes: string | null;
+  createdAt: string; updatedAt: string;
+}
+interface AllPayoutRow {
+  id: number; agencyId: number;
+  agencyName: string | null; agencySlug: string | null; agencyCommissionRate: string | null;
+  period: string; totalMrr: string; commissionAmount: string;
   status: string; paidAt: string | null; notes: string | null;
   createdAt: string; updatedAt: string;
 }
@@ -3210,6 +3228,29 @@ function AgencyDrawer({
     onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
+  const autoGenerate = useMutation({
+    mutationFn: async () => {
+      const now = new Date();
+      const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const r = await authFetch(api(`/saas/agencies/${agency.id}/payouts/generate`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+      return j.data;
+    },
+    onSuccess: () => {
+      refetchPayouts();
+      qc.invalidateQueries({ queryKey: ['saas-agencies'] });
+      qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      qc.invalidateQueries({ queryKey: ['saas-all-payouts'] });
+      toast({ title: 'Payout generated', description: 'Commission auto-calculated from live client MRR' });
+    },
+    onError: (e: Error) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
+  });
+
   const totalClientMrr = clients.reduce((s, c) => s + Number(c.mrr ?? 0), 0);
   const estCommission = (totalClientMrr * Number(agency.commissionRate)) / 100;
 
@@ -3361,10 +3402,59 @@ function AgencyDrawer({
             <div className="p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-white/40">{payouts.length} payout record{payouts.length !== 1 ? 's' : ''}</p>
-                <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-7 text-xs" onClick={() => setShowNewPayout(true)}>
-                  <Plus className="w-3 h-3 mr-1.5" />New Payout
-                </Button>
+                <div className="flex gap-1.5">
+                  <Button size="sm" variant="outline"
+                    className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 bg-transparent h-7 text-xs"
+                    onClick={() => autoGenerate.mutate()}
+                    disabled={autoGenerate.isPending}
+                    title="Auto-calculate this month's commission from live client MRR">
+                    {autoGenerate.isPending
+                      ? <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                      : <Zap className="w-3 h-3 mr-1" />}
+                    Generate
+                  </Button>
+                  <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8] h-7 text-xs" onClick={() => setShowNewPayout(true)}>
+                    <Plus className="w-3 h-3 mr-1.5" />Manual
+                  </Button>
+                </div>
               </div>
+
+              {/* Commission trend chart */}
+              {payouts.length > 0 && (() => {
+                const sorted = [...payouts].sort((a, b) => a.period.localeCompare(b.period)).slice(-6);
+                const maxAmt = Math.max(...sorted.map(p => Number(p.commissionAmount)), 1);
+                return (
+                  <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3">
+                    <p className="text-[10px] text-white/30 mb-2.5 font-medium uppercase tracking-wide">Commission Trend</p>
+                    <div className="flex items-end gap-1.5 h-12">
+                      {sorted.map(p => {
+                        const pct = Math.round((Number(p.commissionAmount) / maxAmt) * 100);
+                        const barColor = p.status === 'paid'
+                          ? 'bg-emerald-500/70' : p.status === 'pending'
+                          ? 'bg-amber-500/60' : 'bg-white/10';
+                        return (
+                          <div key={p.id} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#07091a] border border-white/10 rounded px-1.5 py-0.5 text-[9px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                              {fmt(Number(p.commissionAmount))}
+                            </div>
+                            <div className={`w-full rounded-t-sm ${barColor} transition-all`}
+                              style={{ height: `${Math.max(pct, 6)}%` }} />
+                            <span className="text-[8px] text-white/20 leading-none">{p.period.slice(5)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex gap-3 mt-2">
+                      {[{ c: 'bg-emerald-500/70', l: 'Paid' }, { c: 'bg-amber-500/60', l: 'Pending' }, { c: 'bg-white/10', l: 'Cancelled' }].map(x => (
+                        <div key={x.l} className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-sm ${x.c}`} />
+                          <span className="text-[8px] text-white/25">{x.l}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Summary row */}
               {payouts.length > 0 && (
@@ -3527,6 +3617,7 @@ function AgencyDrawer({
 function AgencyPanelTab() {
   const { data: metrics, isLoading: metricsLoading } = useAgencyMetrics();
   const { data: agencies = [], isLoading: agenciesLoading, refetch } = useAgencies();
+  const { data: allPayouts = [], isLoading: payoutsLoading, refetch: refetchAllPayouts } = useAllPayouts();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
@@ -3534,6 +3625,8 @@ function AgencyPanelTab() {
   const [selectedAgency, setSelectedAgency] = useState<AgencyRow | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editAgency, setEditAgency] = useState<AgencyRow | null>(null);
+  const [payoutsStatusFilter, setPayoutsStatusFilter] = useState<'all' | 'pending' | 'paid' | 'cancelled'>('all');
+  const [payoutsExpanded, setPayoutsExpanded] = useState(true);
 
   const filtered = agencies.filter(a => {
     const matchSearch = !search || a.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -3588,6 +3681,32 @@ function AgencyPanelTab() {
     },
     onError: () => toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' }),
   });
+
+  const updateAllPayout = useMutation({
+    mutationFn: async ({ payoutId, status }: { payoutId: number; status: string }) => {
+      const r = await authFetch(api(`/saas/payouts/${payoutId}`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const j = await r.json();
+      if (!j.success) throw new Error(j.error);
+      return j.data;
+    },
+    onSuccess: () => {
+      refetchAllPayouts();
+      qc.invalidateQueries({ queryKey: ['saas-agencies'] });
+      qc.invalidateQueries({ queryKey: ['saas-agency-metrics'] });
+      qc.invalidateQueries({ queryKey: ['saas-agency-payouts'] });
+      toast({ title: 'Payout updated' });
+    },
+    onError: (e: Error) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const filteredPayouts = allPayouts.filter(p =>
+    payoutsStatusFilter === 'all' || p.status === payoutsStatusFilter
+  );
+  const pendingTotal = allPayouts.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.commissionAmount), 0);
 
   const kpis = [
     { label: 'Total Agencies', value: metrics?.totalAgencies ?? 0, sub: `${metrics?.activeAgencies ?? 0} active`, icon: Handshake, color: 'text-[#2563EB]', bg: 'from-[#2563EB]/20 to-[#2563EB]/5' },
@@ -3733,6 +3852,116 @@ function AgencyPanelTab() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── All Payouts Overview ─────────────────────────────────────────── */}
+      <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.05]">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => setPayoutsExpanded(v => !v)}
+              className="p-1 rounded hover:bg-white/[0.06] text-white/30 hover:text-white transition-colors">
+              <ChevronDown className={`w-4 h-4 transition-transform ${payoutsExpanded ? '' : '-rotate-90'}`} />
+            </button>
+            <Receipt className="w-4 h-4 text-white/30" />
+            <h3 className="text-sm font-semibold text-white">All Payouts</h3>
+            {pendingTotal > 0 && (
+              <span className="bg-amber-500/15 text-amber-400 border border-amber-500/20 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                {fmt(pendingTotal)} pending
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {(['all', 'pending', 'paid', 'cancelled'] as const).map(s => (
+              <button key={s} onClick={() => setPayoutsStatusFilter(s)}
+                className={`px-2.5 py-1 rounded text-[10px] font-medium capitalize transition-colors ${payoutsStatusFilter === s ? 'bg-[#2563EB] text-white' : 'bg-white/[0.04] text-white/40 hover:text-white hover:bg-white/[0.07]'}`}>
+                {s === 'all' ? `All (${allPayouts.length})` : `${s.charAt(0).toUpperCase() + s.slice(1)} (${allPayouts.filter(p => p.status === s).length})`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Body */}
+        {payoutsExpanded && (
+          payoutsLoading ? (
+            <div className="p-8 text-center text-white/30 text-sm">Loading payouts…</div>
+          ) : filteredPayouts.length === 0 ? (
+            <div className="p-10 text-center">
+              <Receipt className="w-8 h-8 mx-auto mb-2 text-white/10" />
+              <p className="text-white/30 text-sm">{payoutsStatusFilter === 'all' ? 'No payout records yet' : `No ${payoutsStatusFilter} payouts`}</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/[0.04]">
+                  {['Agency', 'Period', 'Client MRR', 'Commission', 'Rate', 'Status', 'Paid On', 'Actions'].map(h => (
+                    <th key={h} className="text-left text-[10px] font-medium text-white/25 px-4 py-2.5 first:pl-5">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPayouts.map((p, i) => (
+                  <motion.tr key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
+                    className="border-b border-white/[0.03] hover:bg-white/[0.015] transition-colors">
+                    <td className="px-4 pl-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-gradient-to-br from-[#2563EB]/30 to-[#06B6D4]/20 flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">
+                          {(p.agencyName ?? '?').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-white">{p.agencyName ?? '—'}</p>
+                          <p className="text-[9px] text-white/25">{p.agencySlug}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-semibold text-white font-mono">{p.period}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs text-white/60">{fmt(Number(p.totalMrr))}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm font-bold text-emerald-400">{fmt(Number(p.commissionAmount))}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-0.5 text-xs text-white/40">
+                        <Percent className="w-3 h-3" />{Number(p.agencyCommissionRate ?? 0).toFixed(1)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={`${PAYOUT_STATUS_STYLES[p.status] ?? PAYOUT_STATUS_STYLES.pending} text-[10px] capitalize`}>
+                        {p.status}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[10px] text-white/30">
+                        {p.paidAt ? timeAgo(p.paidAt) : '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {p.status === 'pending' && (
+                        <div className="flex gap-1">
+                          <Button size="sm"
+                            className="bg-emerald-600 hover:bg-emerald-700 h-6 text-[10px] px-2"
+                            onClick={() => updateAllPayout.mutate({ payoutId: p.id, status: 'paid' })}
+                            disabled={updateAllPayout.isPending}>
+                            <Check className="w-2.5 h-2.5 mr-1" />Pay
+                          </Button>
+                          <Button size="sm" variant="outline"
+                            className="border-white/[0.08] text-white/30 hover:text-red-400 bg-transparent h-6 text-[10px] px-2"
+                            onClick={() => updateAllPayout.mutate({ payoutId: p.id, status: 'cancelled' })}
+                            disabled={updateAllPayout.isPending}>
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        )}
       </div>
 
       {/* Agency detail drawer */}

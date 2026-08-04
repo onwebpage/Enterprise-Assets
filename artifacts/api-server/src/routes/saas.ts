@@ -1316,4 +1316,106 @@ router.patch("/agencies/:id/payouts/:payoutId", async (req, res) => {
   }
 });
 
+// POST /saas/agencies/:id/payouts/generate — auto-generate payout from live client MRR
+router.post("/agencies/:id/payouts/generate", async (req: AuthRequest, res) => {
+  try {
+    const agencyId = parseInt(req.params.id);
+    const { period, notes } = req.body;
+
+    const now = new Date();
+    const defaultPeriod = period || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+    // Guard: no duplicate payout for same period
+    const [existing] = await db
+      .select({ id: saasAgencyPayouts.id })
+      .from(saasAgencyPayouts)
+      .where(and(eq(saasAgencyPayouts.agencyId, agencyId), eq(saasAgencyPayouts.period, defaultPeriod)));
+    if (existing) {
+      res.status(409).json({ success: false, error: `A payout for ${defaultPeriod} already exists` });
+      return;
+    }
+
+    const [agency] = await db.select().from(saasAgencies).where(eq(saasAgencies.id, agencyId));
+    if (!agency) { res.status(404).json({ success: false, error: "Agency not found" }); return; }
+
+    // Sum MRR from active subscriptions linked to this agency's clients
+    const [mrrResult] = await db
+      .select({ total: sql<number>`coalesce(sum(cast(${saasSubscriptions.mrr} as numeric)), 0)` })
+      .from(saasAgencyClients)
+      .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, saasAgencyClients.orgId))
+      .where(and(eq(saasAgencyClients.agencyId, agencyId), eq(saasSubscriptions.status, "active")));
+
+    const totalMrr = Number(mrrResult?.total ?? 0);
+    const commissionRate = Number(agency.commissionRate ?? 10);
+    const commissionAmount = (totalMrr * commissionRate) / 100;
+
+    const [row] = await db
+      .insert(saasAgencyPayouts)
+      .values({
+        agencyId,
+        period: defaultPeriod,
+        totalMrr: String(totalMrr.toFixed(2)),
+        commissionAmount: String(commissionAmount.toFixed(2)),
+        status: "pending",
+        notes: notes || `Auto-generated for ${defaultPeriod}`,
+      })
+      .returning();
+
+    res.status(201).json({ success: true, data: row });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to generate payout" });
+  }
+});
+
+// GET /saas/payouts — all payouts across all agencies (for overview panel)
+router.get("/payouts", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: saasAgencyPayouts.id,
+        agencyId: saasAgencyPayouts.agencyId,
+        agencyName: saasAgencies.name,
+        agencySlug: saasAgencies.slug,
+        agencyCommissionRate: saasAgencies.commissionRate,
+        period: saasAgencyPayouts.period,
+        totalMrr: saasAgencyPayouts.totalMrr,
+        commissionAmount: saasAgencyPayouts.commissionAmount,
+        status: saasAgencyPayouts.status,
+        paidAt: saasAgencyPayouts.paidAt,
+        notes: saasAgencyPayouts.notes,
+        createdAt: saasAgencyPayouts.createdAt,
+        updatedAt: saasAgencyPayouts.updatedAt,
+      })
+      .from(saasAgencyPayouts)
+      .leftJoin(saasAgencies, eq(saasAgencies.id, saasAgencyPayouts.agencyId))
+      .orderBy(desc(saasAgencyPayouts.period), desc(saasAgencyPayouts.createdAt));
+    res.json({ success: true, data: rows });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch all payouts" });
+  }
+});
+
+// PATCH /saas/payouts/:payoutId — update any payout by ID (for bulk operations)
+router.patch("/payouts/:payoutId", async (req, res) => {
+  try {
+    const payoutId = parseInt(req.params.payoutId);
+    const { status, notes } = req.body;
+    const updates: Record<string, unknown> = { status, updatedAt: new Date() };
+    if (notes !== undefined) updates.notes = notes;
+    if (status === "paid") updates.paidAt = new Date();
+    const [row] = await db
+      .update(saasAgencyPayouts)
+      .set(updates)
+      .where(eq(saasAgencyPayouts.id, payoutId))
+      .returning();
+    if (!row) { res.status(404).json({ success: false, error: "Payout not found" }); return; }
+    res.json({ success: true, data: row });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update payout" });
+  }
+});
+
 export default router;
