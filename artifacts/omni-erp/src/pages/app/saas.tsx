@@ -8,7 +8,7 @@ import {
   BarChart3, Package, Globe, CreditCard, Trash2, X, PieChart,
   Activity, Star, Download, Palette, Eye, EyeOff, Link2, Mail,
   Monitor, Brush, Type, Code2, ToggleLeft, ToggleRight, ExternalLink,
-  Check, Loader2, Save, Bell
+  Check, Loader2, Save, Bell, LayoutDashboard, HardDrive
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -144,6 +144,19 @@ function useTrialEvents(subId: number | null) {
   });
 }
 
+function useTenantDashboard(id: number | null) {
+  return useQuery({
+    queryKey: ['saas-tenant-dashboard', id],
+    queryFn: async () => {
+      const r = await fetch(api(`/saas/tenants/${id}/dashboard`), { credentials: 'include' });
+      const j = await r.json();
+      return j.data as TenantDashboardData;
+    },
+    enabled: !!id,
+    refetchInterval: 30000,
+  });
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 interface Plan {
   id: number; name: string; slug: string;
@@ -204,6 +217,28 @@ interface TrialConfig {
   id: number; defaultTrialDays: number; maxExtensions: number;
   autoExpireAction: string; reminderDaysBefore: number[];
   requireCreditCard: boolean; updatedAt: string;
+}
+interface TenantDashboardData {
+  id: number; name: string; legalName: string | null;
+  industry: string | null; country: string | null;
+  status: string; currency: string; employeeCount: number;
+  taxId: string | null; gstin: string | null;
+  createdAt: string; updatedAt: string;
+  subId: number | null; subStatus: string | null;
+  billingCycle: string | null; startedAt: string | null;
+  expiresAt: string | null; trialEndsAt: string | null;
+  cancelledAt: string | null; notes: string | null;
+  currentUsers: number | null; currentStorageGb: string | null;
+  currentApiCalls: number | null; mrr: string | null;
+  planId: number | null; planName: string | null; planSlug: string | null;
+  maxUsers: number | null; maxStorageGb: number | null;
+  maxModules: number | null; maxApiCallsMonthly: number | null;
+  priceMonthly: string | null; priceYearly: string | null;
+  features: string[];
+  recentEvents: TrialEvent[];
+  whitelabel: WhitelabelRow | null;
+  daysToRenewal: number | null; daysInTrial: number | null;
+  usersPct: number; storagePct: number; apiPct: number;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -345,7 +380,7 @@ function OverviewTab() {
 }
 
 // ── Tenants Tab ────────────────────────────────────────────────────────────
-function TenantsTab({ onAdd }: { onAdd: () => void }) {
+function TenantsTab({ onAdd, onViewDashboard }: { onAdd: () => void; onViewDashboard?: (id: number) => void }) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const { data: tenants = [], isLoading } = useTenants();
@@ -458,10 +493,15 @@ function TenantsTab({ onAdd }: { onAdd: () => void }) {
                           <MoreHorizontal className="w-4 h-4" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-[#0a0f1e] border-white/[0.07] text-white w-44">
+                      <DropdownMenuContent align="end" className="bg-[#0a0f1e] border-white/[0.07] text-white w-48">
                         <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer" onClick={() => setSelected(t)}>
                           <ArrowUpRight className="w-3.5 h-3.5 mr-2" />View Details
                         </DropdownMenuItem>
+                        {onViewDashboard && (
+                          <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer" onClick={() => onViewDashboard(t.id)}>
+                            <LayoutDashboard className="w-3.5 h-3.5 mr-2" />View Dashboard
+                          </DropdownMenuItem>
+                        )}
                         {statusKey !== 'suspended' && (
                           <DropdownMenuItem className="hover:bg-white/[0.05] cursor-pointer text-amber-400"
                             onClick={() => changeStatus.mutate({ id: t.id, status: 'suspended' })}>

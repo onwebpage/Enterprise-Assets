@@ -209,6 +209,117 @@ router.get("/tenants/:id", async (req, res) => {
   }
 });
 
+// GET /saas/tenants/:id/dashboard — comprehensive single-tenant dashboard data
+router.get("/tenants/:id/dashboard", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    const rows = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        legalName: organizations.legalName,
+        industry: organizations.industry,
+        country: organizations.country,
+        status: organizations.status,
+        currency: organizations.currency,
+        employeeCount: organizations.employeeCount,
+        taxId: organizations.taxId,
+        gstin: organizations.gstin,
+        createdAt: organizations.createdAt,
+        updatedAt: organizations.updatedAt,
+        subId: saasSubscriptions.id,
+        subStatus: saasSubscriptions.status,
+        billingCycle: saasSubscriptions.billingCycle,
+        startedAt: saasSubscriptions.startedAt,
+        expiresAt: saasSubscriptions.expiresAt,
+        trialEndsAt: saasSubscriptions.trialEndsAt,
+        cancelledAt: saasSubscriptions.cancelledAt,
+        currentUsers: saasSubscriptions.currentUsers,
+        currentStorageGb: saasSubscriptions.currentStorageGb,
+        currentApiCalls: saasSubscriptions.currentApiCalls,
+        mrr: saasSubscriptions.mrr,
+        notes: saasSubscriptions.notes,
+        planId: saasPlans.id,
+        planName: saasPlans.name,
+        planSlug: saasPlans.slug,
+        maxUsers: saasPlans.maxUsers,
+        maxStorageGb: saasPlans.maxStorageGb,
+        maxModules: saasPlans.maxModules,
+        maxApiCallsMonthly: saasPlans.maxApiCallsMonthly,
+        priceMonthly: saasPlans.priceMonthly,
+        priceYearly: saasPlans.priceYearly,
+        features: saasPlans.features,
+      })
+      .from(organizations)
+      .leftJoin(saasSubscriptions, eq(saasSubscriptions.orgId, organizations.id))
+      .leftJoin(saasPlans, eq(saasPlans.id, saasSubscriptions.planId))
+      .where(eq(organizations.id, id));
+
+    if (!rows.length) {
+      res.status(404).json({ success: false, error: "Tenant not found" });
+      return;
+    }
+
+    const t = rows[0];
+
+    // Recent trial/subscription events (last 10)
+    let recentEvents: Array<{
+      id: number; subscriptionId: number; eventType: string;
+      daysAdded: number | null; note: string | null;
+      createdBy: string | null; createdAt: Date;
+    }> = [];
+    if (t.subId) {
+      recentEvents = await db
+        .select()
+        .from(saasTrialEvents)
+        .where(eq(saasTrialEvents.subscriptionId, t.subId))
+        .orderBy(desc(saasTrialEvents.createdAt))
+        .limit(10);
+    }
+
+    // White label config for this org
+    const wlRows = await db
+      .select()
+      .from(saasWhitelabel)
+      .where(eq(saasWhitelabel.orgId, id));
+    const whitelabel = wlRows[0] ?? null;
+
+    // Computed metrics
+    const now = Date.now();
+    const daysToRenewal = t.expiresAt
+      ? Math.max(0, Math.ceil((new Date(t.expiresAt).getTime() - now) / 86400000))
+      : null;
+    const daysInTrial = t.trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(t.trialEndsAt).getTime() - now) / 86400000))
+      : null;
+    const usersPct = t.maxUsers && t.maxUsers > 0 && t.currentUsers
+      ? Math.min(Math.round((t.currentUsers / t.maxUsers) * 100), 100) : 0;
+    const storagePct = t.maxStorageGb && t.maxStorageGb > 0 && t.currentStorageGb
+      ? Math.min(Math.round((Number(t.currentStorageGb) / t.maxStorageGb) * 100), 100) : 0;
+    const apiPct = t.maxApiCallsMonthly && t.maxApiCallsMonthly > 0 && t.currentApiCalls
+      ? Math.min(Math.round((t.currentApiCalls / t.maxApiCallsMonthly) * 100), 100) : 0;
+
+    res.json({
+      success: true,
+      data: {
+        ...t,
+        features: (t.features as string[]) ?? [],
+        recentEvents,
+        whitelabel,
+        daysToRenewal,
+        daysInTrial,
+        usersPct,
+        storagePct,
+        apiPct,
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch tenant dashboard" });
+  }
+});
+
 router.post("/tenants", async (req: AuthRequest, res) => {
   try {
     const { name, legalName, industry, country, currency, planId, billingCycle, trialDays, notes } = req.body;
