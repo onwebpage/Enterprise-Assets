@@ -8,7 +8,8 @@ import {
   BarChart3, Package, Globe, CreditCard, Trash2, X, PieChart,
   Activity, Star, Download, Palette, Eye, EyeOff, Link2, Mail,
   Monitor, Brush, Type, Code2, ToggleLeft, ToggleRight, ExternalLink,
-  Check, Loader2, Save, Bell, LayoutDashboard, HardDrive
+  Check, Loader2, Save, Bell, LayoutDashboard, HardDrive,
+  ArrowLeft, Calendar, Cpu, Database, Layers, Info, Settings2
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
@@ -2067,9 +2068,11 @@ function TrialManagementTab() {
     qc.invalidateQueries({ queryKey: ['saas-tenants'] });
   };
 
-  const authHeaders = () => {
+  const authHeaders = (): Record<string, string> => {
     const token = localStorage.getItem('auth_token');
-    return token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+    const h: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) h['Authorization'] = `Bearer ${token}`;
+    return h;
   };
 
   const extendMut = useMutation({
@@ -2383,10 +2386,563 @@ function TrialManagementTab() {
   );
 }
 
+// ── Tenant Dashboard Tab ───────────────────────────────────────────────────
+function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => void }) {
+  const { data, isLoading, refetch } = useTenantDashboard(id);
+  const { data: plans = [] } = usePlans();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [showEdit, setShowEdit] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '', legalName: '', industry: '', country: '', currency: 'USD',
+    planId: '', billingCycle: 'monthly', notes: '',
+    currentUsers: '', currentStorageGb: '',
+  });
+
+  useEffect(() => {
+    if (data && !showEdit) {
+      setEditForm({
+        name: data.name ?? '',
+        legalName: data.legalName ?? '',
+        industry: data.industry ?? '',
+        country: data.country ?? '',
+        currency: data.currency ?? 'USD',
+        planId: String(data.planId ?? ''),
+        billingCycle: data.billingCycle ?? 'monthly',
+        notes: data.notes ?? '',
+        currentUsers: String(data.currentUsers ?? ''),
+        currentStorageGb: data.currentStorageGb ? Number(data.currentStorageGb).toFixed(1) : '',
+      });
+    }
+  }, [data, showEdit]);
+
+  const changeStatus = useMutation({
+    mutationFn: async (status: string) => {
+      const r = await fetch(api(`/saas/tenants/${id}/status`), {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      return r.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['saas-tenant-dashboard', id] });
+      qc.invalidateQueries({ queryKey: ['saas-tenants'] });
+      qc.invalidateQueries({ queryKey: ['saas-metrics'] });
+      toast({ title: 'Tenant status updated' });
+      refetch();
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' }),
+  });
+
+  const updateTenant = useMutation({
+    mutationFn: async () => {
+      const body = {
+        ...editForm,
+        planId: editForm.planId ? parseInt(editForm.planId) : undefined,
+        currentUsers: editForm.currentUsers ? parseInt(editForm.currentUsers) : undefined,
+        currentStorageGb: editForm.currentStorageGb ? editForm.currentStorageGb : undefined,
+      };
+      const r = await fetch(api(`/saas/tenants/${id}`), {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return r.json();
+    },
+    onSuccess: (res) => {
+      if (!res.success) { toast({ title: 'Error', description: res.error ?? 'Failed to update', variant: 'destructive' }); return; }
+      qc.invalidateQueries({ queryKey: ['saas-tenant-dashboard', id] });
+      qc.invalidateQueries({ queryKey: ['saas-tenants'] });
+      qc.invalidateQueries({ queryKey: ['saas-metrics'] });
+      setShowEdit(false);
+      toast({ title: 'Tenant updated successfully' });
+      refetch();
+    },
+    onError: () => toast({ title: 'Error', description: 'Failed to update tenant', variant: 'destructive' }),
+  });
+
+  if (!id) return null;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-5">
+        <button onClick={onBack} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors">
+          <ArrowLeft className="w-4 h-4" />Back to Tenants
+        </button>
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 h-24 animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 h-64 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-5">
+        <button onClick={onBack} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors">
+          <ArrowLeft className="w-4 h-4" />Back to Tenants
+        </button>
+        <div className="flex flex-col items-center justify-center py-24 text-white/30">
+          <AlertCircle className="w-10 h-10 mb-3 text-red-400/50" />
+          <p className="text-sm">Tenant not found or failed to load.</p>
+          <button onClick={() => refetch()} className="mt-3 text-xs text-[#2563EB] hover:text-blue-400">Retry</button>
+        </div>
+      </div>
+    );
+  }
+
+  const d = data;
+  const statusKey = d.subStatus ?? d.status ?? 'active';
+  const SI = STATUS_ICON[statusKey] ?? CheckCircle;
+  const isTrial = statusKey === 'trial';
+  const isSuspended = statusKey === 'suspended';
+  const isCancelled = statusKey === 'cancelled';
+
+  const usersLimit = d.maxUsers && d.maxUsers > 0 ? `/ ${d.maxUsers}` : '';
+  const storageUsed = d.currentStorageGb ? Number(d.currentStorageGb).toFixed(1) : '0';
+  const storageLimit = d.maxStorageGb && d.maxStorageGb > 0 ? `/ ${d.maxStorageGb} GB` : '';
+
+  const kpis = [
+    {
+      label: 'Monthly Revenue', value: d.mrr ? fmt(Number(d.mrr)) : '—',
+      sub: d.billingCycle ? `Billed ${d.billingCycle}` : 'No subscription',
+      icon: DollarSign, color: 'text-emerald-400', bg: 'from-emerald-500/20 to-emerald-500/5',
+    },
+    {
+      label: 'Users', value: `${d.currentUsers ?? 0}${usersLimit}`,
+      sub: d.maxUsers && d.maxUsers > 0 ? `${d.usersPct}% of limit` : 'Unlimited',
+      icon: Users, color: 'text-[#2563EB]', bg: 'from-[#2563EB]/20 to-[#2563EB]/5',
+      pct: d.usersPct,
+    },
+    {
+      label: 'Storage', value: `${storageUsed} GB${storageLimit ? ' ' + storageLimit : ''}`,
+      sub: d.maxStorageGb && d.maxStorageGb > 0 ? `${d.storagePct}% of limit` : 'Unlimited',
+      icon: Database, color: 'text-[#06B6D4]', bg: 'from-[#06B6D4]/20 to-[#06B6D4]/5',
+      pct: d.storagePct,
+    },
+    {
+      label: 'API Calls / Month', value: fmtNum(d.currentApiCalls ?? 0),
+      sub: d.maxApiCallsMonthly && d.maxApiCallsMonthly > 0 ? `${d.apiPct}% of limit` : 'Unlimited',
+      icon: Cpu, color: 'text-purple-400', bg: 'from-purple-500/20 to-purple-500/5',
+      pct: d.apiPct,
+    },
+  ];
+
+  const eventTypeColors: Record<string, string> = {
+    created: 'text-emerald-400 bg-emerald-500/10',
+    extended: 'text-[#2563EB] bg-[#2563EB]/10',
+    reminder_sent: 'text-amber-400 bg-amber-500/10',
+    converted: 'text-[#06B6D4] bg-[#06B6D4]/10',
+    cancelled: 'text-red-400 bg-red-500/10',
+    expired: 'text-white/30 bg-white/[0.05]',
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <button onClick={onBack} className="flex items-center gap-2 text-white/40 hover:text-white text-sm transition-colors group">
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />Back to Tenants
+        </button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm"
+            className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]"
+            onClick={() => setShowEdit(true)}>
+            <Settings2 className="w-3.5 h-3.5 mr-1.5" />Edit Tenant
+          </Button>
+          {!isSuspended && !isCancelled && (
+            <Button size="sm" variant="outline"
+              className="border-amber-500/30 text-amber-400 hover:bg-amber-500/10 bg-transparent"
+              onClick={() => changeStatus.mutate('suspended')}
+              disabled={changeStatus.isPending}>
+              <Ban className="w-3.5 h-3.5 mr-1.5" />Suspend
+            </Button>
+          )}
+          {isSuspended && (
+            <Button size="sm" variant="outline"
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 bg-transparent"
+              onClick={() => changeStatus.mutate('active')}
+              disabled={changeStatus.isPending}>
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Reactivate
+            </Button>
+          )}
+          {!isCancelled && (
+            <Button size="sm" variant="outline"
+              className="border-red-500/30 text-red-400 hover:bg-red-500/10 bg-transparent"
+              onClick={() => changeStatus.mutate('cancelled')}
+              disabled={changeStatus.isPending}>
+              <XCircle className="w-3.5 h-3.5 mr-1.5" />Cancel
+            </Button>
+          )}
+          {isCancelled && (
+            <Button size="sm" variant="outline"
+              className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 bg-transparent"
+              onClick={() => changeStatus.mutate('active')}
+              disabled={changeStatus.isPending}>
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />Restore
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Tenant Identity Header */}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+        className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5 flex items-center gap-4 flex-wrap">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 flex items-center justify-center text-xl font-bold text-white flex-shrink-0">
+          {d.name.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-xl font-bold text-white">{d.name}</h2>
+            <Badge className={`${STATUS_STYLES[statusKey] ?? STATUS_STYLES.active} text-[10px] capitalize`}>
+              <SI className="w-2.5 h-2.5 mr-1" />{statusKey}
+            </Badge>
+            {d.planName && (
+              <span className={`text-xs font-semibold ${PLAN_COLORS[d.planSlug ?? ''] ?? 'text-white/40'}`}>
+                {d.planName} Plan
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+            {d.legalName && <span className="text-xs text-white/40">{d.legalName}</span>}
+            {d.industry && <span className="text-xs text-white/30">{d.industry}</span>}
+            {d.country && <span className="text-xs text-white/30">{d.country}</span>}
+            {d.employeeCount > 0 && <span className="text-xs text-white/30">{d.employeeCount} employees</span>}
+            <span className="text-xs text-white/25">Joined {timeAgo(d.createdAt)}</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1 text-right">
+          {d.daysToRenewal !== null && !isTrial && (
+            <div className={`flex items-center gap-1.5 text-xs ${d.daysToRenewal <= 7 ? 'text-red-400' : d.daysToRenewal <= 30 ? 'text-amber-400' : 'text-white/40'}`}>
+              <Calendar className="w-3 h-3" />
+              {d.daysToRenewal === 0 ? 'Renews today' : `Renews in ${d.daysToRenewal}d`}
+            </div>
+          )}
+          {isTrial && d.daysInTrial !== null && (
+            <div className={`flex items-center gap-1.5 text-xs ${d.daysInTrial <= 3 ? 'text-red-400' : d.daysInTrial <= 7 ? 'text-amber-400' : 'text-[#06B6D4]'}`}>
+              <Clock className="w-3 h-3" />
+              {d.daysInTrial === 0 ? 'Trial expires today' : `${d.daysInTrial}d left in trial`}
+            </div>
+          )}
+          {d.gstin && <span className="text-[10px] text-white/20">GSTIN: {d.gstin}</span>}
+          {d.taxId && <span className="text-[10px] text-white/20">Tax ID: {d.taxId}</span>}
+        </div>
+      </motion.div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((k, i) => (
+          <motion.div key={k.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${k.bg} flex items-center justify-center mb-3`}>
+              <k.icon className={`w-4 h-4 ${k.color}`} />
+            </div>
+            <p className="text-2xl font-bold text-white">{k.value}</p>
+            <p className="text-xs text-white/40 mt-0.5">{k.label}</p>
+            <p className="text-[10px] text-white/25 mt-0.5">{k.sub}</p>
+            {'pct' in k && typeof k.pct === 'number' && k.pct > 0 && (
+              <Progress value={k.pct}
+                className={`h-1 mt-2 bg-white/[0.06] ${k.pct >= 90 ? '[&>div]:bg-red-500' : k.pct >= 70 ? '[&>div]:bg-amber-500' : ''}`} />
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Main 3-column grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+
+        {/* Subscription Details */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+            <CreditCard className="w-4 h-4 text-white/40" />Subscription
+          </h3>
+          <div className="space-y-2.5">
+            {[
+              { label: 'Plan', value: d.planName ?? '—', colored: true },
+              { label: 'Status', value: statusKey, capitalize: true },
+              { label: 'Billing', value: d.billingCycle ?? '—', capitalize: true },
+              { label: 'Price', value: d.billingCycle === 'yearly' && d.priceYearly ? `$${Number(d.priceYearly).toLocaleString()}/yr` : d.priceMonthly ? `$${Number(d.priceMonthly).toLocaleString()}/mo` : '—' },
+              { label: 'Started', value: d.startedAt ? new Date(d.startedAt).toLocaleDateString() : '—' },
+              { label: 'Expires', value: d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : '—' },
+              ...(isTrial && d.trialEndsAt ? [{ label: 'Trial Ends', value: new Date(d.trialEndsAt).toLocaleDateString(), colored: false, capitalize: false }] : []),
+              ...(d.cancelledAt ? [{ label: 'Cancelled', value: new Date(d.cancelledAt).toLocaleDateString(), colored: false, capitalize: false }] : []),
+              { label: 'Currency', value: d.currency },
+              ...(d.notes ? [{ label: 'Notes', value: d.notes, colored: false, capitalize: false }] : []),
+            ].map(row => (
+              <div key={row.label} className="flex items-start justify-between py-1.5 border-b border-white/[0.04] last:border-0 gap-2">
+                <span className="text-xs text-white/40 flex-shrink-0">{row.label}</span>
+                <span className={`text-xs font-medium text-right ${(row as any).colored ? (PLAN_COLORS[d.planSlug ?? ''] ?? 'text-white') : 'text-white'} ${(row as any).capitalize ? 'capitalize' : ''}`}>
+                  {String(row.value)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Resource Usage */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+          className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+          <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+            <Layers className="w-4 h-4 text-white/40" />Resource Usage
+          </h3>
+          <div className="space-y-5">
+            {[
+              {
+                label: 'Users', icon: Users, color: 'text-[#2563EB]', pct: d.usersPct,
+                used: String(d.currentUsers ?? 0),
+                limit: d.maxUsers && d.maxUsers > 0 ? String(d.maxUsers) : 'Unlimited',
+                barColor: d.usersPct >= 90 ? 'bg-red-500' : d.usersPct >= 70 ? 'bg-amber-500' : 'bg-[#2563EB]',
+              },
+              {
+                label: 'Storage', icon: Database, color: 'text-[#06B6D4]', pct: d.storagePct,
+                used: `${storageUsed} GB`,
+                limit: d.maxStorageGb && d.maxStorageGb > 0 ? `${d.maxStorageGb} GB` : 'Unlimited',
+                barColor: d.storagePct >= 90 ? 'bg-red-500' : d.storagePct >= 70 ? 'bg-amber-500' : 'bg-[#06B6D4]',
+              },
+              {
+                label: 'API Calls / Month', icon: Cpu, color: 'text-purple-400', pct: d.apiPct,
+                used: fmtNum(d.currentApiCalls ?? 0),
+                limit: d.maxApiCallsMonthly && d.maxApiCallsMonthly > 0 ? fmtNum(d.maxApiCallsMonthly) : 'Unlimited',
+                barColor: d.apiPct >= 90 ? 'bg-red-500' : d.apiPct >= 70 ? 'bg-amber-500' : 'bg-purple-500',
+              },
+              {
+                label: 'Modules', icon: Layers, color: 'text-amber-400', pct: 0,
+                used: '—',
+                limit: d.maxModules && d.maxModules > 0 ? String(d.maxModules) : 'Unlimited',
+                barColor: 'bg-amber-500',
+              },
+            ].map((r) => (
+              <div key={r.label}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <r.icon className={`w-3.5 h-3.5 ${r.color}`} />
+                    <span className="text-xs text-white/60">{r.label}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-white">{r.used}</span>
+                    <span className="text-[10px] text-white/30"> / {r.limit}</span>
+                  </div>
+                </div>
+                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${r.pct}%` }} transition={{ duration: 0.6, delay: 0.2 }}
+                    className={`h-full rounded-full ${r.barColor}`} />
+                </div>
+                {r.pct >= 90 && (
+                  <p className="text-[10px] text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-2.5 h-2.5" />Near limit — consider upgrading
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Plan features */}
+          {d.features && d.features.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-white/[0.05]">
+              <h4 className="text-xs text-white/40 mb-2.5 flex items-center gap-1.5"><Star className="w-3 h-3" />Plan Features</h4>
+              <div className="space-y-1.5">
+                {d.features.map((f: string) => (
+                  <div key={f} className="flex items-center gap-1.5">
+                    <CheckCircle className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                    <span className="text-[10px] text-white/50">{f}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Right column: Events + Whitelabel */}
+        <div className="space-y-4">
+          {/* Recent Events */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.18 }}
+            className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+            <h3 className="font-semibold text-white mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-white/40" />Recent Events
+            </h3>
+            {d.recentEvents && d.recentEvents.length > 0 ? (
+              <div className="space-y-2.5">
+                {d.recentEvents.map((ev: TrialEvent) => (
+                  <div key={ev.id} className="flex items-start gap-2.5 py-1.5 border-b border-white/[0.04] last:border-0">
+                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded capitalize flex-shrink-0 mt-0.5 ${eventTypeColors[ev.eventType] ?? 'text-white/30 bg-white/[0.05]'}`}>
+                      {ev.eventType.replace('_', ' ')}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      {ev.daysAdded ? <p className="text-[10px] text-white/40">+{ev.daysAdded} days added</p> : null}
+                      {ev.note && <p className="text-[10px] text-white/30 truncate">{ev.note}</p>}
+                      {ev.createdBy && <p className="text-[10px] text-white/20">by {ev.createdBy}</p>}
+                    </div>
+                    <span className="text-[10px] text-white/20 flex-shrink-0">{timeAgo(String(ev.createdAt))}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-white/20 text-xs">No events yet</div>
+            )}
+          </motion.div>
+
+          {/* Whitelabel Summary */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
+            className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-white flex items-center gap-2">
+                <Palette className="w-4 h-4 text-white/40" />White Label
+              </h3>
+              {d.whitelabel && (
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${d.whitelabel.isEnabled ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.06] text-white/30'}`}>
+                  {d.whitelabel.isEnabled ? 'Enabled' : 'Disabled'}
+                </span>
+              )}
+            </div>
+            {d.whitelabel ? (
+              <div className="space-y-2">
+                {[
+                  { label: 'Product Name', value: d.whitelabel.productName },
+                  { label: 'Custom Domain', value: d.whitelabel.customDomain ?? '—' },
+                  { label: 'Domain Status', value: d.whitelabel.domainStatus, capitalize: true },
+                  { label: 'Nav Theme', value: d.whitelabel.navTheme, capitalize: true },
+                  { label: 'Font', value: d.whitelabel.fontFamily ?? 'Inter' },
+                  { label: 'Support Email', value: d.whitelabel.supportEmail ?? '—' },
+                  { label: 'Hide Powered By', value: d.whitelabel.hidePoweredBy ? 'Yes' : 'No' },
+                ].map(row => (
+                  <div key={row.label} className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-0 gap-2">
+                    <span className="text-[10px] text-white/30 flex-shrink-0">{row.label}</span>
+                    <span className={`text-[10px] font-medium text-white/60 text-right ${(row as any).capitalize ? 'capitalize' : ''}`}>{String(row.value)}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded" style={{ backgroundColor: d.whitelabel.primaryColor }} />
+                    <span className="text-[10px] text-white/30">Primary</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-5 h-5 rounded" style={{ backgroundColor: d.whitelabel.accentColor }} />
+                    <span className="text-[10px] text-white/30">Accent</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 text-white/20 text-xs">No white label config</div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {showEdit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#07091a] border border-white/[0.1] rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-semibold text-white text-lg">Edit Tenant</h3>
+                <button onClick={() => setShowEdit(false)} className="p-1.5 rounded hover:bg-white/[0.07] text-white/40 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { f: 'name', l: 'Company Name', required: true },
+                    { f: 'legalName', l: 'Legal Name' },
+                  ].map(({ f, l, required }) => (
+                    <div key={f}>
+                      <label className="text-xs text-white/40 mb-1 block">{l}{required && <span className="text-red-400 ml-0.5">*</span>}</label>
+                      <Input value={(editForm as any)[f]} onChange={e => setEditForm(x => ({ ...x, [f]: e.target.value }))}
+                        className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { f: 'industry', l: 'Industry' },
+                    { f: 'country', l: 'Country' },
+                  ].map(({ f, l }) => (
+                    <div key={f}>
+                      <label className="text-xs text-white/40 mb-1 block">{l}</label>
+                      <Input value={(editForm as any)[f]} onChange={e => setEditForm(x => ({ ...x, [f]: e.target.value }))}
+                        className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Currency</label>
+                    <Input value={editForm.currency} onChange={e => setEditForm(x => ({ ...x, currency: e.target.value }))}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="USD" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Billing Cycle</label>
+                    <select value={editForm.billingCycle} onChange={e => setEditForm(x => ({ ...x, billingCycle: e.target.value }))}
+                      className="w-full bg-[#0a0f1e] border border-white/[0.08] text-white h-8 text-sm rounded-md px-2">
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">Plan</label>
+                  <select value={editForm.planId} onChange={e => setEditForm(x => ({ ...x, planId: e.target.value }))}
+                    className="w-full bg-[#0a0f1e] border border-white/[0.08] text-white h-8 text-sm rounded-md px-2">
+                    <option value="">— No change —</option>
+                    {plans.filter(p => p.isActive).map(p => (
+                      <option key={p.id} value={String(p.id)}>{p.name} (${Number(p.priceMonthly)}/mo)</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Current Users</label>
+                    <Input type="number" value={editForm.currentUsers} onChange={e => setEditForm(x => ({ ...x, currentUsers: e.target.value }))}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-white/40 mb-1 block">Storage Used (GB)</label>
+                    <Input type="number" step="0.1" value={editForm.currentStorageGb} onChange={e => setEditForm(x => ({ ...x, currentStorageGb: e.target.value }))}
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-white/40 mb-1 block">Notes</label>
+                  <textarea value={editForm.notes} onChange={e => setEditForm(x => ({ ...x, notes: e.target.value }))} rows={3}
+                    className="w-full bg-[#0a0f1e] border border-white/[0.08] text-white text-sm rounded-md px-3 py-2 resize-none outline-none focus:border-[#2563EB]/50" />
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <Button variant="outline" className="flex-1 border-white/[0.08] text-white/60 bg-transparent"
+                  onClick={() => setShowEdit(false)}>Cancel</Button>
+                <Button className="flex-1 bg-[#2563EB] hover:bg-[#1d4ed8]"
+                  onClick={() => updateTenant.mutate()} disabled={updateTenant.isPending || !editForm.name.trim()}>
+                  {updateTenant.isPending ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Saving…</> : <><Save className="w-3.5 h-3.5 mr-1.5" />Save Changes</>}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SaasPlatform() {
   const [tab, setTab] = useState('overview');
   const [showOnboard, setShowOnboard] = useState(false);
+  const [tenantDashboardId, setTenantDashboardId] = useState<number | null>(null);
+
+  const openTenantDashboard = (id: number) => {
+    setTenantDashboardId(id);
+    setTab('tenant-dashboard');
+  };
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Administration' }, { label: 'SaaS Platform' }]}>
@@ -2416,6 +2972,7 @@ export default function SaasPlatform() {
               { v: 'trials',       l: 'Trial Management', icon: Clock },
               { v: 'onboarding',   l: 'Onboarding',       icon: Zap },
               { v: 'whitelabel',   l: 'White Label',      icon: Palette },
+              ...(tab === 'tenant-dashboard' ? [{ v: 'tenant-dashboard', l: 'Tenant Dashboard', icon: LayoutDashboard }] : []),
             ].map(({ v, l, icon: Icon }) => (
               <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 flex items-center gap-1.5">
                 <Icon className="w-3.5 h-3.5" />{l}
@@ -2423,13 +2980,16 @@ export default function SaasPlatform() {
             ))}
           </TabsList>
 
-          <TabsContent value="overview"      className="mt-5"><OverviewTab /></TabsContent>
-          <TabsContent value="tenants"       className="mt-5"><TenantsTab onAdd={() => { setTab('onboarding'); }} /></TabsContent>
-          <TabsContent value="plans"         className="mt-5"><PlansTab /></TabsContent>
-          <TabsContent value="subscriptions" className="mt-5"><SubscriptionsTab /></TabsContent>
-          <TabsContent value="trials"        className="mt-5"><TrialManagementTab /></TabsContent>
-          <TabsContent value="onboarding"    className="mt-5"><OnboardingTab /></TabsContent>
-          <TabsContent value="whitelabel"    className="mt-5"><WhiteLabelTab /></TabsContent>
+          <TabsContent value="overview"          className="mt-5"><OverviewTab /></TabsContent>
+          <TabsContent value="tenants"           className="mt-5"><TenantsTab onAdd={() => { setTab('onboarding'); }} onViewDashboard={openTenantDashboard} /></TabsContent>
+          <TabsContent value="plans"             className="mt-5"><PlansTab /></TabsContent>
+          <TabsContent value="subscriptions"     className="mt-5"><SubscriptionsTab /></TabsContent>
+          <TabsContent value="trials"            className="mt-5"><TrialManagementTab /></TabsContent>
+          <TabsContent value="onboarding"        className="mt-5"><OnboardingTab /></TabsContent>
+          <TabsContent value="whitelabel"        className="mt-5"><WhiteLabelTab /></TabsContent>
+          <TabsContent value="tenant-dashboard"  className="mt-5">
+            <TenantDashboardTab id={tenantDashboardId} onBack={() => setTab('tenants')} />
+          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>
