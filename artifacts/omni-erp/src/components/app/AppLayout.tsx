@@ -95,6 +95,12 @@ const navGroups = [
       { icon: Server, label: 'SaaS Platform', path: '/app/saas' },
     ]
   },
+  {
+    label: 'Super Admin',
+    items: [
+      { icon: Shield, label: 'Admin Panel', path: '/app/admin' },
+    ]
+  },
 ];
 
 const companies = [
