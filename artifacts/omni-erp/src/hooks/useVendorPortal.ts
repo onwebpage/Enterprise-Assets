@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, type ApiResponse } from "@/lib/api";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -142,8 +142,8 @@ export function useVpPermissions() {
   return useQuery<VpPermissions>({
     queryKey: [BASE, "permissions"],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/my-permissions`);
-      return r.data.data;
+      const r = await api.get<ApiResponse<VpPermissions>>(`/${BASE}/my-permissions`);
+      return r.data;
     },
   });
 }
@@ -152,8 +152,8 @@ export function useVpSummary() {
   return useQuery<VpSummary>({
     queryKey: [BASE, "summary"],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/summary`);
-      return r.data.data;
+      const r = await api.get<ApiResponse<VpSummary>>(`/${BASE}/summary`);
+      return r.data;
     },
   });
 }
@@ -162,8 +162,8 @@ export function useVpActivity(limit = 20) {
   return useQuery<VpActivity[]>({
     queryKey: [BASE, "activity", limit],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/activity`, { params: { limit } });
-      return r.data.data;
+      const r = await api.get<ApiResponse<VpActivity[]>>(`/${BASE}/activity?limit=${limit}`);
+      return r.data;
     },
   });
 }
@@ -173,8 +173,12 @@ export function useVpVendors(search?: string, status?: string) {
   return useQuery<VpVendor[]>({
     queryKey: [BASE, "vendors", search, status],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/vendors`, { params: { search, status } });
-      return r.data.data;
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (status) params.set("status", status);
+      const qs = params.toString();
+      const r = await api.get<ApiResponse<VpVendor[]>>(`/${BASE}/vendors${qs ? `?${qs}` : ""}`);
+      return r.data;
     },
   });
 }
@@ -207,7 +211,7 @@ export function useDeleteVpVendor() {
 export function useInviteVpVendor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => api.post(`/${BASE}/vendors/${id}/invite`),
+    mutationFn: (id: number) => api.post(`/${BASE}/vendors/${id}/invite`, {}),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [BASE] }); },
   });
 }
@@ -215,7 +219,7 @@ export function useInviteVpVendor() {
 export function useToggleVpVendor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => api.post(`/${BASE}/vendors/${id}/toggle`),
+    mutationFn: (id: number) => api.post(`/${BASE}/vendors/${id}/toggle`, {}),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [BASE] }); },
   });
 }
@@ -225,8 +229,13 @@ export function useVpBills(search?: string, status?: string, vendorId?: number) 
   return useQuery<VpBill[]>({
     queryKey: [BASE, "bills", search, status, vendorId],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/bills`, { params: { search, status, vendorId } });
-      return r.data.data;
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (status) params.set("status", status);
+      if (vendorId !== undefined) params.set("vendorId", String(vendorId));
+      const qs = params.toString();
+      const r = await api.get<ApiResponse<VpBill[]>>(`/${BASE}/bills${qs ? `?${qs}` : ""}`);
+      return r.data;
     },
   });
 }
@@ -261,8 +270,14 @@ export function useVpTickets(search?: string, status?: string, priority?: string
   return useQuery<VpTicket[]>({
     queryKey: [BASE, "tickets", search, status, priority, vendorId],
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/tickets`, { params: { search, status, priority, vendorId } });
-      return r.data.data;
+      const params = new URLSearchParams();
+      if (search) params.set("search", search);
+      if (status) params.set("status", status);
+      if (priority) params.set("priority", priority);
+      if (vendorId !== undefined) params.set("vendorId", String(vendorId));
+      const qs = params.toString();
+      const r = await api.get<ApiResponse<VpTicket[]>>(`/${BASE}/tickets${qs ? `?${qs}` : ""}`);
+      return r.data;
     },
   });
 }
@@ -289,8 +304,8 @@ export function useVpTicketMessages(ticketId: number | null) {
     queryKey: [BASE, "ticket-messages", ticketId],
     enabled: !!ticketId,
     queryFn: async () => {
-      const r = await api.get(`/${BASE}/tickets/${ticketId}/messages`);
-      return r.data.data;
+      const r = await api.get<ApiResponse<VpTicketMessage[]>>(`/${BASE}/tickets/${ticketId}/messages`);
+      return r.data;
     },
   });
 }

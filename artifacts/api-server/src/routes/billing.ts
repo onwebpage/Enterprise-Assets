@@ -14,7 +14,7 @@ router.use(requireAuth);
 // ── Summary ───────────────────────────────────────────────────────────────────
 router.get("/summary", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
 
     const [subRow] = await db
       .select({
@@ -103,7 +103,7 @@ router.get("/plans", async (_req, res) => {
 // ── Change plan ───────────────────────────────────────────────────────────────
 router.post("/change-plan", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const { planId, billingCycle } = req.body;
 
     const [plan] = await db
@@ -142,7 +142,7 @@ router.post("/change-plan", async (req: AuthRequest, res) => {
 // ── Toggle cancel-at-period-end ────────────────────────────────────────────────
 router.patch("/cancel", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const { cancelAtPeriodEnd } = req.body;
     const [updated] = await db
       .update(billingSubscriptions)
@@ -158,7 +158,7 @@ router.patch("/cancel", async (req: AuthRequest, res) => {
 // ── Invoices ──────────────────────────────────────────────────────────────────
 router.get("/invoices", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const data = await db
       .select()
       .from(billingInvoices)
@@ -173,7 +173,7 @@ router.get("/invoices", async (req: AuthRequest, res) => {
 // ── Payment Methods ───────────────────────────────────────────────────────────
 router.get("/payment-methods", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const data = await db
       .select()
       .from(billingPaymentMethods)
@@ -187,7 +187,7 @@ router.get("/payment-methods", async (req: AuthRequest, res) => {
 
 router.post("/payment-methods", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const { type, brand, last4, expiryMonth, expiryYear, cardholderName, bankName, accountLast4, upiId, isDefault } = req.body;
 
     // If setting as default, undefault others
@@ -226,8 +226,8 @@ router.post("/payment-methods", async (req: AuthRequest, res) => {
 
 router.patch("/payment-methods/:id/default", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
-    const id = parseInt(req.params.id);
+    const orgId = req.user!.orgId!;
+    const id = parseInt(req.params["id"] as string);
     await db
       .update(billingPaymentMethods)
       .set({ isDefault: false, updatedAt: new Date() })
@@ -246,8 +246,8 @@ router.patch("/payment-methods/:id/default", async (req: AuthRequest, res) => {
 
 router.delete("/payment-methods/:id", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
-    const id = parseInt(req.params.id);
+    const orgId = req.user!.orgId!;
+    const id = parseInt(req.params["id"] as string);
     const [pm] = await db
       .select()
       .from(billingPaymentMethods)
@@ -280,7 +280,7 @@ router.delete("/payment-methods/:id", async (req: AuthRequest, res) => {
 // ── Add-ons ───────────────────────────────────────────────────────────────────
 router.get("/add-ons", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
 
     const all = await db
       .select()
@@ -315,8 +315,8 @@ router.get("/add-ons", async (req: AuthRequest, res) => {
 
 router.patch("/add-ons/:id/toggle", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
-    const addOnId = parseInt(req.params.id);
+    const orgId = req.user!.orgId!;
+    const addOnId = parseInt(req.params["id"] as string);
 
     const [sub] = await db
       .select()
@@ -354,7 +354,7 @@ router.patch("/add-ons/:id/toggle", async (req: AuthRequest, res) => {
 // ── Usage (live snapshot) ─────────────────────────────────────────────────────
 router.patch("/usage", async (req: AuthRequest, res) => {
   try {
-    const orgId = req.user!.orgId;
+    const orgId = req.user!.orgId!;
     const { currentUsers, currentStorageGb, currentApiCalls } = req.body;
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (currentUsers !== undefined) updates.currentUsers = parseInt(currentUsers);

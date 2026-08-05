@@ -706,9 +706,9 @@ async function fetchManufacturing(orgId: number): Promise<string> {
       cancelled: sql<number>`count(*) filter (where status='cancelled')::int`,
       urgent: sql<number>`count(*) filter (where priority='urgent' and status not in ('done','cancelled'))::int`,
     }).from(mfgWorkOrders).where(eq(mfgWorkOrders.orgId, orgId)),
-    db.select({ woNumber: mfgWorkOrders.woNumber, status: mfgWorkOrders.status, priority: mfgWorkOrders.priority, plannedQty: mfgWorkOrders.plannedQty, scheduledStart: mfgWorkOrders.scheduledStart, scheduledEnd: mfgWorkOrders.scheduledEnd })
+    db.select({ woNumber: mfgWorkOrders.woNumber, status: mfgWorkOrders.status, priority: mfgWorkOrders.priority, plannedQty: mfgWorkOrders.plannedQty, scheduledStart: mfgWorkOrders.plannedStartDate, scheduledEnd: mfgWorkOrders.plannedEndDate })
       .from(mfgWorkOrders).where(and(eq(mfgWorkOrders.orgId, orgId), sql`status in ('planned','scheduled','in_progress')`))
-      .orderBy(sql`case when priority='urgent' then 0 when priority='high' then 1 else 2 end`, desc(mfgWorkOrders.scheduledStart)).limit(8),
+      .orderBy(sql`case when priority='urgent' then 0 when priority='high' then 1 else 2 end`, desc(mfgWorkOrders.plannedStartDate)).limit(8),
   ]);
 
   const s = summary[0];
@@ -999,7 +999,7 @@ async function generateResponse(message: string, orgId: number): Promise<string>
 // GET /api/ai/conversations
 router.get("/conversations", async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const convs = await db.select()
       .from(aiConversations)
@@ -1015,7 +1015,7 @@ router.get("/conversations", async (req: AuthRequest, res) => {
 // POST /api/ai/conversations
 router.post("/conversations", async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const parsed = insertAiConversationSchema.safeParse(req.body);
     const title = (parsed.success && parsed.data.title) ? parsed.data.title : "New Conversation";
@@ -1029,7 +1029,7 @@ router.post("/conversations", async (req: AuthRequest, res) => {
 // DELETE /api/ai/conversations/:id
 router.delete("/conversations/:id", async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const id = parseInt(req.params.id as string);
     if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid ID" }); return; }
     const [conv] = await db.select().from(aiConversations).where(and(eq(aiConversations.id, id), eq(aiConversations.userId, userId))).limit(1);
@@ -1044,7 +1044,7 @@ router.delete("/conversations/:id", async (req: AuthRequest, res) => {
 // GET /api/ai/conversations/:id/messages
 router.get("/conversations/:id/messages", async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const id = parseInt(req.params.id as string);
     if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid ID" }); return; }
     const [conv] = await db.select().from(aiConversations).where(and(eq(aiConversations.id, id), eq(aiConversations.userId, userId))).limit(1);
@@ -1059,7 +1059,7 @@ router.get("/conversations/:id/messages", async (req: AuthRequest, res) => {
 // POST /api/ai/chat — main AI endpoint
 router.post("/chat", async (req: AuthRequest, res) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const orgId = req.user!.orgId!;
     const parsed = sendAiChatSchema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ success: false, error: "Invalid request" }); return; }

@@ -113,7 +113,7 @@ router.put("/plans/:id", async (req, res) => {
 
 router.delete("/plans/:id", async (req, res) => {
   try {
-    await db.update(saasPlans).set({ isActive: false, updatedAt: new Date() }).where(eq(saasPlans.id, parseInt(req.params.id)));
+    await db.update(saasPlans).set({ isActive: false, updatedAt: new Date() }).where(eq(saasPlans.id, parseInt(req.params["id"] as string)));
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete plan" });
@@ -212,7 +212,7 @@ router.get("/tenants/:id", async (req, res) => {
 // GET /saas/tenants/:id/dashboard — comprehensive single-tenant dashboard data
 router.get("/tenants/:id/dashboard", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
 
     const rows = await db
       .select({
@@ -486,7 +486,7 @@ router.get("/whitelabel", async (_req, res) => {
 
 router.get("/whitelabel/:orgId", async (req, res) => {
   try {
-    const orgId = parseInt(req.params.orgId);
+    const orgId = parseInt(req.params["orgId"] as string);
     const rows = await db
       .select()
       .from(saasWhitelabel)
@@ -537,7 +537,7 @@ router.post("/whitelabel", async (req, res) => {
 
 router.put("/whitelabel/:orgId", async (req, res) => {
   try {
-    const orgId = parseInt(req.params.orgId);
+    const orgId = parseInt(req.params["orgId"] as string);
     const updates = { ...req.body, updatedAt: new Date() };
     if (updates.orgId) delete updates.orgId; // prevent changing orgId
     if (typeof updates.hidePoweredBy !== "undefined") {
@@ -561,7 +561,7 @@ router.put("/whitelabel/:orgId", async (req, res) => {
 
 router.patch("/whitelabel/:orgId/domain-verify", async (req, res) => {
   try {
-    const orgId = parseInt(req.params.orgId);
+    const orgId = parseInt(req.params["orgId"] as string);
     // Simulate DNS verification check (would be a real DNS lookup in production)
     const [existing] = await db
       .select()
@@ -592,7 +592,7 @@ router.patch("/whitelabel/:orgId/domain-verify", async (req, res) => {
 
 router.patch("/whitelabel/:orgId/toggle", async (req, res) => {
   try {
-    const orgId = parseInt(req.params.orgId);
+    const orgId = parseInt(req.params["orgId"] as string);
     const [existing] = await db
       .select({ isEnabled: saasWhitelabel.isEnabled })
       .from(saasWhitelabel)
@@ -614,7 +614,7 @@ router.patch("/whitelabel/:orgId/toggle", async (req, res) => {
 
 router.delete("/whitelabel/:orgId", async (req, res) => {
   try {
-    const orgId = parseInt(req.params.orgId);
+    const orgId = parseInt(req.params["orgId"] as string);
     await db.delete(saasWhitelabel).where(eq(saasWhitelabel.orgId, orgId));
     res.json({ success: true, data: null });
   } catch {
@@ -757,7 +757,7 @@ router.get("/trials/stats", async (_req, res) => {
 // GET /saas/trials/:subId/events — event log for a trial
 router.get("/trials/:subId/events", async (req, res) => {
   try {
-    const subId = parseInt(req.params.subId);
+    const subId = parseInt(req.params["subId"] as string);
     const events = await db
       .select()
       .from(saasTrialEvents)
@@ -772,7 +772,7 @@ router.get("/trials/:subId/events", async (req, res) => {
 // POST /saas/trials/:subId/extend — extend a trial
 router.post("/trials/:subId/extend", async (req: AuthRequest, res) => {
   try {
-    const subId = parseInt(req.params.subId);
+    const subId = parseInt(req.params["subId"] as string);
     const { days, note } = req.body;
     const daysNum = parseInt(days) || 7;
 
@@ -810,7 +810,7 @@ router.post("/trials/:subId/extend", async (req: AuthRequest, res) => {
 // POST /saas/trials/:subId/convert — convert trial to paid
 router.post("/trials/:subId/convert", async (req: AuthRequest, res) => {
   try {
-    const subId = parseInt(req.params.subId);
+    const subId = parseInt(req.params["subId"] as string);
     const { billingCycle, planId, note } = req.body;
 
     const [sub] = await db
@@ -868,7 +868,7 @@ router.post("/trials/:subId/convert", async (req: AuthRequest, res) => {
 // POST /saas/trials/:subId/cancel — cancel a trial
 router.post("/trials/:subId/cancel", async (req: AuthRequest, res) => {
   try {
-    const subId = parseInt(req.params.subId);
+    const subId = parseInt(req.params["subId"] as string);
     const { note } = req.body;
 
     const [sub] = await db
@@ -905,7 +905,7 @@ router.post("/trials/:subId/cancel", async (req: AuthRequest, res) => {
 // POST /saas/trials/:subId/reminder — log a reminder
 router.post("/trials/:subId/reminder", async (req: AuthRequest, res) => {
   try {
-    const subId = parseInt(req.params.subId);
+    const subId = parseInt(req.params["subId"] as string);
     const { note } = req.body;
 
     const [sub] = await db
@@ -1115,7 +1115,7 @@ router.post("/agencies", async (req, res) => {
 // GET /saas/agencies/:id — single agency detail
 router.get("/agencies/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     const [agency] = await db.select().from(saasAgencies).where(eq(saasAgencies.id, id));
     if (!agency) { res.status(404).json({ success: false, error: "Agency not found" }); return; }
 
@@ -1147,7 +1147,7 @@ router.get("/agencies/:id", async (req, res) => {
 // PUT /saas/agencies/:id — update agency
 router.put("/agencies/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     const { name, slug, contactName, contactEmail, contactPhone, country, website, commissionRate, notes } = req.body;
     const [agency] = await db
       .update(saasAgencies)
@@ -1166,7 +1166,7 @@ router.put("/agencies/:id", async (req, res) => {
 // PATCH /saas/agencies/:id/status — change agency status
 router.patch("/agencies/:id/status", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     const { status } = req.body;
     const [agency] = await db
       .update(saasAgencies)
@@ -1184,7 +1184,7 @@ router.patch("/agencies/:id/status", async (req, res) => {
 // DELETE /saas/agencies/:id — deactivate agency
 router.delete("/agencies/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     await db.update(saasAgencies).set({ status: "inactive", updatedAt: new Date() }).where(eq(saasAgencies.id, id));
     res.json({ success: true, data: null });
   } catch (e) {
@@ -1196,7 +1196,7 @@ router.delete("/agencies/:id", async (req, res) => {
 // GET /saas/agencies/:id/clients — list clients for an agency
 router.get("/agencies/:id/clients", async (req, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
+    const agencyId = parseInt(req.params["id"] as string);
     const rows = await db
       .select({
         id: saasAgencyClients.id,
@@ -1232,7 +1232,7 @@ router.get("/agencies/:id/clients", async (req, res) => {
 // POST /saas/agencies/:id/clients — assign a tenant to agency
 router.post("/agencies/:id/clients", async (req, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
+    const agencyId = parseInt(req.params["id"] as string);
     const { orgId, notes } = req.body;
     if (!orgId) { res.status(400).json({ success: false, error: "orgId is required" }); return; }
     const [row] = await db
@@ -1250,8 +1250,8 @@ router.post("/agencies/:id/clients", async (req, res) => {
 // DELETE /saas/agencies/:id/clients/:orgId — remove client from agency
 router.delete("/agencies/:id/clients/:orgId", async (req, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
-    const orgId = parseInt(req.params.orgId);
+    const agencyId = parseInt(req.params["id"] as string);
+    const orgId = parseInt(req.params["orgId"] as string);
     await db
       .delete(saasAgencyClients)
       .where(and(eq(saasAgencyClients.agencyId, agencyId), eq(saasAgencyClients.orgId, orgId)));
@@ -1265,7 +1265,7 @@ router.delete("/agencies/:id/clients/:orgId", async (req, res) => {
 // GET /saas/agencies/:id/payouts — payout history
 router.get("/agencies/:id/payouts", async (req, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
+    const agencyId = parseInt(req.params["id"] as string);
     const rows = await db
       .select()
       .from(saasAgencyPayouts)
@@ -1281,7 +1281,7 @@ router.get("/agencies/:id/payouts", async (req, res) => {
 // POST /saas/agencies/:id/payouts — create payout record
 router.post("/agencies/:id/payouts", async (req, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
+    const agencyId = parseInt(req.params["id"] as string);
     const { period, totalMrr, commissionAmount, status, notes } = req.body;
     if (!period) { res.status(400).json({ success: false, error: "period is required" }); return; }
     const [row] = await db
@@ -1319,7 +1319,7 @@ router.patch("/agencies/:id/payouts/:payoutId", async (req, res) => {
 // POST /saas/agencies/:id/payouts/generate — auto-generate payout from live client MRR
 router.post("/agencies/:id/payouts/generate", async (req: AuthRequest, res) => {
   try {
-    const agencyId = parseInt(req.params.id);
+    const agencyId = parseInt(req.params["id"] as string);
     const { period, notes } = req.body;
 
     const now = new Date();

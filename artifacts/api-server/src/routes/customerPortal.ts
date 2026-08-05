@@ -462,7 +462,7 @@ router.put("/invoices/:id", requirePermission(MODULE, "edit"), async (req: AuthR
   }
   try {
     const extra: Record<string, unknown> = { updatedAt: new Date() };
-    if (parsed.data.status === "paid" && !parsed.data.paidAt) extra.paidAt = new Date();
+    if (parsed.data.status === "paid") extra.paidAt = new Date();
     const [updated] = await db.update(cpInvoices)
       .set({ ...parsed.data, ...extra })
       .where(eq(cpInvoices.id, id))

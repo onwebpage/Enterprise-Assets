@@ -141,7 +141,11 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
 
   async function handleSave() {
     try {
-      await updateOrg.mutateAsync(form);
+      await updateOrg.mutateAsync({
+        ...form,
+        foundedYear: form.foundedYear ? parseInt(form.foundedYear) : null,
+        employeeCount: form.employeeCount ? parseInt(form.employeeCount) : null,
+      });
       toast({ title: 'Saved', description: 'Company information updated.' });
     } catch (err: unknown) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to save', variant: 'destructive' });

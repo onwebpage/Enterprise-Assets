@@ -353,7 +353,7 @@ router.post("/invoices", requirePermission(MODULE, "create"), async (req: AuthRe
   }
   try {
     const orgId  = req.user!.orgId!;
-    const userId = req.user!.id;
+    const userId = req.user!.userId;
     const data   = parsed.data;
 
     const invoiceNumber = data.invoiceNumber ?? await nextInvoiceNumber(orgId);

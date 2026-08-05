@@ -423,14 +423,14 @@ router.get("/inventory", requirePermission(MODULE, "view"), async (req: AuthRequ
     res.json({
       success: true,
       data: {
-        byCategory: (byCategory.rows ?? byCategory as any[]).map((r: any) => ({
+        byCategory: ((byCategory.rows ?? byCategory) as unknown as any[]).map((r: any) => ({
           category: r.category_name ?? "Uncategorised",
           productCount: Number(r.product_count),
           totalValue: parseFloat(r.total_value),
           totalQty: parseFloat(r.total_qty),
         })),
         statusSummary: statusSummary.map(r => ({ status: r.status, count: r.count })),
-        lowStock: (lowStock.rows ?? lowStock as any[]).map((r: any) => ({
+        lowStock: ((lowStock.rows ?? lowStock) as unknown as any[]).map((r: any) => ({
           sku: r.sku,
           name: r.name,
           reorderPoint: Number(r.reorder_point),

@@ -65,7 +65,7 @@ interface Summary {
   currentUsers: number; currentStorageGb: string; currentApiCalls: number;
   uptime30d: string; planId: number; planName: string; planSlug: string;
   priceMonthly: string; priceYearly: string;
-  maxUsers: number | null; maxStorageGb: number | null; maxApiCallsMonthly: number | null;
+  maxUsers: number | null; maxModules: number | null; maxStorageGb: number | null; maxApiCallsMonthly: number | null;
   features: string[];
   activeAddOns: { id: number; name: string; slug: string; priceMonthly: string; quantity: number }[];
   mrr: number; addOnTotal: number;
