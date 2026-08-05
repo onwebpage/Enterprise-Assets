@@ -1,5 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import adminAuthRouter from "./adminAuth";
+import adminRouter from "./admin";
 import authRouter from "./auth";
 import usersRouter from "./users";
 import rolesRouter from "./roles";
@@ -68,5 +70,9 @@ router.use("/audit", auditRouter);
 router.use("/saas", saasRouter);
 router.use("/saas", saasResellerRouter);
 router.use("/billing", billingRouter);
+
+// ── Super Admin ───────────────────────────────────────────────────
+router.use("/admin/auth", adminAuthRouter);
+router.use("/admin", adminRouter);
 
 export default router;
