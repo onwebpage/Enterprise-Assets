@@ -14,6 +14,7 @@ import {
   Handshake, Wallet, Receipt
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
+import ResellerPanelTab from './ResellerPanelTab';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -4030,6 +4031,7 @@ export default function SaasPlatform() {
               { v: 'onboarding',   l: 'Onboarding',       icon: Zap },
               { v: 'whitelabel',   l: 'White Label',      icon: Palette },
               { v: 'agency',       l: 'Agency Panel',     icon: Handshake },
+              { v: 'reseller',     l: 'Reseller Panel',   icon: Briefcase },
               ...(tab === 'tenant-dashboard' ? [{ v: 'tenant-dashboard', l: 'Tenant Dashboard', icon: LayoutDashboard }] : []),
             ].map(({ v, l, icon: Icon }) => (
               <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50 flex items-center gap-1.5">
@@ -4046,6 +4048,7 @@ export default function SaasPlatform() {
           <TabsContent value="onboarding"        className="mt-5"><OnboardingTab /></TabsContent>
           <TabsContent value="whitelabel"        className="mt-5"><WhiteLabelTab /></TabsContent>
           <TabsContent value="agency"            className="mt-5"><AgencyPanelTab /></TabsContent>
+          <TabsContent value="reseller"          className="mt-5"><ResellerPanelTab /></TabsContent>
           <TabsContent value="tenant-dashboard"  className="mt-5">
             <TenantDashboardTab id={tenantDashboardId} onBack={() => setTab('tenants')} />
           </TabsContent>

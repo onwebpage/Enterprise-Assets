@@ -30,6 +30,7 @@ import notificationsRouter from "./notifications";
 import settingsRouter from "./settings";
 import auditRouter from "./audit";
 import saasRouter from "./saas";
+import saasResellerRouter from "./saas-reseller";
 import billingRouter from "./billing";
 
 const router: IRouter = Router();
@@ -65,6 +66,7 @@ router.use("/notifications", notificationsRouter);
 router.use("/settings", settingsRouter);
 router.use("/audit", auditRouter);
 router.use("/saas", saasRouter);
+router.use("/saas", saasResellerRouter);
 router.use("/billing", billingRouter);
 
 export default router;
