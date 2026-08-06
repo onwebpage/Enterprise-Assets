@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { eq, and, gte, sql } from "drizzle-orm";
-import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
+import { db, pool } from "@workspace/db";
 import { signAdminToken } from "../lib/adminJwt";
 import { verifyPassword, hashPassword } from "../lib/password";
 import { checkRateLimit, recordSuccess } from "../lib/rateLimiter";
@@ -11,11 +11,14 @@ const router = Router();
 // GET /api/admin/auth/me
 router.get("/me", requireAdminAuth, async (req: AdminRequest, res) => {
   try {
-    const [admin] = await db.execute<{
+    const result = await pool.query<{
       id: number; username: string; display_name: string; email: string | null;
       is_active: boolean; last_login_at: Date | null;
-    }>(sql`SELECT id, username, display_name, email, is_active, last_login_at
-           FROM super_admins WHERE id = ${req.admin!.adminId} LIMIT 1`);
+    }>(
+      "SELECT id, username, display_name, email, is_active, last_login_at FROM super_admins WHERE id = $1 LIMIT 1",
+      [req.admin!.adminId]
+    );
+    const admin = result.rows[0];
     if (!admin) { res.status(404).json({ success: false, error: "Admin not found" }); return; }
     res.json({ success: true, data: admin });
   } catch {
@@ -46,18 +49,21 @@ router.post("/login", async (req, res) => {
       return;
     }
 
-    const rows = await db.execute<{
+    // Use pool.query directly to avoid any ORM row-mapping issues
+    const result = await pool.query<{
       id: number; username: string; password_hash: string; display_name: string;
       email: string | null; is_active: boolean;
-    }>(sql`SELECT id, username, password_hash, display_name, email, is_active
-           FROM super_admins WHERE username = ${username.trim()} LIMIT 1`);
-    const admin = rows[0];
+    }>(
+      "SELECT id, username, password_hash, display_name, email, is_active FROM super_admins WHERE username = $1 LIMIT 1",
+      [username.trim()]
+    );
+    const admin = result.rows[0];
 
     const recordAttempt = async (success: boolean) => {
-      await db.execute(sql`
-        INSERT INTO admin_login_attempts (username, ip_address, success, user_agent)
-        VALUES (${username}, ${ip}, ${success}, ${req.headers["user-agent"] ?? null})
-      `);
+      await pool.query(
+        "INSERT INTO admin_login_attempts (username, ip_address, success, user_agent) VALUES ($1, $2, $3, $4)",
+        [username, ip, success, req.headers["user-agent"] ?? null]
+      );
     };
 
     if (!admin || !admin.is_active) {
@@ -76,16 +82,16 @@ router.post("/login", async (req, res) => {
     recordSuccess(rlKey);
     await recordAttempt(true);
 
-    await db.execute(sql`
-      UPDATE super_admins SET last_login_at = NOW(), last_login_ip = ${ip}, updated_at = NOW()
-      WHERE id = ${admin.id}
-    `);
+    await pool.query(
+      "UPDATE super_admins SET last_login_at = NOW(), last_login_ip = $1, updated_at = NOW() WHERE id = $2",
+      [ip, admin.id]
+    );
 
     // Audit
-    await db.execute(sql`
-      INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address)
-      VALUES (${admin.id}, ${admin.username}, 'LOGIN', 'auth', ${ip})
-    `);
+    await pool.query(
+      "INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address) VALUES ($1, $2, $3, $4, $5)",
+      [admin.id, admin.username, "LOGIN", "auth", ip]
+    );
 
     const token = signAdminToken({ adminId: admin.id, username: admin.username });
 
@@ -101,7 +107,8 @@ router.post("/login", async (req, res) => {
         },
       },
     });
-  } catch {
+  } catch (err) {
+    console.error("Admin login error:", err);
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
@@ -110,10 +117,10 @@ router.post("/login", async (req, res) => {
 router.post("/logout", requireAdminAuth, async (req: AdminRequest, res) => {
   try {
     const ip = req.socket.remoteAddress ?? "unknown";
-    await db.execute(sql`
-      INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address)
-      VALUES (${req.admin!.adminId}, ${req.admin!.username}, 'LOGOUT', 'auth', ${ip})
-    `);
+    await pool.query(
+      "INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address) VALUES ($1, $2, $3, $4, $5)",
+      [req.admin!.adminId, req.admin!.username, "LOGOUT", "auth", ip]
+    );
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Internal server error" });
@@ -128,19 +135,24 @@ router.patch("/password", requireAdminAuth, async (req: AdminRequest, res) => {
       res.status(400).json({ success: false, error: "New password must be at least 8 characters" });
       return;
     }
-    const rows = await db.execute<{ password_hash: string }>(
-      sql`SELECT password_hash FROM super_admins WHERE id = ${req.admin!.adminId}`
+    const result = await pool.query<{ password_hash: string }>(
+      "SELECT password_hash FROM super_admins WHERE id = $1",
+      [req.admin!.adminId]
     );
-    if (!rows[0]) { res.status(404).json({ success: false, error: "Not found" }); return; }
-    const valid = await verifyPassword(currentPassword, rows[0].password_hash);
+    const row = result.rows[0];
+    if (!row) { res.status(404).json({ success: false, error: "Not found" }); return; }
+    const valid = await verifyPassword(currentPassword, row.password_hash);
     if (!valid) { res.status(401).json({ success: false, error: "Current password incorrect" }); return; }
 
     const newHash = await hashPassword(newPassword);
-    await db.execute(sql`UPDATE super_admins SET password_hash = ${newHash}, updated_at = NOW() WHERE id = ${req.admin!.adminId}`);
-    await db.execute(sql`
-      INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address)
-      VALUES (${req.admin!.adminId}, ${req.admin!.username}, 'CHANGE_PASSWORD', 'auth', ${req.socket.remoteAddress ?? 'unknown'})
-    `);
+    await pool.query(
+      "UPDATE super_admins SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+      [newHash, req.admin!.adminId]
+    );
+    await pool.query(
+      "INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address) VALUES ($1, $2, $3, $4, $5)",
+      [req.admin!.adminId, req.admin!.username, "CHANGE_PASSWORD", "auth", req.socket.remoteAddress ?? "unknown"]
+    );
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Internal server error" });
