@@ -154,13 +154,11 @@ function AppRoutes() {
         <ProtectedRoute><SaasPlatform /></ProtectedRoute>
       </Route>
 
-      {/* Super Admin Panel — requires both ERP login and admin token */}
+      {/* Super Admin Panel — only requires admin token, independent of ERP login */}
       <Route path="/app/admin">
-        <ProtectedRoute>
-          <ProtectedAdminRoute>
-            <AdminPanel />
-          </ProtectedAdminRoute>
-        </ProtectedRoute>
+        <ProtectedAdminRoute>
+          <AdminPanel />
+        </ProtectedAdminRoute>
       </Route>
 
       <Route component={NotFound} />
