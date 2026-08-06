@@ -6,3 +6,5 @@ set -e
 pnpm install --frozen-lockfile
 pnpm exec tsc --build lib/db lib/api-zod lib/api-client-react
 pnpm --filter @workspace/db run push
+# Ensure admin tables exist (idempotent CREATE TABLE IF NOT EXISTS)
+psql "$DATABASE_URL" -f scripts/setup-admin-db.sql
