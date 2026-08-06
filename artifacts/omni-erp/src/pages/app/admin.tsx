@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import AppLayout from '@/components/app/AppLayout';
+import AdminLayout from '@/components/app/AdminLayout';
 import { useAdminAuth, adminFetch } from '@/contexts/adminAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -1629,7 +1629,7 @@ export default function AdminPanel() {
   const ActiveComp = TABS.find(t => t.id === activeTab)?.comp ?? DashboardTab;
 
   return (
-    <AppLayout breadcrumbs={[{ label: 'Super Admin' }, { label: TABS.find(t => t.id === activeTab)?.label ?? '' }]}>
+    <AdminLayout>
       <div className="flex flex-col h-full min-h-0">
         {/* Admin Header */}
         <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.07]">
@@ -1677,6 +1677,6 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AdminLayout>
   );
 }
