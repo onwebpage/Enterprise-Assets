@@ -426,9 +426,35 @@ router.delete("/licenses/:id", async (req: AdminRequest, res) => {
 // ══════════════════════════════════════════════════════════════════
 //  FEATURE MANAGEMENT
 // ══════════════════════════════════════════════════════════════════
+function featureValidation(body: Record<string, unknown>, includeKey: boolean) {
+  const key = typeof body.key === "string" ? body.key.trim().toLowerCase() : "";
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const description = typeof body.description === "string" ? body.description.trim() : null;
+  const category = typeof body.category === "string" && body.category.trim()
+    ? body.category.trim().toLowerCase()
+    : "general";
+  const rolloutPct = Number(body.rolloutPct ?? 100);
+
+  if (includeKey && !/^[a-z0-9][a-z0-9_-]{1,99}$/.test(key)) {
+    return { error: "Feature key must be 2–100 characters using lowercase letters, numbers, hyphens, or underscores" };
+  }
+  if (!name || name.length > 120) return { error: "Feature name is required and must be 120 characters or fewer" };
+  if (description && description.length > 500) return { error: "Description must be 500 characters or fewer" };
+  if (!Number.isInteger(rolloutPct) || rolloutPct < 0 || rolloutPct > 100) {
+    return { error: "Rollout percentage must be an integer between 0 and 100" };
+  }
+  if (category.length > 50) return { error: "Category must be 50 characters or fewer" };
+  if (typeof body.isEnabled !== "boolean") return { error: "Enabled status must be true or false" };
+
+  return { key, name, description, category, rolloutPct, isEnabled: body.isEnabled };
+}
+
 router.get("/features", async (_req, res) => {
   try {
-    const result = await pool.query(`SELECT * FROM admin_features ORDER BY category, name`);
+    const result = await pool.query(
+      `SELECT id, key, name, description, is_enabled, rollout_pct, category, created_at, updated_at
+       FROM admin_features ORDER BY category, name`
+    );
     res.json({ success: true, data: result.rows });
   } catch (e) {
     console.error(e);
@@ -438,16 +464,25 @@ router.get("/features", async (_req, res) => {
 
 router.post("/features", async (req: AdminRequest, res) => {
   try {
-    const { key, name, description, isEnabled, rolloutPct, category } = req.body;
-    const result = await pool.query<{ id: number }>(
+    const input = featureValidation(req.body, true);
+    if ("error" in input) {
+      res.status(400).json({ success: false, error: input.error });
+      return;
+    }
+    const result = await pool.query(
       `INSERT INTO admin_features (key, name, description, is_enabled, rollout_pct, category)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [key, name, description ?? null, isEnabled ?? true, rolloutPct ?? 100, category ?? "general"]
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, key, name, description, is_enabled, rollout_pct, category, created_at, updated_at`,
+      [input.key, input.name, input.description, input.isEnabled, input.rolloutPct, input.category]
     );
-    await audit(req, "CREATE", "feature", result.rows[0]?.id, { key, name });
+    await audit(req, "CREATE", "feature", result.rows[0]?.id, { key: input.key, name: input.name });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (e) {
     console.error(e);
+    if ((e as { code?: string }).code === "23505") {
+      res.status(409).json({ success: false, error: "A feature with this key already exists" });
+      return;
+    }
     res.status(500).json({ success: false, error: "Failed to create feature" });
   }
 });
@@ -455,13 +490,28 @@ router.post("/features", async (req: AdminRequest, res) => {
 router.put("/features/:id", async (req: AdminRequest, res) => {
   try {
     const id = parseInt(req.params["id"] as string);
-    const { name, description, isEnabled, rolloutPct, category } = req.body;
-    await pool.query(
-      `UPDATE admin_features SET name=$1, description=$2, is_enabled=$3, rollout_pct=$4, category=$5, updated_at=NOW() WHERE id=$6`,
-      [name, description ?? null, isEnabled, rolloutPct ?? 100, category ?? "general", id]
+    if (!Number.isInteger(id) || id < 1) {
+      res.status(400).json({ success: false, error: "Invalid feature id" });
+      return;
+    }
+    const input = featureValidation(req.body, false);
+    if ("error" in input) {
+      res.status(400).json({ success: false, error: input.error });
+      return;
+    }
+    const result = await pool.query(
+      `UPDATE admin_features
+       SET name=$1, description=$2, is_enabled=$3, rollout_pct=$4, category=$5, updated_at=NOW()
+       WHERE id=$6
+       RETURNING id, key, name, description, is_enabled, rollout_pct, category, created_at, updated_at`,
+      [input.name, input.description, input.isEnabled, input.rolloutPct, input.category, id]
     );
-    await audit(req, "UPDATE", "feature", id, { name, isEnabled });
-    res.json({ success: true, data: null });
+    if (!result.rowCount) {
+      res.status(404).json({ success: false, error: "Feature not found" });
+      return;
+    }
+    await audit(req, "UPDATE", "feature", id, { name: input.name, isEnabled: input.isEnabled });
+    res.json({ success: true, data: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to update feature" });
@@ -471,10 +521,18 @@ router.put("/features/:id", async (req: AdminRequest, res) => {
 router.patch("/features/:id/toggle", async (req: AdminRequest, res) => {
   try {
     const id = parseInt(req.params["id"] as string);
+    if (!Number.isInteger(id) || id < 1) {
+      res.status(400).json({ success: false, error: "Invalid feature id" });
+      return;
+    }
     const result = await pool.query<{ is_enabled: boolean }>(
       `UPDATE admin_features SET is_enabled = NOT is_enabled, updated_at=NOW() WHERE id=$1 RETURNING is_enabled`,
       [id]
     );
+    if (!result.rowCount) {
+      res.status(404).json({ success: false, error: "Feature not found" });
+      return;
+    }
     await audit(req, "TOGGLE_FEATURE", "feature", id, { isEnabled: result.rows[0]?.is_enabled });
     res.json({ success: true, data: { isEnabled: result.rows[0]?.is_enabled } });
   } catch (e) {
@@ -486,7 +544,15 @@ router.patch("/features/:id/toggle", async (req: AdminRequest, res) => {
 router.delete("/features/:id", async (req: AdminRequest, res) => {
   try {
     const id = parseInt(req.params["id"] as string);
-    await pool.query(`DELETE FROM admin_features WHERE id=$1`, [id]);
+    if (!Number.isInteger(id) || id < 1) {
+      res.status(400).json({ success: false, error: "Invalid feature id" });
+      return;
+    }
+    const result = await pool.query(`DELETE FROM admin_features WHERE id=$1`, [id]);
+    if (!result.rowCount) {
+      res.status(404).json({ success: false, error: "Feature not found" });
+      return;
+    }
     await audit(req, "DELETE", "feature", id);
     res.json({ success: true, data: null });
   } catch (e) {

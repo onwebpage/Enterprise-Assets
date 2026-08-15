@@ -286,8 +286,8 @@ function TenantsTab() {
         rows={tenants.map(t => [
           t.id,
           <div><p className="text-white/80 font-medium">{t.name}</p>{t.legal_name && <p className="text-xs text-white/30">{t.legal_name}</p>}</div>,
-          t.country ?? '—', t.industry ?? '—', t.user_count,
-          t.plan_name ? <StatusBadge s="active" /> && <span className="text-xs text-white/60">{t.plan_name}</span> : <span className="text-xs text-white/30">No plan</span>,
+        t.country ?? '—', t.industry ?? '—', t.user_count,
+        t.plan_name ? <span className="text-xs text-white/60">{t.plan_name}</span> : <span className="text-xs text-white/30">No plan</span>,
           <StatusBadge s={t.status} />,
           fmtDate(t.created_at),
           <div className="flex gap-1">
@@ -661,17 +661,32 @@ function FeaturesTab() {
   const [form, setForm] = useState({ key: '', name: '', description: '', category: 'general', isEnabled: true, rolloutPct: 100 });
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const { data: features = [], isLoading } = useAdminQuery<Feature[]>(['admin-features'], '/features');
+  const categories = [...new Set(features.map(f => f.category))].sort();
+  const filteredFeatures = features.filter(f => {
+    const matchesSearch = !search.trim() ||
+      `${f.key} ${f.name} ${f.description ?? ''}`.toLowerCase().includes(search.trim().toLowerCase());
+    return matchesSearch && (categoryFilter === 'all' || f.category === categoryFilter);
+  });
+  const enabledCount = features.filter(f => f.is_enabled).length;
+  const rolloutCount = features.filter(f => f.is_enabled && f.rollout_pct > 0).length;
 
   const openCreate = () => { setEditing(null); setForm({ key: '', name: '', description: '', category: 'general', isEnabled: true, rolloutPct: 100 }); setDialog(true); };
   const openEdit = (f: Feature) => { setEditing(f); setForm({ key: f.key, name: f.name, description: f.description ?? '', category: f.category, isEnabled: f.is_enabled, rolloutPct: f.rollout_pct }); setDialog(true); };
 
   const save = async () => {
+    if (!form.name.trim() || (!editing && !form.key.trim())) {
+      toast({ title: 'Name and feature key are required', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
-      if (!editing) await adminCall('/features', 'POST', { key: form.key, name: form.name, description: form.description || null, category: form.category, isEnabled: form.isEnabled, rolloutPct: form.rolloutPct });
-      else await adminCall(`/features/${editing.id}`, 'PUT', { name: form.name, description: form.description || null, category: form.category, isEnabled: form.isEnabled, rolloutPct: form.rolloutPct });
+      const rolloutPct = Math.max(0, Math.min(100, Math.round(form.rolloutPct)));
+      if (!editing) await adminCall('/features', 'POST', { key: form.key.trim(), name: form.name.trim(), description: form.description.trim() || null, category: form.category, isEnabled: form.isEnabled, rolloutPct });
+      else await adminCall(`/features/${editing.id}`, 'PUT', { name: form.name.trim(), description: form.description.trim() || null, category: form.category, isEnabled: form.isEnabled, rolloutPct });
       qc.invalidateQueries({ queryKey: ['admin-features'] });
       setDialog(false);
       toast({ title: editing ? 'Feature updated' : 'Feature created' });
@@ -693,18 +708,36 @@ function FeaturesTab() {
   };
 
   return (
-    <div>
-      <SectionHeader title="Feature Flags" desc="Enable or disable platform features with rollout control" action={
+    <div className="space-y-4">
+      <SectionHeader title="Feature Management" desc="Control platform capabilities, rollout percentages, and availability" action={
         <Button size="sm" onClick={openCreate} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white"><Plus className="w-4 h-4 mr-1" />Add Feature</Button>
       } />
+      <div className="grid grid-cols-3 gap-3">
+        <KPI icon={Zap} label="Total Features" value={features.length} color="text-blue-400" />
+        <KPI icon={CheckCircle2} label="Enabled" value={enabledCount} color="text-emerald-400" />
+        <KPI icon={Activity} label="In Rollout" value={rolloutCount} color="text-cyan-400" />
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by key, name, or description" className="pl-9 bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/25" />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-44 bg-white/[0.04] border-white/[0.08] text-white/70"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {categories.map(category => <SelectItem key={category} value={category}>{category.replace(/[-_]/g, ' ')}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       <DataTable loading={isLoading}
         cols={['Key', 'Name', 'Category', 'Rollout %', 'Enabled', 'Actions']}
-        rows={features.map(f => [
+        rows={filteredFeatures.map(f => [
           <span className="font-mono text-xs text-white/50">{f.key}</span>,
           <div><p className="text-white/80">{f.name}</p>{f.description && <p className="text-xs text-white/30">{f.description}</p>}</div>,
           <span className="text-xs capitalize text-white/50">{f.category}</span>,
-          <div className="flex items-center gap-2"><div className="flex-1 max-w-[80px] h-1.5 bg-white/10 rounded-full"><div className="h-full bg-[#2563EB] rounded-full" style={{ width: `${f.rollout_pct}%` }} /></div><span className="text-xs text-white/40">{f.rollout_pct}%</span></div>,
-          <button onClick={() => toggle(f)} disabled={toggling === f.id} className="relative">
+          <div className="flex items-center gap-2 min-w-[115px]"><div className="flex-1 max-w-[80px] h-1.5 bg-white/10 rounded-full"><div className="h-full bg-[#2563EB] rounded-full" style={{ width: `${Math.max(0, Math.min(100, f.rollout_pct))}%` }} /></div><span className="text-xs text-white/40">{f.rollout_pct}%</span></div>,
+          <button aria-label={`${f.is_enabled ? 'Disable' : 'Enable'} ${f.name}`} onClick={() => toggle(f)} disabled={toggling === f.id} className="relative">
             {toggling === f.id ? <Loader2 className="w-4 h-4 animate-spin text-white/30" /> : f.is_enabled ? <ToggleRight className="w-8 h-8 text-emerald-400" /> : <ToggleLeft className="w-8 h-8 text-white/20" />}
           </button>,
           <div className="flex gap-1">
@@ -719,7 +752,7 @@ function FeaturesTab() {
           <div className="space-y-3">
             {!editing && <div><Label className="text-white/60 text-xs">Feature Key *</Label><Input value={form.key} onChange={e => setForm(f => ({ ...f, key: e.target.value }))} placeholder="e.g. new_dashboard_ui" className="bg-white/[0.04] border-white/[0.08] text-white mt-1 font-mono" /></div>}
             <div><Label className="text-white/60 text-xs">Name *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
-            <div><Label className="text-white/60 text-xs">Description</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+            <div><Label className="text-white/60 text-xs">Description</Label><Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} maxLength={500} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label className="text-white/60 text-xs">Category</Label>
                 <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
@@ -727,7 +760,7 @@ function FeaturesTab() {
                   <SelectContent><SelectItem value="general">General</SelectItem><SelectItem value="finance">Finance</SelectItem><SelectItem value="hr">HR</SelectItem><SelectItem value="inventory">Inventory</SelectItem><SelectItem value="ai">AI</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-white/60 text-xs">Rollout % (0–100)</Label><Input type="number" min={0} max={100} value={form.rolloutPct} onChange={e => setForm(f => ({ ...f, rolloutPct: parseInt(e.target.value) || 0 }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              <div><Label className="text-white/60 text-xs">Rollout % (0–100)</Label><Input type="number" min={0} max={100} value={form.rolloutPct} onChange={e => setForm(f => ({ ...f, rolloutPct: Number.isNaN(Number(e.target.value)) ? 0 : Number(e.target.value) }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             </div>
             <div className="flex items-center gap-3 pt-1">
               <Switch checked={form.isEnabled} onCheckedChange={v => setForm(f => ({ ...f, isEnabled: v }))} />
@@ -736,7 +769,7 @@ function FeaturesTab() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialog(false)} className="text-white/50">Cancel</Button>
-            <Button onClick={save} disabled={saving || !form.name} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}</Button>
+            <Button onClick={save} disabled={saving || !form.name.trim() || (!editing && !form.key.trim())} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
