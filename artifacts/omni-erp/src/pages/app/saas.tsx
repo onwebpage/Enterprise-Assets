@@ -11,10 +11,11 @@ import {
   Check, Loader2, Save, Bell, LayoutDashboard, HardDrive,
   ArrowLeft, Calendar, Cpu, Database, Layers, Info, Settings2,
   UserPlus, UserMinus, Banknote, Percent, Briefcase, Phone, AtSign,
-  Handshake, Wallet, Receipt
+  Handshake, Wallet, Receipt, KeyRound
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import ResellerPanelTab from './ResellerPanelTab';
+import LicenseManagementTab from './LicenseManagementTab';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -4027,6 +4028,7 @@ export default function SaasPlatform() {
               { v: 'tenants',      l: 'Tenants',          icon: Building2 },
               { v: 'plans',        l: 'Plans',            icon: Star },
               { v: 'subscriptions',l: 'Subscriptions',    icon: CreditCard },
+              { v: 'licenses',      l: 'Licenses',          icon: KeyRound },
               { v: 'trials',       l: 'Trial Management', icon: Clock },
               { v: 'onboarding',   l: 'Onboarding',       icon: Zap },
               { v: 'whitelabel',   l: 'White Label',      icon: Palette },
@@ -4044,6 +4046,7 @@ export default function SaasPlatform() {
           <TabsContent value="tenants"           className="mt-5"><TenantsTab onAdd={() => { setTab('onboarding'); }} onViewDashboard={openTenantDashboard} /></TabsContent>
           <TabsContent value="plans"             className="mt-5"><PlansTab /></TabsContent>
           <TabsContent value="subscriptions"     className="mt-5"><SubscriptionsTab /></TabsContent>
+          <TabsContent value="licenses"         className="mt-5"><LicenseManagementTab /></TabsContent>
           <TabsContent value="trials"            className="mt-5"><TrialManagementTab /></TabsContent>
           <TabsContent value="onboarding"        className="mt-5"><OnboardingTab /></TabsContent>
           <TabsContent value="whitelabel"        className="mt-5"><WhiteLabelTab /></TabsContent>

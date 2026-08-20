@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { eq, desc, sql, and, lt, gte } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { db } from "@workspace/db";
-import { saasPlans, saasSubscriptions, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations, saasAgencies, saasAgencyClients, saasAgencyPayouts } from "@workspace/db/schema";
+import { saasPlans, saasSubscriptions, saasLicenses, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations, saasAgencies, saasAgencyClients, saasAgencyPayouts } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
@@ -439,6 +440,171 @@ router.get("/subscriptions", async (_req, res) => {
     res.json({ success: true, data });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch subscriptions" });
+  }
+});
+
+// ── License Management ─────────────────────────────────────────────────────
+function createLicenseKey() {
+  const segments = Array.from({ length: 4 }, () =>
+    randomBytes(3).toString("hex").toUpperCase(),
+  );
+  return `OMNI-${segments.join("-")}`;
+}
+
+router.get("/licenses/metrics", async (_req, res) => {
+  try {
+    const [total] = await db.select({ count: sql<number>`count(*)::int` }).from(saasLicenses);
+    const [active] = await db.select({ count: sql<number>`count(*)::int` }).from(saasLicenses).where(eq(saasLicenses.status, "active"));
+    const [expiring] = await db.select({ count: sql<number>`count(*)::int` }).from(saasLicenses).where(
+      and(eq(saasLicenses.status, "active"), gte(saasLicenses.expiresAt, new Date()), lt(saasLicenses.expiresAt, new Date(Date.now() + 30 * 86400000))),
+    );
+    const [seats] = await db.select({
+      assigned: sql<number>`coalesce(sum(${saasLicenses.usedSeats}), 0)::int`,
+      capacity: sql<number>`coalesce(sum(${saasLicenses.maxSeats}), 0)::int`,
+    }).from(saasLicenses).where(eq(saasLicenses.status, "active"));
+    res.json({ success: true, data: {
+      total: total?.count ?? 0,
+      active: active?.count ?? 0,
+      expiring: expiring?.count ?? 0,
+      revoked: (total?.count ?? 0) - (active?.count ?? 0),
+      assignedSeats: seats?.assigned ?? 0,
+      seatCapacity: seats?.capacity ?? 0,
+    }});
+  } catch (e) {
+    _req.log.error(e, "Failed to fetch license metrics");
+    res.status(500).json({ success: false, error: "Failed to fetch license metrics" });
+  }
+});
+
+router.get("/licenses", async (_req, res) => {
+  try {
+    const data = await db.select({
+      id: saasLicenses.id,
+      licenseKey: saasLicenses.licenseKey,
+      orgId: saasLicenses.orgId,
+      orgName: organizations.name,
+      planId: saasLicenses.planId,
+      planName: saasPlans.name,
+      planSlug: saasPlans.slug,
+      licenseType: saasLicenses.licenseType,
+      status: saasLicenses.status,
+      issuedAt: saasLicenses.issuedAt,
+      expiresAt: saasLicenses.expiresAt,
+      maxSeats: saasLicenses.maxSeats,
+      usedSeats: saasLicenses.usedSeats,
+      activationLimit: saasLicenses.activationLimit,
+      activationCount: saasLicenses.activationCount,
+      lastActivatedAt: saasLicenses.lastActivatedAt,
+      features: saasLicenses.features,
+      notes: saasLicenses.notes,
+      createdAt: saasLicenses.createdAt,
+      updatedAt: saasLicenses.updatedAt,
+    }).from(saasLicenses)
+      .leftJoin(organizations, eq(organizations.id, saasLicenses.orgId))
+      .leftJoin(saasPlans, eq(saasPlans.id, saasLicenses.planId))
+      .orderBy(desc(saasLicenses.createdAt));
+    res.json({ success: true, data });
+  } catch (e) {
+    _req.log.error(e, "Failed to fetch licenses");
+    res.status(500).json({ success: false, error: "Failed to fetch licenses" });
+  }
+});
+
+router.post("/licenses", async (req, res) => {
+  try {
+    const {
+      orgId, planId, licenseType, expiresAt, durationDays,
+      maxSeats, activationLimit, features, notes,
+    } = req.body;
+    const orgIdNum = Number(orgId);
+    const planIdNum = Number(planId);
+    if (!Number.isInteger(orgIdNum) || !Number.isInteger(planIdNum)) {
+      res.status(400).json({ success: false, error: "A valid organization and plan are required" });
+      return;
+    }
+    const [org] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, orgIdNum));
+    const [plan] = await db.select({ id: saasPlans.id }).from(saasPlans).where(eq(saasPlans.id, planIdNum));
+    if (!org || !plan) {
+      res.status(400).json({ success: false, error: "Organization or plan not found" });
+      return;
+    }
+    let expiry: Date | null = expiresAt ? new Date(expiresAt) : null;
+    if (durationDays && Number(durationDays) > 0) expiry = new Date(Date.now() + Number(durationDays) * 86400000);
+    const [license] = await db.insert(saasLicenses).values({
+      licenseKey: createLicenseKey(),
+      orgId: orgIdNum,
+      planId: planIdNum,
+      licenseType: licenseType || "subscription",
+      expiresAt: expiry,
+      maxSeats: Math.max(1, Number(maxSeats) || 1),
+      activationLimit: Math.max(1, Number(activationLimit) || 1),
+      features: Array.isArray(features) ? features : [],
+      notes: notes || null,
+    }).returning();
+    res.status(201).json({ success: true, data: license });
+  } catch (e: any) {
+    req.log.error(e, "Failed to create license");
+    res.status(500).json({ success: false, error: "Failed to create license" });
+  }
+});
+
+router.patch("/licenses/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { planId, licenseType, status, expiresAt, maxSeats, activationLimit, features, notes } = req.body;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (planId !== undefined) updates.planId = Number(planId);
+    if (licenseType !== undefined) updates.licenseType = licenseType;
+    if (status !== undefined) updates.status = status;
+    if (expiresAt !== undefined) updates.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (maxSeats !== undefined) updates.maxSeats = Math.max(1, Number(maxSeats) || 1);
+    if (activationLimit !== undefined) updates.activationLimit = Math.max(1, Number(activationLimit) || 1);
+    if (features !== undefined) updates.features = Array.isArray(features) ? features : [];
+    if (notes !== undefined) updates.notes = notes || null;
+    const [license] = await db.update(saasLicenses).set(updates).where(eq(saasLicenses.id, id)).returning();
+    if (!license) { res.status(404).json({ success: false, error: "License not found" }); return; }
+    res.json({ success: true, data: license });
+  } catch (e) {
+    req.log.error(e, "Failed to update license");
+    res.status(500).json({ success: false, error: "Failed to update license" });
+  }
+});
+
+router.post("/licenses/:id/renew", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const days = Math.max(1, Number(req.body.days) || 30);
+    const [current] = await db.select().from(saasLicenses).where(eq(saasLicenses.id, id));
+    if (!current) { res.status(404).json({ success: false, error: "License not found" }); return; }
+    const base = current.expiresAt && new Date(current.expiresAt).getTime() > Date.now()
+      ? new Date(current.expiresAt) : new Date();
+    const expiresAt = new Date(base.getTime() + days * 86400000);
+    const [license] = await db.update(saasLicenses)
+      .set({ expiresAt, status: "active", updatedAt: new Date() })
+      .where(eq(saasLicenses.id, id)).returning();
+    res.json({ success: true, data: license });
+  } catch (e) {
+    req.log.error(e, "Failed to renew license");
+    res.status(500).json({ success: false, error: "Failed to renew license" });
+  }
+});
+
+router.patch("/licenses/:id/status", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const status = String(req.body.status || "");
+    if (!["active", "suspended", "revoked", "expired"].includes(status)) {
+      res.status(400).json({ success: false, error: "Invalid license status" });
+      return;
+    }
+    const [license] = await db.update(saasLicenses)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(saasLicenses.id, id)).returning();
+    if (!license) { res.status(404).json({ success: false, error: "License not found" }); return; }
+    res.json({ success: true, data: license });
+  } catch (e) {
+    req.log.error(e, "Failed to update license status");
+    res.status(500).json({ success: false, error: "Failed to update license status" });
   }
 });
 

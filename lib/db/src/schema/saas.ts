@@ -37,6 +37,26 @@ export const saasSubscriptions = pgTable("saas_subscriptions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const saasLicenses = pgTable("saas_licenses", {
+  id: serial("id").primaryKey(),
+  licenseKey: text("license_key").notNull().unique(),
+  orgId: integer("org_id").notNull().references(() => organizations.id),
+  planId: integer("plan_id").notNull().references(() => saasPlans.id),
+  licenseType: text("license_type").notNull().default("subscription"),
+  status: text("status").notNull().default("active"),
+  issuedAt: timestamp("issued_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  maxSeats: integer("max_seats").notNull().default(1),
+  usedSeats: integer("used_seats").notNull().default(0),
+  activationLimit: integer("activation_limit").notNull().default(1),
+  activationCount: integer("activation_count").notNull().default(0),
+  lastActivatedAt: timestamp("last_activated_at"),
+  features: jsonb("features").notNull().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const saasWhitelabel = pgTable("saas_whitelabel", {
   id: serial("id").primaryKey(),
   orgId: integer("org_id").notNull().unique().references(() => organizations.id),
@@ -127,6 +147,7 @@ export const saasAgencyPayouts = pgTable("saas_agency_payouts", {
 
 export type SaasPlan = typeof saasPlans.$inferSelect;
 export type SaasSubscription = typeof saasSubscriptions.$inferSelect;
+export type SaasLicense = typeof saasLicenses.$inferSelect;
 export type SaasWhitelabel = typeof saasWhitelabel.$inferSelect;
 export type SaasTrialEvent = typeof saasTrialEvents.$inferSelect;
 export type SaasTrialConfig = typeof saasTrialConfig.$inferSelect;
