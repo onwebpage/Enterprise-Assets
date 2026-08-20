@@ -18,10 +18,11 @@ An enterprise-grade ERP platform built with React + Vite (frontend), Express (AP
 
 ## Running the Project
 
-Three workflows are configured (pnpm workspace):
-- **`artifacts/omni-erp: web`** — Vite dev server for the frontend
-- **`artifacts/api-server: API Server`** — Express API (builds then starts)
-- **`artifacts/mockup-sandbox: Component Preview Server`** — Design canvas previews
+Two workflows are configured:
+- **`OmniERP Web`** — Vite dev server for the frontend on port 20679
+- **`OmniERP API`** — Express API on port 8080 (builds then starts)
+
+The mockup sandbox remains available for design-canvas previews when needed.
 
 ## Database Setup
 
