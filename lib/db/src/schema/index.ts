@@ -15,6 +15,7 @@ export * from "./eInvoicing";
 export * from "./ewayBill";
 export * from "./purchase";
 export * from "./inventory";
+export * from "./advancedWms";
 export * from "./manufacturing";
 export * from "./hr";
 export * from "./ai";
