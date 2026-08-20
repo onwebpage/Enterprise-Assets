@@ -34,6 +34,7 @@ import auditRouter from "./audit";
 import saasRouter from "./saas";
 import saasResellerRouter from "./saas-reseller";
 import billingRouter from "./billing";
+import orderManagementRouter from "./orderManagement";
 
 const router: IRouter = Router();
 
@@ -70,6 +71,7 @@ router.use("/audit", auditRouter);
 router.use("/saas", saasRouter);
 router.use("/saas", saasResellerRouter);
 router.use("/billing", billingRouter);
+router.use("/order-management", orderManagementRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);

@@ -44,6 +44,7 @@ import NotificationsPage from '@/pages/app/notifications';
 import AuditLogs from '@/pages/app/audit-logs';
 import SaasPlatform from '@/pages/app/saas';
 import AdminPanel from '@/pages/app/admin';
+import OrderManagement from '@/pages/app/order-management';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/purchase">
         <ProtectedRoute><Purchase /></ProtectedRoute>
+      </Route>
+      <Route path="/app/order-management">
+        <ProtectedRoute><OrderManagement /></ProtectedRoute>
       </Route>
       <Route path="/app/inventory">
         <ProtectedRoute><Inventory /></ProtectedRoute>

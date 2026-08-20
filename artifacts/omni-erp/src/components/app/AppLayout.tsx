@@ -10,7 +10,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building, Landmark, ClipboardList, Server
+   Building, Landmark, ClipboardList, Server, ListChecks
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,6 +49,7 @@ const navGroups = [
     label: 'Operations',
     items: [
       { icon: Users, label: 'Sales & CRM', path: '/app/sales' },
+      { icon: ListChecks, label: 'Order Management', path: '/app/order-management' },
       { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase' },
       { icon: Package, label: 'Inventory', path: '/app/inventory' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
