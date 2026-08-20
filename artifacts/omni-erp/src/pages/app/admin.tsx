@@ -666,6 +666,7 @@ function FeaturesTab() {
 
   const { data: features = [], isLoading } = useAdminQuery<Feature[]>(['admin-features'], '/features');
   const categories = [...new Set(features.map(f => f.category))].sort();
+  const categoryOptions = [...new Set(['general', 'finance', 'hr', 'inventory', 'ai', ...categories, form.category])].sort();
   const filteredFeatures = features.filter(f => {
     const matchesSearch = !search.trim() ||
       `${f.key} ${f.name} ${f.description ?? ''}`.toLowerCase().includes(search.trim().toLowerCase());
@@ -757,7 +758,11 @@ function FeaturesTab() {
               <div><Label className="text-white/60 text-xs">Category</Label>
                 <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                   <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="general">General</SelectItem><SelectItem value="finance">Finance</SelectItem><SelectItem value="hr">HR</SelectItem><SelectItem value="inventory">Inventory</SelectItem><SelectItem value="ai">AI</SelectItem></SelectContent>
+                  <SelectContent>
+                    {categoryOptions.map(category => (
+                      <SelectItem key={category} value={category}>{category.replace(/[-_]/g, ' ')}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
               <div><Label className="text-white/60 text-xs">Rollout % (0–100)</Label><Input type="number" min={0} max={100} value={form.rolloutPct} onChange={e => setForm(f => ({ ...f, rolloutPct: Number.isNaN(Number(e.target.value)) ? 0 : Number(e.target.value) }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
