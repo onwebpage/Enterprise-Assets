@@ -770,10 +770,26 @@ router.get("/audit-logs", async (req, res) => {
 // ══════════════════════════════════════════════════════════════════
 router.get("/analytics", async (_req, res) => {
   try {
-    const [orgStats, userStats, moduleStats, subByPlan, revenueByMonth] = await Promise.all([
+    const requestedPeriod = String(_req.query.period ?? "365");
+    const period = ["30", "90", "365", "all"].includes(requestedPeriod) ? requestedPeriod : "365";
+    const periodDays = period === "all" ? null : Number(period);
+    const activityFilter = periodDays === null ? "" : " WHERE created_at >= NOW() - ($1 * INTERVAL '1 day')";
+    const subscriptionFilter = periodDays === null ? "" : " WHERE created_at >= NOW() - ($1 * INTERVAL '1 day')";
+    const periodParams = periodDays === null ? [] : [periodDays];
+
+    const [summary, orgStats, userStats, moduleStats, subByPlan, revenueByMonth] = await Promise.all([
+      pool.query(`
+        SELECT
+          (SELECT COUNT(*)::int FROM organizations) AS tenants,
+          (SELECT COUNT(*)::int FROM users) AS users,
+          (SELECT COUNT(*)::int FROM users WHERE status='active') AS active_users,
+          (SELECT COUNT(*)::int FROM saas_subscriptions WHERE status='active') AS active_subscriptions,
+          (SELECT COALESCE(SUM(mrr), 0)::text FROM saas_subscriptions WHERE status='active') AS monthly_revenue,
+          (SELECT COUNT(*)::int FROM audit_logs${activityFilter}) AS tracked_actions
+      `, periodParams),
       pool.query(`SELECT status, COUNT(*)::int AS count FROM organizations GROUP BY status`),
       pool.query(`SELECT status, COUNT(*)::int AS count FROM users GROUP BY status`),
-      pool.query(`SELECT action, COUNT(*)::int AS count FROM audit_logs GROUP BY action ORDER BY count DESC LIMIT 10`),
+      pool.query(`SELECT action, COUNT(*)::int AS count FROM audit_logs${activityFilter} GROUP BY action ORDER BY count DESC LIMIT 10`, periodParams),
       pool.query(`
         SELECT sp.name AS plan_name, COUNT(ss.id)::int AS count, COALESCE(SUM(ss.mrr), 0)::text AS revenue
         FROM saas_subscriptions ss JOIN saas_plans sp ON sp.id = ss.plan_id
@@ -782,13 +798,15 @@ router.get("/analytics", async (_req, res) => {
       pool.query(`
         SELECT TO_CHAR(created_at,'YYYY-MM') AS month, SUM(mrr)::text AS mrr, COUNT(*)::int AS new_subs
         FROM saas_subscriptions
-        WHERE created_at > NOW() - INTERVAL '12 months'
+        ${subscriptionFilter}
         GROUP BY month ORDER BY month
-      `),
+      `, periodParams),
     ]);
     res.json({
       success: true,
       data: {
+        period,
+        summary: summary.rows[0],
         orgStats: orgStats.rows,
         userStats: userStats.rows,
         moduleStats: moduleStats.rows,

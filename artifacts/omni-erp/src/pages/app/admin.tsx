@@ -1136,23 +1136,78 @@ function AuditLogsTab() {
 
 // ── 13. Usage Analytics Tab ─────────────────────────────────────────────────────
 function AnalyticsTab() {
-  const { data, isLoading } = useAdminQuery<{
+  const [period, setPeriod] = useState<'30' | '90' | '365' | 'all'>('365');
+  const { data, isLoading, isFetching, refetch } = useAdminQuery<{
+    period: string;
+    summary: { tenants: number; users: number; active_users: number; active_subscriptions: number; monthly_revenue: string; tracked_actions: number };
     orgStats: Array<{ status: string; count: number }>;
     userStats: Array<{ status: string; count: number }>;
     moduleStats: Array<{ action: string; count: number }>;
     subByPlan: Array<{ plan_name: string; count: number; revenue: string }>;
     revenueByMonth: Array<{ month: string; mrr: string; new_subs: number }>;
-  }>(['admin-analytics'], '/analytics');
+  }>(['admin-analytics', period], `/analytics?period=${period}`);
 
   const COLORS = ['#2563EB', '#06B6D4', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444'];
   const revChart = (data?.revenueByMonth ?? []).map(r => ({ month: r.month, mrr: parseFloat(r.mrr), subs: r.new_subs }));
+  const planChart = (data?.subByPlan ?? []).map(r => ({ ...r, revenue: parseFloat(r.revenue) }));
+  const maxActionCount = Math.max(1, data?.moduleStats?.[0]?.count ?? 0);
+
+  const exportCsv = () => {
+    if (!data) return;
+    const rows = [
+      ['Metric', 'Value'],
+      ['Reporting period', period === 'all' ? 'All time' : `Last ${period} days`],
+      ['Total tenants', String(data.summary.tenants)],
+      ['Total users', String(data.summary.users)],
+      ['Active users', String(data.summary.active_users)],
+      ['Active subscriptions', String(data.summary.active_subscriptions)],
+      ['Monthly revenue', data.summary.monthly_revenue],
+      ['Tracked actions', String(data.summary.tracked_actions)],
+      [],
+      ['Top action', 'Count'],
+      ...(data.moduleStats ?? []).map(action => [action.action, String(action.count)]),
+    ];
+    const csv = rows.map(row => row.map(value => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `omnierp-usage-analytics-${period}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-5">
+      <SectionHeader title="Usage Analytics" desc="Monitor platform adoption, activity, and subscription performance" action={
+        <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={value => setPeriod(value as typeof period)}>
+            <SelectTrigger className="w-36 bg-white/[0.04] border-white/[0.08] text-white/70 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="365">Last 12 months</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="ghost" onClick={() => refetch()} disabled={isFetching} className="text-white/50 hover:text-white">
+            <RefreshCw className={`w-4 h-4 mr-1 ${isFetching ? 'animate-spin' : ''}`} />Refresh
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={!data} className="border-white/[0.1] text-white/60 hover:text-white">
+            <Download className="w-4 h-4 mr-1" />Export CSV
+          </Button>
+        </div>
+      } />
       {isLoading && <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-white/30" /></div>}
-      {!isLoading && (
+      {!isLoading && data && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <KPI icon={Building2} label="Total Tenants" value={data.summary.tenants} color="text-blue-400" />
+            <KPI icon={Users} label="Total Users" value={data.summary.users} sub={`${data.summary.active_users} active`} color="text-purple-400" />
+            <KPI icon={Activity} label="Tracked Actions" value={fmt(data.summary.tracked_actions)} color="text-cyan-400" />
+            <KPI icon={CreditCard} label="Active Subscriptions" value={data.summary.active_subscriptions} color="text-emerald-400" />
+            <KPI icon={DollarSign} label="Monthly Revenue" value={`$${fmt(parseFloat(data.summary.monthly_revenue))}`} color="text-orange-400" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card className="bg-[#0a0f1e] border-white/[0.07]">
               <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">Tenant Status</CardTitle></CardHeader>
               <CardContent>
@@ -1164,10 +1219,20 @@ function AnalyticsTab() {
               </CardContent>
             </Card>
             <Card className="bg-[#0a0f1e] border-white/[0.07]">
+              <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">User Status</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={160}>
+                  <PieChart><Pie data={data.userStats} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={60} label={({ status, percent }) => `${status} ${((percent ?? 0) * 100).toFixed(0)}%`} labelLine={false}>
+                    {data.userStats.map((_, i) => <Cell key={i} fill={COLORS[(i + 2) % COLORS.length]} />)}
+                  </Pie><Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} /></PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card className="bg-[#0a0f1e] border-white/[0.07]">
               <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">Revenue by Plan</CardTitle></CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={160}>
-                  <BarChart data={data?.subByPlan ?? []}>
+                  <BarChart data={planChart}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="plan_name" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
                     <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
@@ -1183,7 +1248,7 @@ function AnalyticsTab() {
                 {(data?.moduleStats ?? []).slice(0, 6).map((m, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-xs text-white/40 w-24 truncate">{m.action}</span>
-                    <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.count / ((data?.moduleStats[0]?.count ?? 1))) * 100)}%`, background: COLORS[i % COLORS.length] }} /></div>
+                    <div className="flex-1 h-1.5 bg-white/[0.05] rounded-full"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.count / maxActionCount) * 100)}%`, background: COLORS[i % COLORS.length] }} /></div>
                     <span className="text-xs text-white/40 w-8 text-right">{m.count}</span>
                   </div>
                 ))}
@@ -1192,7 +1257,7 @@ function AnalyticsTab() {
           </div>
 
           <Card className="bg-[#0a0f1e] border-white/[0.07]">
-            <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">MRR & New Subscriptions (12 months)</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm text-white/60">MRR & New Subscriptions ({period === 'all' ? 'all time' : period === '365' ? '12 months' : `${period} days`})</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={revChart}>
