@@ -6,7 +6,7 @@ export type WmsProduct = { id:number; sku:string; name:string; unit:string };
 export type WmsSummary = { activeBins:number; activeLots:number; lotUnits:string; availableSerials:number; openReceipts:number; openCounts:number; expiringLots:number };
 export type WmsReceipt = { id:number; receipt_number:string; warehouse_id:number; warehouse_code:string; supplier_name:string|null; receipt_date:string; status:string; line_count:number; accepted_units:string; created_at:string };
 export type WmsLot = { id:number; product_id:number; sku:string; product_name:string; warehouse_code:string; bin_code:string|null; lot_number:string; expiry_date:string|null; qty_on_hand:string; status:string };
-export type WmsSerial = { id:number; serial_number:string; sku:string; product_name:string; warehouse_code:string; bin_code:string|null; status:string };
+export type WmsSerial = { id:number; serial_number:string; sku:string; product_name:string; warehouse_code:string; bin_code:string|null; status:string; received_at:string };
 export type WmsCount = { id:number; count_number:string; warehouse_id:number; warehouse_code:string; bin_code:string|null; status:string; scheduled_date:string; line_count:number; open_lines:number; variance_units:string };
 export type WmsCountDetail = WmsCount & { lines: Array<{ id:number; product_id:number; sku:string; product_name:string; expected_qty:string; counted_qty:string|null; variance_qty:string|null; bin_code:string|null; notes:string|null }> };
 

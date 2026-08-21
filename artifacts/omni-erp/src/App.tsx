@@ -17,6 +17,7 @@ import Finance from '@/pages/app/finance';
 import Sales from '@/pages/app/sales';
 import Purchase from '@/pages/app/purchase';
 import Inventory from '@/pages/app/inventory';
+import Wms from '@/pages/app/wms';
 import Manufacturing from '@/pages/app/manufacturing';
 import Projects from '@/pages/app/projects';
 import HR from '@/pages/app/hr';
@@ -78,6 +79,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/inventory">
         <ProtectedRoute><Inventory /></ProtectedRoute>
+      </Route>
+      <Route path="/app/wms">
+        <ProtectedRoute><Wms /></ProtectedRoute>
       </Route>
       <Route path="/app/manufacturing">
         <ProtectedRoute><Manufacturing /></ProtectedRoute>

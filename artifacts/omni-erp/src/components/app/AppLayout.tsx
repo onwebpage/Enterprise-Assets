@@ -52,6 +52,7 @@ const navGroups = [
       { icon: ListChecks, label: 'Order Management', path: '/app/order-management' },
       { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase' },
       { icon: Package, label: 'Inventory', path: '/app/inventory' },
+      { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
     ]
   },
