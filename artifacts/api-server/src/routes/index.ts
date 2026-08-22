@@ -36,6 +36,9 @@ import saasResellerRouter from "./saas-reseller";
 import billingRouter from "./billing";
 import orderManagementRouter from "./orderManagement";
 import wmsRouter from "./wms";
+import budgetCostRouter from "./budgetCost";
+import qualityRouter from "./quality";
+import maintenanceRouter from "./maintenance";
 
 const router: IRouter = Router();
 
@@ -74,6 +77,9 @@ router.use("/saas", saasResellerRouter);
 router.use("/billing", billingRouter);
 router.use("/order-management", orderManagementRouter);
 router.use("/wms", wmsRouter);
+router.use("/budget-cost", budgetCostRouter);
+router.use("/quality", qualityRouter);
+router.use("/maintenance", maintenanceRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);

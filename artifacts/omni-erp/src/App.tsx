@@ -18,6 +18,7 @@ import Sales from '@/pages/app/sales';
 import Purchase from '@/pages/app/purchase';
 import Inventory from '@/pages/app/inventory';
 import Wms from '@/pages/app/wms';
+import BudgetCost from '@/pages/app/budget-cost';
 import Manufacturing from '@/pages/app/manufacturing';
 import Projects from '@/pages/app/projects';
 import HR from '@/pages/app/hr';
@@ -46,6 +47,7 @@ import AuditLogs from '@/pages/app/audit-logs';
 import SaasPlatform from '@/pages/app/saas';
 import AdminPanel from '@/pages/app/admin';
 import OrderManagement from '@/pages/app/order-management';
+import Quality from '@/pages/app/quality';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,11 +79,17 @@ function AppRoutes() {
       <Route path="/app/order-management">
         <ProtectedRoute><OrderManagement /></ProtectedRoute>
       </Route>
+      <Route path="/app/quality">
+        <ProtectedRoute><Quality /></ProtectedRoute>
+      </Route>
       <Route path="/app/inventory">
         <ProtectedRoute><Inventory /></ProtectedRoute>
       </Route>
       <Route path="/app/wms">
         <ProtectedRoute><Wms /></ProtectedRoute>
+      </Route>
+      <Route path="/app/budget-cost">
+        <ProtectedRoute><BudgetCost /></ProtectedRoute>
       </Route>
       <Route path="/app/manufacturing">
         <ProtectedRoute><Manufacturing /></ProtectedRoute>

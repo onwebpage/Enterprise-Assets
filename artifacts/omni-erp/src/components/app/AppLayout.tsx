@@ -10,7 +10,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-   Building, Landmark, ClipboardList, Server, ListChecks
+   Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -34,6 +34,7 @@ const navGroups = [
     label: 'Finance',
     items: [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance' },
+      { icon: Coins, label: 'Budget & Cost', path: '/app/budget-cost' },
       { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
       { icon: CreditCard, label: 'Accounts Payable',   path: '/app/ap' },
       { icon: CreditCard, label: 'Bank Reconciliation', path: '/app/banking' },
@@ -54,6 +55,7 @@ const navGroups = [
       { icon: Package, label: 'Inventory', path: '/app/inventory' },
       { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
+      { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality' },
     ]
   },
   {

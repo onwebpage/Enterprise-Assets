@@ -13,7 +13,14 @@
     "seed": "tsx src/seed.ts",
     "seed:finance": "tsx src/seed-finance.ts",
     "seed:ar": "tsx src/seed-ar.ts",
-    "seed:inventory": "tsx src/seed-inventory.ts"
+    "seed:inventory": "tsx src/seed-inventory.ts",
+    "seed:wms": "tsx src/seed-wms.ts",
+    "seed:budget-cost": "tsx src/seed-budget-cost.ts",
+    "seed:quality": "tsx src/seed-quality.ts",
+    "schema:wms": "tsx src/apply-wms-schema.ts",
+    "schema:budget-cost": "tsx src/apply-budget-cost-schema.ts",
+    "schema:quality": "tsx src/apply-quality-schema.ts",
+    "schema:maintenance": "tsx src/apply-maintenance-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -8,3 +8,9 @@ pnpm exec tsc --build lib/db lib/api-zod lib/api-client-react
 pnpm --filter @workspace/db run push
 # Ensure admin tables exist (idempotent CREATE TABLE IF NOT EXISTS)
 psql "$DATABASE_URL" -f scripts/setup-admin-db.sql
+# Ensure WMS tables exist (idempotent CREATE TABLE IF NOT EXISTS)
+psql "$DATABASE_URL" -f scripts/setup-wms.sql
+# Ensure Budget & Cost tables exist (idempotent CREATE TABLE IF NOT EXISTS)
+psql "$DATABASE_URL" -f scripts/setup-budget-cost.sql
+# Ensure Quality Management tables exist (idempotent CREATE TABLE IF NOT EXISTS)
+psql "$DATABASE_URL" -f scripts/setup-quality.sql

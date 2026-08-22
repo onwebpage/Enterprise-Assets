@@ -24,6 +24,15 @@ fi
 echo "🔐 Creating admin tables..."
 psql "$DATABASE_URL" -f scripts/setup-admin-db.sql
 
+echo "🏭 Creating WMS tables..."
+psql "$DATABASE_URL" -f scripts/setup-wms.sql
+
+echo "💰 Creating Budget & Cost tables..."
+psql "$DATABASE_URL" -f scripts/setup-budget-cost.sql
+
+echo "🔬 Creating Quality Management tables..."
+psql "$DATABASE_URL" -f scripts/setup-quality.sql
+
 echo "🌱 Seeding ERP data..."
 pnpm --filter @workspace/db run seed
 
