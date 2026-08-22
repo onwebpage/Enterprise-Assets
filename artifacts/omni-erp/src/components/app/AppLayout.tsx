@@ -10,7 +10,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-   Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck
+   Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -49,13 +49,15 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
-      { icon: Users, label: 'Sales & CRM', path: '/app/sales' },
+      { icon: Users, label: 'Advanced CRM', path: '/app/crm' },
       { icon: ListChecks, label: 'Order Management', path: '/app/order-management' },
       { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase' },
       { icon: Package, label: 'Inventory', path: '/app/inventory' },
       { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
       { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality' },
+      { icon: Wrench, label: 'Maintenance', path: '/app/maintenance' },
+      { icon: Receipt, label: 'Expense Management', path: '/app/expense' },
     ]
   },
   {
@@ -71,6 +73,7 @@ const navGroups = [
     items: [
       { icon: BarChart3, label: 'Reports & Analytics', path: '/app/reports' },
       { icon: Bot, label: 'AI Assistant', path: '/app/ai' },
+      { icon: Brain, label: 'AI Business Intelligence', path: '/app/ai-bi' },
       { icon: Zap, label: 'Workflow Automation', path: '/app/workflow' },
     ]
   },

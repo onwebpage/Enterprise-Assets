@@ -48,6 +48,10 @@ import SaasPlatform from '@/pages/app/saas';
 import AdminPanel from '@/pages/app/admin';
 import OrderManagement from '@/pages/app/order-management';
 import Quality from '@/pages/app/quality';
+import Maintenance from '@/pages/app/maintenance';
+import Expense from '@/pages/app/expense';
+import Crm from '@/pages/app/crm';
+import AiBi from '@/pages/app/ai-bi';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +85,18 @@ function AppRoutes() {
       </Route>
       <Route path="/app/quality">
         <ProtectedRoute><Quality /></ProtectedRoute>
+      </Route>
+      <Route path="/app/maintenance">
+        <ProtectedRoute><Maintenance /></ProtectedRoute>
+      </Route>
+      <Route path="/app/expense">
+        <ProtectedRoute><Expense /></ProtectedRoute>
+      </Route>
+      <Route path="/app/crm">
+        <ProtectedRoute><Crm /></ProtectedRoute>
+      </Route>
+      <Route path="/app/ai-bi">
+        <ProtectedRoute><AiBi /></ProtectedRoute>
       </Route>
       <Route path="/app/inventory">
         <ProtectedRoute><Inventory /></ProtectedRoute>

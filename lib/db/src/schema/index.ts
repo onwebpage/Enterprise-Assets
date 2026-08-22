@@ -32,3 +32,5 @@ export * from "./billing";
 export * from "./orderManagement";
 export * from "./quality";
 export * from "./maintenance";
+export * from "./expense";
+export * from "./crm";

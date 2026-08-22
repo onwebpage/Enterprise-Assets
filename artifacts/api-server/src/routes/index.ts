@@ -24,6 +24,7 @@ import manufacturingRouter from "./manufacturing";
 import hrRouter from "./hr";
 import reportsRouter from "./reports";
 import aiRouter from "./ai";
+import aiBiRouter from "./ai-bi";
 import workflowRouter from "./workflowAutomation";
 import documentsRouter from "./documents";
 import customerPortalRouter from "./customerPortal";
@@ -39,6 +40,8 @@ import wmsRouter from "./wms";
 import budgetCostRouter from "./budgetCost";
 import qualityRouter from "./quality";
 import maintenanceRouter from "./maintenance";
+import expenseRouter from "./expense";
+import crmRouter from "./crm";
 
 const router: IRouter = Router();
 
@@ -65,6 +68,7 @@ router.use("/manufacturing", manufacturingRouter);
 router.use("/hr", hrRouter);
 router.use("/reports", reportsRouter);
 router.use("/ai", aiRouter);
+router.use("/ai-bi", aiBiRouter);
 router.use("/workflow", workflowRouter);
 router.use("/docs", documentsRouter);
 router.use("/customer-portal", customerPortalRouter);
@@ -80,6 +84,8 @@ router.use("/wms", wmsRouter);
 router.use("/budget-cost", budgetCostRouter);
 router.use("/quality", qualityRouter);
 router.use("/maintenance", maintenanceRouter);
+router.use("/expense", expenseRouter);
+router.use("/crm", crmRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);
