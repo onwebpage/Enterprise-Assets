@@ -20,12 +20,15 @@
     "seed:maintenance": "tsx src/seed-maintenance.ts",
     "seed:expense": "tsx src/seed-expense.ts",
     "seed:crm": "tsx src/seed-crm.ts",
+    "seed:cash-treasury": "tsx src/seed-cash-treasury.ts",
     "schema:wms": "tsx src/apply-wms-schema.ts",
     "schema:budget-cost": "tsx src/apply-budget-cost-schema.ts",
     "schema:quality": "tsx src/apply-quality-schema.ts",
     "schema:maintenance": "tsx src/apply-maintenance-schema.ts",
     "schema:expense": "tsx src/apply-expense-schema.ts",
-    "schema:crm": "tsx src/apply-crm-schema.ts"
+    "schema:crm": "tsx src/apply-crm-schema.ts",
+    "schema:cash-treasury": "tsx src/apply-cash-treasury-schema.ts"
+    ,"schema:manufacturing-logistics": "tsx src/apply-manufacturing-logistics-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -52,6 +52,7 @@ import Maintenance from '@/pages/app/maintenance';
 import Expense from '@/pages/app/expense';
 import Crm from '@/pages/app/crm';
 import AiBi from '@/pages/app/ai-bi';
+import CashTreasury from '@/pages/app/cash-treasury';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -97,6 +98,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/ai-bi">
         <ProtectedRoute><AiBi /></ProtectedRoute>
+      </Route>
+      <Route path="/app/cash-treasury">
+        <ProtectedRoute><CashTreasury /></ProtectedRoute>
       </Route>
       <Route path="/app/inventory">
         <ProtectedRoute><Inventory /></ProtectedRoute>

@@ -92,7 +92,7 @@ async function seed() {
   console.log("✓ Departments seeded");
 
   // ── Roles ─────────────────────────────────────────────────────────────────
-  const modules = ["Finance", "Sales", "Purchase", "Inventory", "Advanced WMS", "Budget & Cost Accounting", "Manufacturing", "Quality Management", "Maintenance Management", "Expense Management", "Advanced CRM", "Projects", "HR", "Reports", "Settings", "Accounts Receivable", "Accounts Payable", "General Ledger", "GST & Tax", "E-Way Bill", "TDS & TCS", "Purchase & Procurement"];
+  const modules = ["Finance", "Cash & Treasury Management", "Sales", "Purchase", "Inventory", "Advanced WMS", "Budget & Cost Accounting", "Manufacturing", "Quality Management", "Maintenance Management", "Expense Management", "Advanced CRM", "Projects", "HR", "Reports", "Settings", "Accounts Receivable", "Accounts Payable", "General Ledger", "GST & Tax", "E-Way Bill", "TDS & TCS", "Purchase & Procurement"];
 
   const [adminRole] = await db.insert(roles).values({
     orgId, name: "System Admin", description: "Full system access", isSystem: true, userCount: 2,
@@ -125,6 +125,7 @@ async function seed() {
   if (finRole?.id) {
     await db.insert(permissions).values([
       { roleId: finRole.id, module: "Finance",   canView: true, canCreate: true,  canEdit: true,  canDelete: false },
+      { roleId: finRole.id, module: "Cash & Treasury Management", canView: true, canCreate: true, canEdit: true, canDelete: false },
       { roleId: finRole.id, module: "Reports",   canView: true, canCreate: true,  canEdit: false, canDelete: false },
       { roleId: finRole.id, module: "Settings",  canView: true, canCreate: false, canEdit: false, canDelete: false },
     ]).onConflictDoNothing();

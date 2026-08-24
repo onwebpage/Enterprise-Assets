@@ -42,6 +42,7 @@ import qualityRouter from "./quality";
 import maintenanceRouter from "./maintenance";
 import expenseRouter from "./expense";
 import crmRouter from "./crm";
+import cashTreasuryRouter from "./cashTreasury";
 
 const router: IRouter = Router();
 
@@ -86,6 +87,7 @@ router.use("/quality", qualityRouter);
 router.use("/maintenance", maintenanceRouter);
 router.use("/expense", expenseRouter);
 router.use("/crm", crmRouter);
+router.use("/cash-treasury", cashTreasuryRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);
