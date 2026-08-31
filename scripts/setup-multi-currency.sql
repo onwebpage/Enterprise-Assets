@@ -13,6 +13,15 @@ CREATE TABLE IF NOT EXISTS finance_currencies (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS finance_currencies_code_uidx ON finance_currencies(code);
 
+INSERT INTO finance_currencies (code, name, symbol, decimal_places, status, is_system)
+VALUES
+  ('USD', 'US Dollar', '$', 2, 'active', true),
+  ('INR', 'Indian Rupee', '₹', 2, 'active', true),
+  ('EUR', 'Euro', '€', 2, 'active', true),
+  ('GBP', 'British Pound', '£', 2, 'active', true),
+  ('JPY', 'Japanese Yen', '¥', 0, 'active', true)
+ON CONFLICT (code) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS finance_exchange_rates (
   id serial PRIMARY KEY,
   from_currency text NOT NULL REFERENCES finance_currencies(code) ON UPDATE CASCADE ON DELETE RESTRICT,

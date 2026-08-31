@@ -128,14 +128,14 @@ router.get("/permissions", async (req: AuthRequest, res) => {
     if (req.user!.roleId === null) { res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } }); return; }
     const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
     if (role?.isSystem) { res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } }); return; }
-    const [permission] = await db.select().from(permissions).where(and(eq(permissions.roleId, req.user!.roleId), sql`lower(${permissions.module}) = 'finance'`)).limit(1);
+    const [permission] = await db.select().from(permissions).where(and(eq(permissions.roleId, req.user!.roleId), eq(permissions.module, "Finance"))).limit(1);
     res.json({ success: true, data: permission ? {
       canView: permission.canView, canCreate: permission.canCreate, canEdit: permission.canEdit, canDelete: permission.canDelete,
     } : { canView: false, canCreate: false, canEdit: false, canDelete: false } });
   } catch { res.status(500).json({ success: false, error: "Failed to fetch multi-currency permissions" }); }
 });
 
-router.get("/summary", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+router.get("/summary", requirePermission("Finance", "view"), async (req: AuthRequest, res) => {
   try {
     const [currencyCounts] = await db.select({
       total: sql<number>`count(*)::int`,
@@ -156,14 +156,14 @@ router.get("/summary", requirePermission("finance", "view"), async (req: AuthReq
   } catch { res.status(500).json({ success: false, error: "Failed to fetch multi-currency summary" }); }
 });
 
-router.get("/currencies", requirePermission("finance", "view"), async (_req, res) => {
+router.get("/currencies", requirePermission("Finance", "view"), async (_req, res) => {
   try {
     const data = await db.select().from(financeCurrencies).orderBy(asc(financeCurrencies.code));
     res.json({ success: true, data });
   } catch { res.status(500).json({ success: false, error: "Failed to fetch currencies" }); }
 });
 
-router.post("/currencies", requirePermission("finance", "create"), async (req: AuthRequest, res) => {
+router.post("/currencies", requirePermission("Finance", "create"), async (req: AuthRequest, res) => {
   const parsed = currencyInput.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   try {
@@ -172,7 +172,7 @@ router.post("/currencies", requirePermission("finance", "create"), async (req: A
   } catch { res.status(409).json({ success: false, error: "That currency code already exists" }); }
 });
 
-router.put("/currencies/:id", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
+router.put("/currencies/:id", requirePermission("Finance", "edit"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid currency id" }); return; }
   const parsed = currencyInput.safeParse(req.body);
@@ -186,7 +186,7 @@ router.put("/currencies/:id", requirePermission("finance", "edit"), async (req: 
   } catch { res.status(409).json({ success: false, error: "Could not update currency" }); }
 });
 
-router.delete("/currencies/:id", requirePermission("finance", "delete"), async (req, res) => {
+router.delete("/currencies/:id", requirePermission("Finance", "delete"), async (req, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid currency id" }); return; }
   try {
@@ -204,7 +204,7 @@ router.delete("/currencies/:id", requirePermission("finance", "delete"), async (
   } catch { res.status(409).json({ success: false, error: "Currency cannot be deleted because another record references it" }); }
 });
 
-router.get("/rates", requirePermission("finance", "view"), async (req, res) => {
+router.get("/rates", requirePermission("Finance", "view"), async (req, res) => {
   try {
     const from = typeof req.query.fromCurrency === "string" ? req.query.fromCurrency.toUpperCase() : undefined;
     const to = typeof req.query.toCurrency === "string" ? req.query.toCurrency.toUpperCase() : undefined;
@@ -225,7 +225,7 @@ async function validateRateCurrencies(fromCurrency: string, toCurrency: string) 
   const [from, to] = await Promise.all([currencyExists(fromCurrency), currencyExists(toCurrency)]);
   return from && to;
 }
-router.post("/rates", requirePermission("finance", "create"), async (req: AuthRequest, res) => {
+router.post("/rates", requirePermission("Finance", "create"), async (req: AuthRequest, res) => {
   const parsed = rateInput.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   if (!(await validateRateCurrencies(parsed.data.fromCurrency, parsed.data.toCurrency))) { res.status(422).json({ success: false, error: "Both currencies must exist and be active" }); return; }
@@ -234,7 +234,7 @@ router.post("/rates", requirePermission("finance", "create"), async (req: AuthRe
     res.status(201).json({ success: true, data: created });
   } catch { res.status(409).json({ success: false, error: "An exchange rate for this pair, date, and rate type already exists" }); }
 });
-router.put("/rates/:id", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
+router.put("/rates/:id", requirePermission("Finance", "edit"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid exchange rate id" }); return; }
   const parsed = rateInput.safeParse(req.body);
@@ -246,7 +246,7 @@ router.put("/rates/:id", requirePermission("finance", "edit"), async (req: AuthR
     res.json({ success: true, data: updated });
   } catch { res.status(409).json({ success: false, error: "An exchange rate for this pair, date, and rate type already exists" }); }
 });
-router.delete("/rates/:id", requirePermission("finance", "delete"), async (req, res) => {
+router.delete("/rates/:id", requirePermission("Finance", "delete"), async (req, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid exchange rate id" }); return; }
   try {
@@ -256,16 +256,17 @@ router.delete("/rates/:id", requirePermission("finance", "delete"), async (req, 
   } catch { res.status(409).json({ success: false, error: "Exchange rate cannot be deleted" }); }
 });
 
-router.post("/convert", requirePermission("finance", "view"), async (req, res) => {
+router.post("/convert", requirePermission("Finance", "view"), async (req, res) => {
   const parsed = z.object({
     fromCurrency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
     toCurrency: z.string().trim().length(3).transform((value) => value.toUpperCase()),
-    amount: z.coerce.number().finite(),
+    amount: z.coerce.number().finite().nonnegative(),
     asOfDate: z.string().regex(ISO_DATE).optional(),
     rateType: z.enum(["spot", "closing", "average"]).default("spot"),
   }).safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Enter valid currencies, amount, and date" }); return; }
   const { fromCurrency, toCurrency, amount, asOfDate = new Date().toISOString().slice(0, 10), rateType } = parsed.data;
+  if (!validCalendarDate(asOfDate)) { res.status(422).json({ success: false, error: "Invalid calendar date" }); return; }
   if (!(await validateRateCurrencies(fromCurrency, toCurrency)) && fromCurrency !== toCurrency) { res.status(422).json({ success: false, error: "Both currencies must exist and be active" }); return; }
   if (fromCurrency === toCurrency) { res.json({ success: true, data: { amount, convertedAmount: amount, rate: 1, direction: "direct", rateDate: asOfDate, rateType } }); return; }
   const [direct] = await db.select().from(financeExchangeRates).where(and(eq(financeExchangeRates.fromCurrency, fromCurrency), eq(financeExchangeRates.toCurrency, toCurrency), eq(financeExchangeRates.rateType, rateType), eq(financeExchangeRates.status, "active"), lte(financeExchangeRates.effectiveDate, asOfDate))).orderBy(desc(financeExchangeRates.effectiveDate)).limit(1);
@@ -315,7 +316,7 @@ async function createRun(req: AuthRequest, value: z.infer<typeof revaluationInpu
   return run;
 }
 
-router.get("/revaluations", requirePermission("finance", "view"), async (req, res) => {
+router.get("/revaluations", requirePermission("Finance", "view"), async (req, res) => {
   try {
     const data = await db.select({
       id: currencyRevaluationRuns.id, orgId: currencyRevaluationRuns.orgId, runNumber: currencyRevaluationRuns.runNumber,
@@ -329,13 +330,13 @@ router.get("/revaluations", requirePermission("finance", "view"), async (req, re
     res.json({ success: true, data });
   } catch { res.status(500).json({ success: false, error: "Failed to fetch revaluation runs" }); }
 });
-router.get("/revaluations/:id", requirePermission("finance", "view"), async (req: AuthRequest, res) => {
+router.get("/revaluations/:id", requirePermission("Finance", "view"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid revaluation id" }); return; }
   try { const run = await loadRun(req, id); if (!run) { res.status(404).json({ success: false, error: "Revaluation run not found" }); return; } res.json({ success: true, data: run }); }
   catch { res.status(500).json({ success: false, error: "Failed to fetch revaluation run" }); }
 });
-router.post("/revaluations", requirePermission("finance", "create"), async (req: AuthRequest, res) => {
+router.post("/revaluations", requirePermission("Finance", "create"), async (req: AuthRequest, res) => {
   const parsed = revaluationInput.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   const validationError = await validateRevaluation(req, parsed.data);
@@ -343,7 +344,7 @@ router.post("/revaluations", requirePermission("finance", "create"), async (req:
   try { const run = await db.transaction((tx) => createRun(req, parsed.data, tx)); res.status(201).json({ success: true, data: run }); }
   catch (error) { req.log.error(error, "Failed to create currency revaluation"); res.status(500).json({ success: false, error: "Failed to create revaluation run" }); }
 });
-router.put("/revaluations/:id", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
+router.put("/revaluations/:id", requirePermission("Finance", "edit"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid revaluation id" }); return; }
   const parsed = revaluationInput.safeParse(req.body);
@@ -371,7 +372,7 @@ router.put("/revaluations/:id", requirePermission("finance", "edit"), async (req
     res.json({ success: true, data: await loadRun(req, id) });
   } catch (error) { req.log.error(error, "Failed to update currency revaluation"); res.status(500).json({ success: false, error: "Failed to update revaluation run" }); }
 });
-router.delete("/revaluations/:id", requirePermission("finance", "delete"), async (req: AuthRequest, res) => {
+router.delete("/revaluations/:id", requirePermission("Finance", "delete"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid revaluation id" }); return; }
   try {
@@ -383,7 +384,7 @@ router.delete("/revaluations/:id", requirePermission("finance", "delete"), async
   } catch { res.status(500).json({ success: false, error: "Failed to delete revaluation run" }); }
 });
 
-router.post("/revaluations/:id/post", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
+router.post("/revaluations/:id/post", requirePermission("Finance", "edit"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid revaluation id" }); return; }
   try {
@@ -423,7 +424,7 @@ router.post("/revaluations/:id/post", requirePermission("finance", "edit"), asyn
   } catch (error: any) { req.log.error(error, "Failed to post currency revaluation"); res.status(409).json({ success: false, error: error?.message ?? "Failed to post revaluation" }); }
 });
 
-router.post("/revaluations/:id/void", requirePermission("finance", "edit"), async (req: AuthRequest, res) => {
+router.post("/revaluations/:id/void", requirePermission("Finance", "edit"), async (req: AuthRequest, res) => {
   const id = idFromParam(req.params.id);
   if (!id) { res.status(400).json({ success: false, error: "Invalid revaluation id" }); return; }
   try {

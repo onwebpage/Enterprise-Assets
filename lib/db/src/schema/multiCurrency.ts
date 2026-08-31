@@ -33,8 +33,8 @@ export const financeCurrencies = pgTable("finance_currencies", {
 
 export const financeExchangeRates = pgTable("finance_exchange_rates", {
   id: serial("id").primaryKey(),
-  fromCurrency: text("from_currency").notNull(),
-  toCurrency: text("to_currency").notNull(),
+  fromCurrency: text("from_currency").notNull().references(() => financeCurrencies.code, { onUpdate: "cascade", onDelete: "restrict" }),
+  toCurrency: text("to_currency").notNull().references(() => financeCurrencies.code, { onUpdate: "cascade", onDelete: "restrict" }),
   rate: numeric("rate", { precision: 20, scale: 8 }).notNull(),
   effectiveDate: text("effective_date").notNull(),
   rateType: text("rate_type").notNull().default("spot"),
@@ -58,7 +58,7 @@ export const currencyRevaluationRuns = pgTable("currency_revaluation_runs", {
   orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "restrict" }),
   runNumber: text("run_number").notNull(),
   valuationDate: text("valuation_date").notNull(),
-  baseCurrency: text("base_currency").notNull(),
+  baseCurrency: text("base_currency").notNull().references(() => financeCurrencies.code, { onUpdate: "cascade", onDelete: "restrict" }),
   gainLossAccountId: integer("gain_loss_account_id").notNull().references(() => chartOfAccounts.id, { onDelete: "restrict" }),
   status: text("status").notNull().default("draft"),
   totalGainLoss: numeric("total_gain_loss", { precision: 15, scale: 2 }).notNull().default("0"),
@@ -78,7 +78,7 @@ export const currencyRevaluationLines = pgTable("currency_revaluation_lines", {
   id: serial("id").primaryKey(),
   runId: integer("run_id").notNull().references(() => currencyRevaluationRuns.id, { onDelete: "cascade" }),
   accountId: integer("account_id").notNull().references(() => chartOfAccounts.id, { onDelete: "restrict" }),
-  currency: text("currency").notNull(),
+  currency: text("currency").notNull().references(() => financeCurrencies.code, { onUpdate: "cascade", onDelete: "restrict" }),
   foreignBalance: numeric("foreign_balance", { precision: 20, scale: 8 }).notNull(),
   previousRate: numeric("previous_rate", { precision: 20, scale: 8 }).notNull(),
   currentRate: numeric("current_rate", { precision: 20, scale: 8 }).notNull(),
