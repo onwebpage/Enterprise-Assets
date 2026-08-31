@@ -22,3 +22,10 @@ description: OmniERP full-stack auth setup — JWT, bcryptjs, seed data, protect
 - `NODE_ENV=production`
 - `DATABASE_URL` (Postgres connection string)
 - `SESSION_SECRET` (random 64-char string, e.g. `openssl rand -hex 32`)
+
+## Environment constraint
+The current workspace database connection is unavailable, so database-backed login and registration cannot be verified until the managed PostgreSQL connection is restored.
+
+**Why:** Auth routes depend on the shared Postgres schema for users and organizations; the API must not silently fall back to in-memory accounts.
+
+**How to apply:** When auth requests return a temporary account-service error, check database connectivity and schema initialization before changing the auth flow.

@@ -4,6 +4,7 @@ import { db, users, roles, organizations } from "@workspace/db";
 import { signToken } from "../lib/jwt";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -136,7 +137,11 @@ router.post("/register", async (req, res) => {
       res.status(409).json({ success: false, error: "An account with this email already exists" });
       return;
     }
-    res.status(500).json({ success: false, error: "Unable to create your account right now" });
+    logger.error({ err }, "Registration failed");
+    res.status(503).json({
+      success: false,
+      error: "Account service is temporarily unavailable. Please try again in a moment.",
+    });
   }
 });
 
