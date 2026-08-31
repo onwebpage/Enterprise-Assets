@@ -122,6 +122,7 @@ async function seed() {
   if (finRole?.id) {
     await db.insert(permissions).values([
       { roleId: finRole.id, module: "Finance",   canView: true, canCreate: true,  canEdit: true,  canDelete: false },
+      { roleId: finRole.id, module: "Budget & Cost Accounting", canView: true, canCreate: true, canEdit: true, canDelete: false },
       { roleId: finRole.id, module: "Cash & Treasury Management", canView: true, canCreate: true, canEdit: true, canDelete: false },
       { roleId: finRole.id, module: "Reports",   canView: true, canCreate: true,  canEdit: false, canDelete: false },
       { roleId: finRole.id, module: "Settings",  canView: true, canCreate: false, canEdit: false, canDelete: false },

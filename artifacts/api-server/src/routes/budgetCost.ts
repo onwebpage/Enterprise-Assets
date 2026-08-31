@@ -175,17 +175,24 @@ async function assertBudgetReferences(client: any, orgId: number, data: {
   accountIds: number[];
   costCentreId?: number | null;
   profitCentreId?: number | null;
+  lineCostCentreIds?: Array<number | null | undefined>;
+  lineProfitCentreIds?: Array<number | null | undefined>;
 }) {
   const accountIds = [...new Set(data.accountIds)];
+  const lineCostCentreIds = [...new Set((data.lineCostCentreIds ?? []).filter((value): value is number => value != null))];
+  const lineProfitCentreIds = [...new Set((data.lineProfitCentreIds ?? []).filter((value): value is number => value != null))];
   const refs = await client.query(
     `select
        (select count(*)::int from chart_of_accounts where id = any($1::int[]) and (org_id=$2 or org_id is null) and status='active') as account_count,
        ($3::int is null or exists(select 1 from cost_centres where id=$3 and org_id=$2)) as cost_centre_valid,
-       ($4::int is null or exists(select 1 from profit_centres where id=$4 and org_id=$2)) as profit_centre_valid`,
-    [accountIds, orgId, data.costCentreId ?? null, data.profitCentreId ?? null],
+       ($4::int is null or exists(select 1 from profit_centres where id=$4 and org_id=$2)) as profit_centre_valid,
+       (select count(*)::int from cost_centres where id = any($5::int[]) and org_id=$2) as line_cost_centre_count,
+       (select count(*)::int from profit_centres where id = any($6::int[]) and org_id=$2) as line_profit_centre_count`,
+    [accountIds, orgId, data.costCentreId ?? null, data.profitCentreId ?? null, lineCostCentreIds, lineProfitCentreIds],
   );
   const row = refs.rows[0];
-  if (Number(row.account_count) !== accountIds.length || !row.cost_centre_valid || !row.profit_centre_valid) {
+  if (Number(row.account_count) !== accountIds.length || !row.cost_centre_valid || !row.profit_centre_valid ||
+      Number(row.line_cost_centre_count) !== lineCostCentreIds.length || Number(row.line_profit_centre_count) !== lineProfitCentreIds.length) {
     throw new Error("Budget accounts and centres must belong to your organisation");
   }
 }
@@ -228,6 +235,8 @@ router.post("/budgets", requirePermission(MODULE, "create"), async (req: AuthReq
        accountIds: (d.lines ?? []).map((line) => line.accountId),
        costCentreId: d.costCentreId,
        profitCentreId: d.profitCentreId,
+       lineCostCentreIds: (d.lines ?? []).map((line) => line.costCentreId),
+       lineProfitCentreIds: (d.lines ?? []).map((line) => line.profitCentreId),
      });
     const number = await nextNumber("budgets", "budget_number", "BUD", o, client);
     const total = (d.lines ?? []).reduce((s, l) => s + l.amount, 0);
@@ -277,6 +286,8 @@ router.put("/budgets/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
        accountIds: (d.lines ?? []).map((line) => line.accountId),
        costCentreId: d.costCentreId ?? existing.rows[0].cost_centre_id,
        profitCentreId: d.profitCentreId ?? existing.rows[0].profit_centre_id,
+       lineCostCentreIds: (d.lines ?? []).map((line) => line.costCentreId),
+       lineProfitCentreIds: (d.lines ?? []).map((line) => line.profitCentreId),
      });
     let total = Number(existing.rows[0].total_amount ?? 0);
     if (d.lines) { total = d.lines.reduce((s, l) => s + l.amount, 0); }
@@ -300,7 +311,11 @@ router.put("/budgets/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
 router.post("/budgets/:id/activate", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const budgetId = parsedId(req.params.id as string); if (!budgetId) return fail(res, "Invalid id");
   try {
-    const r = await pool.query(`update budgets set status='active',updated_at=now() where id=$1 and org_id=$2 returning *`, [budgetId, org(req)]);
+    const r = await pool.query(
+      `update budgets set status='active',updated_at=now()
+         where id=$1 and org_id=$2 and status='draft'
+           and exists(select 1 from budget_lines where budget_id=budgets.id)
+       returning *`, [budgetId, org(req)]);
     if (!r.rows[0]) return fail(res, "Budget not found", 404);
     res.json({ success: true, data: r.rows[0] });
   } catch { fail(res, "Failed to activate budget", 500); }
