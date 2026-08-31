@@ -18,6 +18,10 @@ export type TreasurySummary = {
   receivedCollections: number;
   totalTransfers: number;
   executedTransfers: number;
+  forecastNet30: string;
+  lowestForecastBalance: string;
+  overdueCollections: number;
+  approvalQueue: number;
 };
 
 export type TreasuryAccount = {

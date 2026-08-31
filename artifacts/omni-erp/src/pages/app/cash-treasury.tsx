@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Landmark, ArrowLeftRight, TrendingUp, ArrowDownToLine, ArrowUpFromLine,
-  Coins, Plus, Trash2, CheckCircle2, XCircle, Banknote, Loader2, Wallet, PiggyBank, ArrowRightCircle, Pencil
+  Coins, Plus, Trash2, CheckCircle2, XCircle, Banknote, Loader2, Wallet, PiggyBank, ArrowRightCircle, Pencil, AlertTriangle
 } from "lucide-react";
 import AppLayout from "@/components/app/AppLayout";
 import KPICard from "@/components/app/KPICard";
@@ -40,7 +40,7 @@ function Busy({ pending }: { pending: boolean }) { return pending ? <Loader2 cla
 const ACCOUNT_TYPES = ["checking", "savings", "credit", "cash", "investment", "petty_cash"];
 const METHODS = ["bank_transfer", "wire", "ach", "check", "cash", "credit_card", "upi", "rtgs", "neft"];
 const PAYMENT_CATEGORIES = ["operating", "payroll", "vendor", "tax", "loan", "capex", "other"];
-const PAYMENT_STATUSES = ["draft", "scheduled", "approved", "processing", "paid", "cancelled", "failed"];
+const PAYMENT_STATUSES = ["draft", "scheduled"];
 const COLLECTION_STATUSES = ["draft", "scheduled", "approved", "processing", "received", "cancelled", "overdue"];
 const TRANSFER_STATUSES = ["draft", "authorized", "executed", "cancelled", "failed"];
 
@@ -63,10 +63,10 @@ export default function CashTreasury() {
     { label: "Collections due", value: summaryLoading ? "..." : money(summary?.collectionsDue), change: `${fmt(summary?.totalCollections)} plans`, icon: ArrowDownToLine, iconColor: "text-emerald-400", gradient: "bg-emerald-500/15", sparkline: [2, 1, 2, 1, 2, 1, Number(summary?.collectionsDue ?? 0) / 10000] },
     { label: "Forecast horizon", value: summaryLoading ? "..." : `${fmt(summary?.totalForecasts)} days`, change: `${fmt(summary?.executedTransfers)} transfers executed`, icon: TrendingUp, iconColor: "text-purple-400", gradient: "bg-purple-500/15", sparkline: [1, 2, 2, 3, 2, 2, Number(summary?.totalForecasts ?? 0)] },
   ];
-  return <AppLayout breadcrumbs={[{ label: "Cash & Treasury" }]}>
+  return <AppLayout breadcrumbs={[{ label: "Advanced Treasury Management" }]}>
     <div className="mx-auto max-w-[1800px] space-y-5 p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400"><Landmark className="h-5 w-5" /></div><h1 className="text-2xl font-bold tracking-tight text-white">Cash & Treasury Management</h1></div><p className="mt-1 text-sm text-white/40">Cash position, liquidity forecasting, payment & collection planning, fund transfers, bank and cash forecasting.</p></div>
+        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400"><Landmark className="h-5 w-5" /></div><h1 className="text-2xl font-bold tracking-tight text-white">Advanced Treasury Management</h1></div><p className="mt-1 text-sm text-white/40">A real-time control tower for cash visibility, liquidity risk, approvals, collections, and inter-account funding.</p></div>
         <Button onClick={() => setTab("payments")} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Plus className="mr-2 h-4 w-4" />New payment</Button>
       </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{kpis.map((k, i) => <KPICard key={k.label} {...k} index={i} />)}</div>
@@ -286,10 +286,53 @@ function Overview({ summary, onTab }: { summary?: any; onTab: (tab: string) => v
     { title: "Fund transfers", text: "Authorize and execute transfers between treasury accounts.", action: "Open transfers", tab: "transfers", icon: ArrowLeftRight },
     { title: "Bank & cash accounts", text: "Manage operating, payroll, reserve and investment accounts.", action: "Open accounts", tab: "accounts", icon: Coins },
   ];
-  return <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]"><div className="rounded-2xl border border-white/[0.07] bg-[#0a0f1e] p-6"><p className="text-xs uppercase tracking-widest text-cyan-400/70">Cash & Treasury</p><h2 className="mt-1 text-lg font-semibold text-white">Treasury control tower</h2><div className="mt-5 grid gap-3 sm:grid-cols-2">{cards.map(c => <button key={c.title} onClick={() => onTab(c.tab)} className="group rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-left hover:border-cyan-500/40 hover:bg-cyan-500/[0.06]"><c.icon className="mb-3 h-5 w-5 text-cyan-400" /><h3 className="text-sm font-semibold text-white">{c.title}</h3><p className="mt-1 text-xs leading-5 text-white/40">{c.text}</p><p className="mt-3 text-xs font-medium text-cyan-400">{c.action} →</p></button>)}</div></div><div className="rounded-2xl border border-white/[0.07] bg-[#0a0f1e] p-6"><h2 className="text-sm font-semibold text-white">Treasury posture</h2><div className="mt-4 space-y-4">{[
+  const posture = [
     ["Total cash", `${money(summary?.totalBalance)} current across ${fmt(summary?.totalAccounts)} accounts.`, Wallet, "text-cyan-400"],
-    ["Liquidity coverage", `${fmt(summary?.totalForecasts)} forecast days with $${money(summary?.collectionsDue)} collections due.`, TrendingUp, "text-emerald-400"],
+    ["Liquidity coverage", `${fmt(summary?.totalForecasts)} forecast days with ${money(summary?.collectionsDue)} collections due.`, TrendingUp, "text-emerald-400"],
     ["Payment pipeline", `${money(summary?.paymentsDue)} payments due with ${fmt(summary?.paidPayments)} already paid.`, ArrowUpFromLine, "text-amber-400"],
     ["Transfer activity", `${fmt(summary?.executedTransfers)} of ${fmt(summary?.totalTransfers)} transfers executed.`, ArrowLeftRight, "text-purple-400"],
-  ].map(([title, text, Icon, color]) => { const I = Icon as React.ComponentType<{ className?: string }>; return <div key={String(title)} className="flex gap-3"><div className={`mt-0.5 ${color}`}><I className="h-4 w-4" /></div><div><p className="text-sm font-medium text-white">{String(title)}</p><p className="mt-1 text-xs leading-5 text-white/40">{String(text)}</p></div></div>; })}</div></div></div>;
+  ] as const;
+  const forecastAtRisk = Number(summary?.lowestForecastBalance ?? 0) < 0;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f1e] p-6">
+        <p className="text-xs uppercase tracking-widest text-cyan-400/70">Advanced Treasury Management</p>
+        <h2 className="mt-1 text-lg font-semibold text-white">Treasury control tower</h2>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {cards.map((card) => (
+            <button key={card.title} onClick={() => onTab(card.tab)} className="group rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 text-left hover:border-cyan-500/40 hover:bg-cyan-500/[0.06]">
+              <card.icon className="mb-3 h-5 w-5 text-cyan-400" />
+              <h3 className="text-sm font-semibold text-white">{card.title}</h3>
+              <p className="mt-1 text-xs leading-5 text-white/40">{card.text}</p>
+              <p className="mt-3 text-xs font-medium text-cyan-400">{card.action} →</p>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/[0.07] bg-[#0a0f1e] p-6">
+        <h2 className="text-sm font-semibold text-white">Treasury posture</h2>
+        <div className="mt-4 space-y-4">
+          {posture.map(([title, text, Icon, color]) => (
+            <div key={title} className="flex gap-3">
+              <div className={`mt-0.5 ${color}`}><Icon className="h-4 w-4" /></div>
+              <div><p className="text-sm font-medium text-white">{title}</p><p className="mt-1 text-xs leading-5 text-white/40">{text}</p></div>
+            </div>
+          ))}
+        </div>
+        <div className={`mt-5 rounded-xl border p-4 ${forecastAtRisk ? "border-red-500/30 bg-red-500/[0.08]" : "border-emerald-500/20 bg-emerald-500/[0.06]"}`}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className={`h-4 w-4 ${forecastAtRisk ? "text-red-400" : "text-emerald-400"}`} />
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/70">Liquidity risk signal</p>
+          </div>
+          <p className="mt-2 text-sm text-white/75">
+            {forecastAtRisk
+              ? `Base scenario falls to ${money(summary?.lowestForecastBalance)} in the next 30 days.`
+              : `Base scenario remains positive with ${money(summary?.forecastNet30)} net movement over the next 30 days.`}
+          </p>
+          <p className="mt-1 text-xs text-white/40">{fmt(summary?.approvalQueue)} items awaiting approval · {fmt(summary?.overdueCollections)} overdue collections</p>
+        </div>
+      </div>
+    </div>
+  );
 }

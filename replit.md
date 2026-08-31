@@ -19,8 +19,8 @@ An enterprise-grade ERP platform built with React + Vite (frontend), Express (AP
 ## Running the Project
 
 Two workflows are configured:
-- **`OmniERP Web`** — Vite dev server for the frontend on port 20679
-- **`OmniERP API`** — Express API on port 8080 (builds then starts)
+- **`Start application`** — Vite dev server for the frontend on port 5173
+- **`API Server`** — Express API on port 8080 (builds then starts)
 
 The mockup sandbox remains available for design-canvas previews when needed.
 
@@ -66,6 +66,7 @@ cd lib/db && pnpm run seed:ar
 - General Ledger (Journal Entries, posting, running balance)
 - Accounts Receivable (invoices, payments)
 - Accounts Payable (bills, payments)
+- Advanced Treasury Management (cash accounts, daily positions, 30-day liquidity forecasts, payment/collection workflows, and authorized inter-account transfers)
 - Organizations, Branches, Departments
 - Users, Roles, Permissions (RBAC)
 

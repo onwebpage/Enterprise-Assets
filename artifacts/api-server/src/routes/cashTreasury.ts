@@ -13,7 +13,7 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const money = z.coerce.number().finite().min(0);
 const positiveMoney = z.coerce.number().finite().positive();
 
-const accountSchema = z.object({
+const accountFields = z.object({
   name: z.string().min(1).max(200),
   accountNumber: z.string().max(100).nullable().optional(),
   bankName: z.string().max(200).nullable().optional(),
@@ -25,7 +25,9 @@ const accountSchema = z.object({
   status: z.enum(["active", "inactive", "closed"]).default("active"),
   isPrimary: z.boolean().default(false),
   notes: z.string().max(2000).nullable().optional(),
-}).refine((value) => value.currentBalance == null || value.availableBalance == null || value.availableBalance <= value.currentBalance, {
+});
+
+const accountSchema = accountFields.refine((value) => value.currentBalance == null || value.availableBalance == null || value.availableBalance <= value.currentBalance, {
   message: "Available balance cannot exceed current balance",
 });
 
@@ -66,7 +68,7 @@ const collectionSchema = z.object({
   accountId: id.nullable().optional(),
   payerName: z.string().min(1).max(300),
   customerName: z.string().max(300).nullable().optional(),
-  amount: money,
+  amount: positiveMoney,
   currency: z.string().max(10).default("USD"),
   collectionDate: date,
   method: z.enum(["bank_transfer", "wire", "ach", "check", "cash", "credit_card", "upi", "rtgs", "neft"]).default("bank_transfer"),
@@ -79,7 +81,7 @@ const collectionSchema = z.object({
 const transferSchema = z.object({
   fromAccountId: id,
   toAccountId: id,
-  amount: money,
+  amount: positiveMoney,
   currency: z.string().max(10).default("USD"),
   transferDate: date,
   reference: z.string().max(200).nullable().optional(),
@@ -98,7 +100,7 @@ async function nextNumber(table: string, prefix: string, orgId: number, client: 
 router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   try {
     const o = org(req);
-    const [accounts, activeAccounts, totalBalance, availableBalance, positions, forecasts, payments, paymentsDue, paidPayments, collections, collectionsDue, receivedCollections, transfers, executedTransfers] = await Promise.all([
+    const [accounts, activeAccounts, totalBalance, availableBalance, positions, forecasts, payments, paymentsDue, paidPayments, collections, collectionsDue, receivedCollections, transfers, executedTransfers, forecastStats, overdueCollections, approvalQueue] = await Promise.all([
       pool.query(`select count(*)::int as count from treasury_accounts where org_id=$1`, [o]),
       pool.query(`select count(*)::int as count from treasury_accounts where org_id=$1 and status='active'`, [o]),
       pool.query(`select coalesce(sum(current_balance),0)::numeric as total from treasury_accounts where org_id=$1`, [o]),
@@ -113,6 +115,9 @@ router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthReques
       pool.query(`select count(*)::int as count from treasury_collection_plans where org_id=$1 and status='received'`, [o]),
       pool.query(`select count(*)::int as count from treasury_transfers where org_id=$1`, [o]),
       pool.query(`select count(*)::int as count from treasury_transfers where org_id=$1 and status='executed'`, [o]),
+      pool.query(`select coalesce(sum(net_cashflow),0)::numeric as net, coalesce(min(projected_balance),0)::numeric as lowest from treasury_liquidity_forecasts where org_id=$1 and scenario='base' and forecast_date::date between current_date and current_date + 30`, [o]),
+      pool.query(`select count(*)::int as count from treasury_collection_plans where org_id=$1 and status='overdue'`, [o]),
+      pool.query(`select (select count(*) from treasury_payment_plans where org_id=$1 and status in ('draft','scheduled')) + (select count(*) from treasury_collection_plans where org_id=$1 and status in ('draft','scheduled')) as count`, [o]),
     ]);
     res.json({ success: true, data: {
       totalAccounts: accounts.rows[0].count,
@@ -129,6 +134,10 @@ router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthReques
       receivedCollections: receivedCollections.rows[0].count,
       totalTransfers: transfers.rows[0].count,
       executedTransfers: executedTransfers.rows[0].count,
+      forecastNet30: forecastStats.rows[0].net,
+      lowestForecastBalance: forecastStats.rows[0].lowest,
+      overdueCollections: overdueCollections.rows[0].count,
+      approvalQueue: Number(approvalQueue.rows[0].count ?? 0),
     }});
   } catch { fail(res, "Failed to load treasury summary", 500); }
 });
@@ -157,7 +166,9 @@ router.post("/accounts", requirePermission(MODULE, "create"), async (req: AuthRe
 
 router.put("/accounts/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const accountId = parsedId(req.params.id as string); if (!accountId) return fail(res, "Invalid id");
-  const parsed = accountSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
+  const parsed = accountFields.partial().refine((value) => value.currentBalance == null || value.availableBalance == null || value.availableBalance <= value.currentBalance, {
+    message: "Available balance cannot exceed current balance",
+  }).safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
   const d = parsed.data;
   try {
     const o = org(req);
@@ -303,6 +314,7 @@ router.post("/payments", requirePermission(MODULE, "create"), async (req: AuthRe
   const d = parsed.data; const client = await pool.connect();
   try {
     const o = org(req); await client.query("begin");
+    if (d.status !== "draft" && d.status !== "scheduled") throw new Error("New payment plans must be draft or scheduled");
     if (d.accountId != null) {
       const account = await client.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
       if (!account.rows[0]) throw new Error("Account not found");
@@ -313,7 +325,7 @@ router.post("/payments", requirePermission(MODULE, "create"), async (req: AuthRe
       [o, number, d.accountId ?? null, d.payeeName, d.vendorName ?? null, d.amount, d.currency, d.paymentDate, d.method, d.category, d.reference ?? null, d.status, d.notes ?? null, req.user!.userId]);
     await client.query("commit");
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Account not found" ? e.message : e.code === "23505" ? "Payment number already exists" : "Failed to create payment plan", e.message === "Account not found" ? 404 : e.code === "23505" ? 409 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Account not found" || e.message === "New payment plans must be draft or scheduled" ? e.message : e.code === "23505" ? "Payment number already exists" : "Failed to create payment plan", e.message === "Account not found" ? 404 : e.code === "23505" ? 409 : 400); }
   finally { client.release(); }
 });
 
@@ -355,7 +367,7 @@ router.post("/payments/:id/mark-paid", requirePermission(MODULE, "edit"), async 
     const o = org(req); await client.query("begin");
     const payment = await client.query(`select * from treasury_payment_plans where id=$1 and org_id=$2 for update`, [payId, o]);
     if (!payment.rows[0]) throw new Error("Payment plan not found");
-    if (!payment.rows[0]) throw new Error("Payment must be approved before it is paid");
+    if (!["approved", "processing"].includes(payment.rows[0].status)) throw new Error("Payment must be approved before it is paid");
     if (payment.rows[0].account_id) {
       const account = await client.query(`select * from treasury_accounts where id=$1 and org_id=$2 for update`, [payment.rows[0].account_id, o]);
       if (!account.rows[0]) throw new Error("Account not found");
@@ -395,6 +407,7 @@ router.post("/collections", requirePermission(MODULE, "create"), async (req: Aut
   const d = parsed.data; const client = await pool.connect();
   try {
     const o = org(req); await client.query("begin");
+    if (d.status !== "draft" && d.status !== "scheduled") throw new Error("New collection plans must be draft or scheduled");
     if (d.accountId != null) {
       const account = await client.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
       if (!account.rows[0]) throw new Error("Account not found");
@@ -405,7 +418,7 @@ router.post("/collections", requirePermission(MODULE, "create"), async (req: Aut
       [o, number, d.accountId ?? null, d.payerName, d.customerName ?? null, d.amount, d.currency, d.collectionDate, d.method, d.category, d.reference ?? null, d.status, d.notes ?? null, req.user!.userId]);
     await client.query("commit");
     res.status(201).json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Account not found" ? e.message : e.code === "23505" ? "Collection number already exists" : "Failed to create collection plan", e.message === "Account not found" ? 404 : e.code === "23505" ? 409 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Account not found" || e.message === "New collection plans must be draft or scheduled" ? e.message : e.code === "23505" ? "Collection number already exists" : "Failed to create collection plan", e.message === "Account not found" ? 404 : e.code === "23505" ? 409 : 400); }
   finally { client.release(); }
 });
 
@@ -438,6 +451,7 @@ router.post("/collections/:id/mark-received", requirePermission(MODULE, "edit"),
     if (!collection.rows[0]) throw new Error("Collection plan not found");
     if (collection.rows[0].status === "received") throw new Error("Collection is already received");
     if (collection.rows[0].status === "cancelled") throw new Error("Cancelled collections cannot be received");
+    if (!["scheduled", "approved", "processing"].includes(collection.rows[0].status)) throw new Error("Collection must be scheduled before it is received");
     if (collection.rows[0].account_id) {
       const account = await client.query(`select id from treasury_accounts where id=$1 and org_id=$2 for update`, [collection.rows[0].account_id, o]);
       if (!account.rows[0]) throw new Error("Account not found");
@@ -448,7 +462,7 @@ router.post("/collections/:id/mark-received", requirePermission(MODULE, "edit"),
       [colId, o]);
     await client.query("commit");
     res.json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Collection plan not found" || e.message === "Account not found" ? e.message : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" ? e.message : "Failed to mark collection as received", e.message === "Collection plan not found" || e.message === "Account not found" ? 404 : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" ? 422 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Collection plan not found" || e.message === "Account not found" ? e.message : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" || e.message === "Collection must be scheduled before it is received" ? e.message : "Failed to mark collection as received", e.message === "Collection plan not found" || e.message === "Account not found" ? 404 : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" || e.message === "Collection must be scheduled before it is received" ? 422 : 500); }
   finally { client.release(); }
 });
 
@@ -529,7 +543,7 @@ router.post("/transfers/:id/execute", requirePermission(MODULE, "edit"), async (
       `update treasury_transfers set status='executed',executed_at=now(),updated_at=now() where id=$1 returning *`, [trId]);
     await client.query("commit");
     res.json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Transfer not found" || e.message === "Transfer accounts not found" ? e.message : e.message === "Transfer must be authorized before execution" || e.message === "Insufficient balance in source account" ? e.message : "Failed to execute transfer", e.message === "Transfer not found" || e.message === "Transfer accounts not found" ? 404 : 422); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Transfer not found" || e.message === "Transfer accounts not found" ? e.message : e.message === "Transfer must be authorized before execution" || e.message === "Insufficient available balance in source account" ? e.message : "Failed to execute transfer", e.message === "Transfer not found" || e.message === "Transfer accounts not found" ? 404 : 422); }
   finally { client.release(); }
 });
 
