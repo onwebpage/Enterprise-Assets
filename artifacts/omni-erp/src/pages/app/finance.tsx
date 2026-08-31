@@ -9,6 +9,7 @@ import ProfitLossTab from '@/components/app/finance/ProfitLossTab';
 import BalanceSheetTab from '@/components/app/finance/BalanceSheetTab';
 import CashFlowTab from '@/components/app/finance/CashFlowTab';
 import PeriodClosingTab from '@/components/app/finance/PeriodClosingTab';
+import IntercompanyTab from '@/components/app/finance/IntercompanyTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -19,7 +20,7 @@ import {
   CreditCard, Banknote, ArrowUpRight, ArrowDownRight, ArrowRight,
   FileText, BookOpen, RefreshCw, CheckCircle2, AlertCircle,
   ChevronRight, ChevronDown, Calendar, Building2, Layers,
-  Scale, ReceiptText, Landmark, GitMerge, Clock, Check, Wallet, CalendarClock,
+  Scale, ReceiptText, Landmark, GitMerge, Clock, Check, Wallet, CalendarClock, ArrowLeftRight,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import KPICard from '@/components/app/KPICard';
@@ -351,6 +352,7 @@ export default function Finance() {
                 { value: 'tb',        label: 'Trial Balance',   icon: CheckCircle2 },
                 { value: 'recon',     label: 'Bank Reconciliation', icon: GitMerge },
                 { value: 'closing',   label: 'Period Closing',  icon: CalendarClock },
+                { value: 'intercompany', label: 'Intercompany', icon: ArrowLeftRight },
               ].map(t => (
                 <TabsTrigger key={t.value} value={t.value}
                   className="text-xs h-8 px-3 data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/40 gap-1.5 whitespace-nowrap">
@@ -683,6 +685,11 @@ export default function Finance() {
           {/* ── PERIOD & YEAR-END CLOSING ─────────────────────────────────── */}
           <TabsContent value="closing" className="mt-4">
             <PeriodClosingTab />
+          </TabsContent>
+
+          {/* ── MULTI-COMPANY & INTERCOMPANY FINANCE ──────────────────────── */}
+          <TabsContent value="intercompany" className="mt-4">
+            <IntercompanyTab />
           </TabsContent>
 
           {/* ── BANK RECONCILIATION ───────────────────────────────────────── */}

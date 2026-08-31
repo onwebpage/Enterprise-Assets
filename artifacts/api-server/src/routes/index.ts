@@ -44,6 +44,7 @@ import expenseRouter from "./expense";
 import crmRouter from "./crm";
 import cashTreasuryRouter from "./cashTreasury";
 import periodClosingRouter from "./periodClosing";
+import intercompanyRouter from "./intercompany";
 
 const router: IRouter = Router();
 
@@ -90,6 +91,7 @@ router.use("/expense", expenseRouter);
 router.use("/crm", crmRouter);
 router.use("/cash-treasury", cashTreasuryRouter);
 router.use("/finance/closing", periodClosingRouter);
+router.use("/finance/intercompany", intercompanyRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);
