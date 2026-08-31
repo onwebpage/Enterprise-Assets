@@ -38,3 +38,4 @@ export * from "./crm";
 export * from "./cashTreasury";
 export * from "./periodClosing";
 export * from "./intercompany";
+export * from "./multiCurrency";
