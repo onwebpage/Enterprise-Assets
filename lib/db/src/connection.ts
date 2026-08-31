@@ -7,4 +7,14 @@ if (!configuredDatabaseUrl) {
   );
 }
 
-export const databaseUrl = configuredDatabaseUrl;
+function normalizeDatabaseUrl(urlValue: string): string {
+  if (!process.env.SUPABASE_DB_URL) return urlValue;
+
+  const url = new URL(urlValue);
+  // Supabase's pooler certificate is encrypted but not trusted by the
+  // container CA bundle. Keep TLS enabled while accepting that certificate.
+  url.searchParams.set("sslmode", "no-verify");
+  return url.toString();
+}
+
+export const databaseUrl = normalizeDatabaseUrl(configuredDatabaseUrl);

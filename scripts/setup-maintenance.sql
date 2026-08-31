@@ -155,17 +155,4 @@ CREATE TABLE IF NOT EXISTS maintenance_history (
   created_by integer REFERENCES users(id) ON DELETE SET NULL,
   created_at timestamp NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS maintenance_history_asset_idx ON maintenance_history(asset_id);</｜DSML｜>
-<task_progress>
-- [x] Explore existing architecture (schema, API, frontend patterns)
-- [x] Create maintenance database schema
-- [x] Create maintenance SQL setup script
-- [ ] Create maintenance schema apply script
-- [ ] Create maintenance frontend hooks TypeScript
-- [ ] Create maintenance API routes
-- [ ] Create maintenance page
-- [ ] Register maintenance routes & navigation
-- [ ] Add maintenance seed data
-- [ ] Test and verify functionality
-</task_progress>
-</write_to_file>
+CREATE INDEX IF NOT EXISTS maintenance_history_asset_idx ON maintenance_history(asset_id);
