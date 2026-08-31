@@ -155,7 +155,7 @@ export default function Login() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Sign in to OmniERP</h1>
             <p className="text-sm text-muted-foreground/60">
               New to OmniERP?{' '}
-              <Link href="/" className="text-primary hover:text-primary/80 font-medium transition-colors">
+              <Link href="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
                 Start a free trial
               </Link>
             </p>

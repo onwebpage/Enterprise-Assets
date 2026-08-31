@@ -4,6 +4,16 @@ import { Menu, ChevronDown, Building2, HeartPulse, ShoppingCart, Factory, Truck,
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth, type AuthUser } from "@/contexts/auth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const industriesItems = [
   { icon: Factory, label: "Manufacturing", desc: "End-to-end production control" },
@@ -30,6 +40,53 @@ const simpleLinks = [
   { label: "Resources", href: "#resources" },
   { label: "Company", href: "#company" },
 ];
+
+function PublicProfileMenu({ user, logout, mobile = false }: {
+  user: AuthUser;
+  logout: () => void;
+  mobile?: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          aria-label="Open profile menu"
+          className={mobile
+            ? "w-full flex items-center gap-3 bg-white/5 hover:bg-white/10 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
+            : "flex items-center gap-2 hover:bg-white/[0.06] rounded-lg p-1.5 transition-colors"}
+        >
+          <Avatar className="w-7 h-7">
+            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-xs font-bold">
+              {user.initials}
+            </AvatarFallback>
+          </Avatar>
+          {mobile && (
+            <span className="flex-1 text-left truncate">
+              {user.displayName}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 bg-[#0a0f1e] border-white/[0.08] text-white">
+        <DropdownMenuLabel>
+          <p className="font-semibold truncate">{user.displayName}</p>
+          <p className="text-xs text-white/40 font-normal truncate">{user.email}</p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator className="bg-white/[0.08]" />
+        <DropdownMenuItem asChild className="hover:bg-white/[0.05] cursor-pointer">
+          <Link href="/app/dashboard">Open dashboard</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="hover:bg-white/[0.05] cursor-pointer">
+          <Link href="/app/settings">Account settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="bg-white/[0.08]" />
+        <DropdownMenuItem onClick={logout} className="hover:bg-white/[0.05] cursor-pointer text-red-400">
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function DropdownMenu({
   label,
@@ -111,6 +168,7 @@ function DropdownMenu({
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10);
@@ -176,24 +234,30 @@ export function Navbar() {
 
           {/* Desktop CTA */}
           <div className="hidden lg:flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-[13px] font-medium text-slate-400 hover:text-white transition-colors px-3 py-2"
-            >
-              Login
-            </Link>
-            <a
-              href="#demo"
-              className="bg-transparent hover:bg-white/[0.06] text-white border border-white/15 px-4 py-2 text-[13px] font-medium rounded-lg transition-all duration-200"
-            >
-              Book Demo
-            </a>
-            <a
-              href="#trial"
-              className="bg-primary hover:bg-primary/90 text-white rounded-lg px-4 py-2 text-[13px] font-medium transition-all duration-200"
-            >
-              Start Free Trial
-            </a>
+            {user ? (
+              <PublicProfileMenu user={user} logout={logout} />
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-[13px] font-medium text-slate-400 hover:text-white transition-colors px-3 py-2"
+                >
+                  Login
+                </Link>
+                <a
+                  href="#demo"
+                  className="bg-transparent hover:bg-white/[0.06] text-white border border-white/15 px-4 py-2 text-[13px] font-medium rounded-lg transition-all duration-200"
+                >
+                  Book Demo
+                </a>
+                <Link
+                  href="/signup"
+                  className="bg-primary hover:bg-primary/90 text-white rounded-lg px-4 py-2 text-[13px] font-medium transition-all duration-200"
+                >
+                  Start Free Trial
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu */}
@@ -270,24 +334,30 @@ export function Navbar() {
                 </div>
 
                 <div className="flex flex-col gap-3 pt-6 mt-2 border-t border-white/10">
-                  <Link
-                    href="/login"
-                    className="w-full text-center bg-white/5 hover:bg-white/10 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
-                  >
-                    Login
-                  </Link>
-                  <a
-                    href="#demo"
-                    className="w-full text-center bg-transparent border border-white/15 hover:bg-white/5 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
-                  >
-                    Book Demo
-                  </a>
-                  <a
-                    href="#trial"
-                    className="w-full text-center bg-primary hover:bg-primary/90 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
-                  >
-                    Start Free Trial
-                  </a>
+                  {user ? (
+                    <PublicProfileMenu user={user} logout={logout} mobile />
+                  ) : (
+                    <>
+                      <Link
+                        href="/login"
+                        className="w-full text-center bg-white/5 hover:bg-white/10 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
+                      >
+                        Login
+                      </Link>
+                      <a
+                        href="#demo"
+                        className="w-full text-center bg-transparent border border-white/15 hover:bg-white/5 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
+                      >
+                        Book Demo
+                      </a>
+                      <Link
+                        href="/signup"
+                        className="w-full text-center bg-primary hover:bg-primary/90 text-white px-4 py-2.5 text-[14px] font-medium rounded-lg transition-all"
+                      >
+                        Start Free Trial
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </SheetContent>

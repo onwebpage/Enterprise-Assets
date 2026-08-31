@@ -8,6 +8,7 @@ import ProtectedAdminRoute from '@/components/app/ProtectedAdminRoute';
 import NotFound from '@/pages/not-found';
 import Home from '@/pages/home';
 import Login from '@/pages/login';
+import Signup from '@/pages/signup';
 import AdminLogin from '@/pages/admin-login';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 
@@ -66,6 +67,7 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/" component={Home} />
       <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
       <Route path="/admin-login" component={AdminLogin} />
 
       {/* Protected app routes */}

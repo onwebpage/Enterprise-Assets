@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import {
   LayoutDashboard,
@@ -119,13 +120,13 @@ export function Hero() {
             </p>
 
             <div className="flex flex-wrap items-center gap-4 pt-2">
-              <a
-                href="#trial"
+              <Link
+                href="/signup"
                 className="bg-primary hover:bg-primary/90 text-white rounded-lg px-6 py-3.5 text-[15px] font-medium transition-colors inline-flex items-center gap-2"
               >
                 Start Free Trial
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
               <a
                 href="#demo"
                 className="bg-transparent hover:bg-white/[0.06] text-white border border-white/15 rounded-lg px-6 py-3.5 text-[15px] font-medium transition-colors inline-flex items-center gap-2"

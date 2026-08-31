@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
+import { Link } from "wouter";
 
 export function CTABanner() {
   return (
@@ -34,13 +35,13 @@ export function CTABanner() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="#trial"
+            <Link
+              href="/signup"
               className="bg-primary hover:bg-primary/90 text-white rounded-lg px-8 py-4 text-[15px] font-semibold transition-all w-full sm:w-auto inline-flex items-center justify-center gap-2"
             >
               Start Free Trial
               <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
             <a
               href="#demo"
               className="bg-[#050816] hover:bg-white/5 text-white border border-white/15 rounded-lg px-8 py-4 text-[15px] font-semibold transition-all w-full sm:w-auto text-center"

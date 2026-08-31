@@ -1,11 +1,144 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, users, roles } from "@workspace/db";
+import { db, users, roles, organizations } from "@workspace/db";
 import { signToken } from "../lib/jwt";
-import { verifyPassword } from "../lib/password";
+import { hashPassword, verifyPassword } from "../lib/password";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
+
+function authUser(user: typeof users.$inferSelect, roleName = "User") {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    displayName: `${user.firstName} ${user.lastName}`,
+    initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
+    status: user.status,
+    mfaEnabled: user.mfaEnabled,
+    roleId: user.roleId,
+    roleName,
+    orgId: user.orgId,
+  };
+}
+
+// POST /api/auth/register
+router.post("/register", async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      companyName,
+    } = req.body as {
+      email?: string;
+      password?: string;
+      firstName?: string;
+      lastName?: string;
+      companyName?: string;
+    };
+
+    const normalizedEmail = email?.trim().toLowerCase();
+    const normalizedFirstName = firstName?.trim();
+    const normalizedLastName = lastName?.trim();
+    const normalizedCompanyName = companyName?.trim();
+
+    if (!normalizedEmail || !normalizedFirstName || !normalizedLastName || !password) {
+      res.status(400).json({
+        success: false,
+        error: "First name, last name, email, and password are required",
+      });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      res.status(400).json({ success: false, error: "Enter a valid email address" });
+      return;
+    }
+
+    if (password.length < 8) {
+      res.status(400).json({
+        success: false,
+        error: "Password must be at least 8 characters",
+      });
+      return;
+    }
+
+    if (normalizedFirstName.length > 80 || normalizedLastName.length > 80) {
+      res.status(400).json({ success: false, error: "Names must be 80 characters or fewer" });
+      return;
+    }
+
+    const existingUser = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, normalizedEmail))
+      .limit(1);
+
+    if (existingUser.length > 0) {
+      res.status(409).json({ success: false, error: "An account with this email already exists" });
+      return;
+    }
+
+    const passwordHash = await hashPassword(password);
+    const displayCompanyName =
+      normalizedCompanyName || `${normalizedFirstName} ${normalizedLastName}'s Organization`;
+
+    const { user } = await db.transaction(async (tx) => {
+      const [organization] = await tx
+        .insert(organizations)
+        .values({
+          name: displayCompanyName,
+          legalName: displayCompanyName,
+          employeeCount: 1,
+          status: "active",
+          currency: "USD",
+          fiscalYearStart: "Jan",
+          type: "Parent",
+        })
+        .returning({ id: organizations.id });
+
+      const [createdUser] = await tx
+        .insert(users)
+        .values({
+          orgId: organization.id,
+          email: normalizedEmail,
+          passwordHash,
+          firstName: normalizedFirstName,
+          lastName: normalizedLastName,
+          status: "active",
+          mfaEnabled: false,
+        })
+        .returning();
+
+      return { user: createdUser };
+    });
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email,
+      roleId: user.roleId,
+      orgId: user.orgId,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        token,
+        user: authUser(user),
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.toLowerCase().includes("unique")) {
+      res.status(409).json({ success: false, error: "An account with this email already exists" });
+      return;
+    }
+    res.status(500).json({ success: false, error: "Unable to create your account right now" });
+  }
+});
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
@@ -60,19 +193,7 @@ router.post("/login", async (req, res) => {
       success: true,
       data: {
         token,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          displayName: `${user.firstName} ${user.lastName}`,
-          initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
-          status: user.status,
-          mfaEnabled: user.mfaEnabled,
-          roleId: user.roleId,
-          roleName,
-          orgId: user.orgId,
-        },
+        user: authUser(user, roleName),
       },
     });
   } catch (err) {
@@ -102,19 +223,7 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
 
     res.json({
       success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        displayName: `${user.firstName} ${user.lastName}`,
-        initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
-        status: user.status,
-        mfaEnabled: user.mfaEnabled,
-        roleId: user.roleId,
-        roleName,
-        orgId: user.orgId,
-      },
+      data: authUser(user, roleName),
     });
   } catch {
     res.status(500).json({ success: false, error: "Internal server error" });

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { Link } from "wouter";
 
 const plans = [
   {
@@ -159,15 +160,28 @@ export function Pricing() {
                 )}
               </div>
 
-              <button
-                className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 ${
-                  plan.popular
-                    ? "bg-primary hover:bg-primary/90 text-white"
-                    : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                }`}
-              >
-                {plan.cta}
-              </button>
+              {plan.cta === "Start Free Trial" ? (
+                <Link
+                  href="/signup"
+                  className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 text-center ${
+                    plan.popular
+                      ? "bg-primary hover:bg-primary/90 text-white"
+                      : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                  }`}
+                >
+                  {plan.cta}
+                </Link>
+              ) : (
+                <button
+                  className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 ${
+                    plan.popular
+                      ? "bg-primary hover:bg-primary/90 text-white"
+                      : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                  }`}
+                >
+                  {plan.cta}
+                </button>
+              )}
 
               <div className="flex flex-col gap-3 mt-auto">
                 <div className="text-[12px] font-semibold text-slate-300 uppercase tracking-wider mb-2">
