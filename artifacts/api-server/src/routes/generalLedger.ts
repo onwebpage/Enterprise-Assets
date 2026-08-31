@@ -24,6 +24,7 @@ import {
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { assertPostingDateOpen } from "./periodClosing";
 
 const router = Router();
 router.use(requireAuth);
@@ -431,6 +432,7 @@ router.post("/journal-entries", requirePermission("finance", "create"), async (r
   const totalCredit = lines.reduce((s, l) => s + parseFloat(l.credit ?? "0"), 0);
 
   try {
+    await assertPostingDateOpen(req, date);
     const entryNumber = await nextEntryNumber(orgId);
 
     const [header] = await db
@@ -503,6 +505,12 @@ router.put("/journal-entries/:id", requirePermission("finance", "edit"), async (
     }
 
     const { date, reference, memo, lines } = parsed.data;
+    try {
+      await assertPostingDateOpen(req, date);
+    } catch (error: any) {
+      res.status(409).json({ success: false, error: error?.message ?? "The selected period is closed" });
+      return;
+    }
 
     // Validate lines
     for (const line of lines) {
@@ -573,6 +581,12 @@ router.post("/journal-entries/:id/post", requirePermission("finance", "edit"), a
     }
     if (existing.status !== "draft") {
       res.status(409).json({ success: false, error: `Entry is already ${existing.status}` });
+      return;
+    }
+    try {
+      await assertPostingDateOpen(req, existing.date);
+    } catch (error: any) {
+      res.status(409).json({ success: false, error: error?.message ?? "The selected period is closed" });
       return;
     }
 

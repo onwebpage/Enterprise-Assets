@@ -29,6 +29,7 @@
     "schema:crm": "tsx src/apply-crm-schema.ts",
     "schema:cash-treasury": "tsx src/apply-cash-treasury-schema.ts"
     ,"schema:manufacturing-logistics": "tsx src/apply-manufacturing-logistics-schema.ts"
+    ,"schema:period-closing": "tsx src/apply-period-closing-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

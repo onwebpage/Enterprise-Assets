@@ -43,6 +43,7 @@ import maintenanceRouter from "./maintenance";
 import expenseRouter from "./expense";
 import crmRouter from "./crm";
 import cashTreasuryRouter from "./cashTreasury";
+import periodClosingRouter from "./periodClosing";
 
 const router: IRouter = Router();
 
@@ -88,6 +89,7 @@ router.use("/maintenance", maintenanceRouter);
 router.use("/expense", expenseRouter);
 router.use("/crm", crmRouter);
 router.use("/cash-treasury", cashTreasuryRouter);
+router.use("/finance/closing", periodClosingRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);

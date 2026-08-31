@@ -36,3 +36,4 @@ export * from "./maintenance";
 export * from "./expense";
 export * from "./crm";
 export * from "./cashTreasury";
+export * from "./periodClosing";

@@ -721,7 +721,10 @@ router.get("/kpi", requirePermission(MODULE, "view"), async (req: AuthRequest, r
 // POST /api/ai-bi/report — natural language report generation
 router.post("/report", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   const message = (req.body?.message as string) ?? "";
-  if (!message.trim()) return res.status(400).json({ success: false, error: "Message is required" });
+  if (!message.trim()) {
+    res.status(400).json({ success: false, error: "Message is required" });
+    return;
+  }
   try {
     const text = await generateReport(message, req.user!.orgId!);
     res.json({ success: true, data: { text } });
