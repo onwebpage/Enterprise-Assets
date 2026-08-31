@@ -21,6 +21,7 @@
     "seed:expense": "tsx src/seed-expense.ts",
     "seed:crm": "tsx src/seed-crm.ts",
     "seed:cash-treasury": "tsx src/seed-cash-treasury.ts",
+    "seed:financial-controls": "tsx src/seed-financial-controls.ts",
     "schema:wms": "tsx src/apply-wms-schema.ts",
     "schema:budget-cost": "tsx src/apply-budget-cost-schema.ts",
     "schema:quality": "tsx src/apply-quality-schema.ts",

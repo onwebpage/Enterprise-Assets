@@ -53,6 +53,9 @@ const runInput = z.object({
   if (value.periodEnd < value.periodStart) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["periodEnd"], message: "Period end must be on or after period start" });
   }
+  if (value.dueDate && value.dueDate < value.periodStart) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dueDate"], message: "Due date must be on or after the period start" });
+  }
 });
 
 const runUpdateInput = z.object({
@@ -61,6 +64,14 @@ const runUpdateInput = z.object({
   notes: z.string().trim().max(2000).optional().nullable(),
   evidenceReference: z.string().trim().max(500).optional().nullable(),
   reviewedBy: z.coerce.number().int().positive().optional().nullable(),
+}).superRefine((value, ctx) => {
+  const isFinal = value.status === "completed" || value.status === "waived";
+  if (isFinal && value.result === "pending") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["result"], message: "Completed and waived runs must have a result" });
+  }
+  if (!isFinal && value.result !== "pending") {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["result"], message: "Only completed or waived runs can have a final result" });
+  }
 });
 
 const exceptionInput = z.object({
@@ -345,14 +356,11 @@ router.put("/runs/:id", requirePermission("Finance", "edit"), async (req: AuthRe
   try {
     const existing = await getRun(req, id);
     if (!existing) { res.status(404).json({ success: false, error: "Control run not found" }); return; }
-    if (parsed.data.status === "completed" && parsed.data.result === "pending") {
-      res.status(422).json({ success: false, error: "Completed runs must have a result" }); return;
-    }
-    if (parsed.data.status === "waived" && parsed.data.result === "pending") {
-      res.status(422).json({ success: false, error: "Waived runs must record a result" }); return;
-    }
     if (!(await activeUserInScope(req, parsed.data.reviewedBy))) {
       res.status(422).json({ success: false, error: "Reviewer must be an active user in your organization" }); return;
+    }
+    if (parsed.data.reviewedBy && existing.performedBy && parsed.data.reviewedBy === existing.performedBy) {
+      res.status(422).json({ success: false, error: "Reviewer must be different from the person who performed the run" }); return;
     }
     const completing = parsed.data.status === "completed" || parsed.data.status === "waived";
     const [updated] = await db.update(controlRuns).set({
@@ -389,6 +397,9 @@ router.post("/runs/:id/exceptions", requirePermission("Finance", "create"), asyn
   if (!runId) { res.status(400).json({ success: false, error: "Invalid run id" }); return; }
   const parsed = exceptionInput.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  if (parsed.data.dueDate && !validCalendarDate(parsed.data.dueDate)) {
+    res.status(422).json({ success: false, error: "Due date must be a real calendar date" }); return;
+  }
   try {
     const run = await getRun(req, runId);
     if (!run) { res.status(404).json({ success: false, error: "Control run not found" }); return; }
@@ -420,6 +431,9 @@ router.put("/exceptions/:id", requirePermission("Finance", "edit"), async (req: 
   if (!id) { res.status(400).json({ success: false, error: "Invalid exception id" }); return; }
   const parsed = exceptionInput.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  if (parsed.data.dueDate && !validCalendarDate(parsed.data.dueDate)) {
+    res.status(422).json({ success: false, error: "Due date must be a real calendar date" }); return;
+  }
   try {
     const existing = await getException(req, id);
     if (!existing) { res.status(404).json({ success: false, error: "Control exception not found" }); return; }

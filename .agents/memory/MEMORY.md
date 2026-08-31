@@ -22,3 +22,4 @@
 - [Trial Management module](trial-management-module.md) — saas_trial_events + saas_trial_config tables; trial routes appended to /api/saas routes; TrialManagementTab added as 5th tab in saas.tsx; extend/convert/cancel/reminder all write audit events.
 - [Admin bootstrap](admin-bootstrap.md) — imported workspaces should use the idempotent setup SQL path to restore super-admin tables, defaults, and feature catalog.
 - [Imported project setup](imported-project-setup.md) — artifact metadata may exist before managed workflows are registered; check live workflows and configure ports explicitly.
+- [Financial Controls](financial-controls.md) — control runs require final results and independent review; execution data is retained as an audit trail.
