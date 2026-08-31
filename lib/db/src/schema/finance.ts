@@ -1,12 +1,14 @@
 import { pgTable, serial, text, integer, numeric, timestamp, date } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { organizations } from "./organizations";
 
 // ── finance_transactions ──────────────────────────────────────────────────────
 // Individual debit/credit movements used for "Recent Transactions" + KPI roll-ups.
 // amount is always positive; direction ('credit'|'debit') carries the sign.
 export const financeTransactions = pgTable("finance_transactions", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull(),
   direction: text("direction").notNull(), // 'credit' | 'debit'
@@ -27,6 +29,7 @@ export type InsertFinanceTransaction = z.infer<typeof insertFinanceTransactionSc
 // One row per month. Populated by seed; updated by a background job in production.
 export const financeMonthlySummary = pgTable("finance_monthly_summary", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
   month: text("month").notNull(),       // 'Jan', 'Feb', …
   year: integer("year").notNull(),
   revenue: numeric("revenue", { precision: 10, scale: 3 }).notNull(),  // in $M

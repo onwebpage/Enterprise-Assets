@@ -12,6 +12,7 @@ import PeriodClosingTab from '@/components/app/finance/PeriodClosingTab';
 import IntercompanyTab from '@/components/app/finance/IntercompanyTab';
 import MultiCurrencyTab from '@/components/app/finance/MultiCurrencyTab';
 import FinancialControlsTab from '@/components/app/finance/FinancialControlsTab';
+import FinanceCommandCenter from '@/components/app/finance/FinanceCommandCenter';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -288,7 +289,7 @@ export default function Finance() {
   const [tab, setTab] = useState('overview');
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
 
-  const { data: dashData, isLoading: dashLoading } = useFinanceDashboard();
+  const { data: dashData, isLoading: dashLoading, refetch: refetchDashboard } = useFinanceDashboard();
 
   // Live KPI values — fall back to em-dash while loading
   const liveRevenue  = dashData ? fmtMoney(dashData.kpis.totalRevenue)  : '—';
@@ -303,8 +304,8 @@ export default function Finance() {
     { label: 'Total Revenue',  value: dashLoading ? '…' : liveRevenue,   change: '+14.3%', up: true,  icon: TrendingUp,   iconColor: 'text-[#2563EB]', gradient: 'bg-[#2563EB]/15',  sparkline: [4.2,5.1,4.8,6.3,5.9,7.2,8.1], changeLabel: 'YTD 2026' },
     { label: 'Cash Balance',   value: dashLoading ? '…' : liveCashBal,   change: '+12.4%', up: true,  icon: DollarSign,   iconColor: 'text-emerald-400',gradient: 'bg-emerald-500/15', sparkline: [1.4,1.6,1.7,1.7,1.8,1.8,1.8], changeLabel: 'Liquid funds' },
     { label: 'Net Profit',     value: dashLoading ? '…' : liveNetProfit, change: '+21.5%', up: true,  icon: ArrowUpRight, iconColor: 'text-purple-400', gradient: 'bg-purple-500/15',  sparkline: [0.7,1.0,1.0,1.5,1.4,1.8,2.1], changeLabel: 'NP margin 25%' },
-    { label: 'Accounts Receivable', value: '$3.2M', change: '+8.1%',     up: false, icon: CreditCard, iconColor: 'text-amber-400', gradient: 'bg-amber-500/15', sparkline: [2.8,2.9,3.0,3.1,3.0,3.1,3.2], changeLabel: 'DSO: 38 days' },
-    { label: 'Accounts Payable',    value: '$892K', change: '+3.5%',     up: false, icon: Banknote,   iconColor: 'text-red-400',   gradient: 'bg-red-500/15',   sparkline: [820,850,860,870,880,888,892], changeLabel: 'DPO: 28 days' },
+    { label: 'Accounts Receivable', value: dashLoading ? '…' : fmtMoney(dashData?.kpis.accountsReceivable ?? 0), change: 'Open balance', up: false, icon: CreditCard, iconColor: 'text-amber-400', gradient: 'bg-amber-500/15', sparkline: [2.8,2.9,3.0,3.1,3.0,3.1,Number(dashData?.kpis.accountsReceivable ?? 0) / 1_000_000], changeLabel: `${dashData?.kpis.openReceivables ?? 0} open invoices` },
+    { label: 'Accounts Payable',    value: dashLoading ? '…' : fmtMoney(dashData?.kpis.accountsPayable ?? 0), change: 'Open balance', up: false, icon: Banknote,   iconColor: 'text-red-400',   gradient: 'bg-red-500/15',   sparkline: [820,850,860,870,880,888,Number(dashData?.kpis.accountsPayable ?? 0) / 1000], changeLabel: `${dashData?.kpis.openPayables ?? 0} open bills` },
     { label: 'Total Expenses', value: dashLoading ? '…' : liveExpenses,  change: '+9.2%',  up: false, icon: TrendingDown, iconColor: 'text-[#06B6D4]',  gradient: 'bg-[#06B6D4]/15',  sparkline: [1.8,1.9,1.9,2.1,2.0,2.2,2.4], changeLabel: 'vs $2.2M target' },
   ];
 
@@ -368,6 +369,13 @@ export default function Finance() {
 
           {/* ── OVERVIEW ──────────────────────────────────────────────────── */}
           <TabsContent value="overview" className="mt-4 space-y-4">
+            <FinanceCommandCenter
+              data={dashData}
+              isLoading={dashLoading}
+              onRefresh={() => { void refetchDashboard(); }}
+              onTab={(nextTab) => nextTab === 'treasury' ? (window.location.href = '/app/cash-treasury') : setTab(nextTab)}
+            />
+            <div className="hidden">
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
               {/* P&L Chart */}
               <div className="xl:col-span-2 bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-5">
@@ -488,6 +496,7 @@ export default function Finance() {
                   ))}
                 </div>
               </div>
+            </div>
             </div>
           </TabsContent>
 

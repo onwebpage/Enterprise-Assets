@@ -8,6 +8,12 @@ export interface FinanceKPIs {
   totalExpenses: number;
   netProfit: number;
   cashBalance: number;
+  accountsReceivable: number;
+  accountsPayable: number;
+  overdueReceivable: number;
+  overduePayable: number;
+  openReceivables: number;
+  openPayables: number;
 }
 
 export interface FinanceTransaction {
@@ -33,6 +39,33 @@ export interface FinanceDashboardData {
   kpis: FinanceKPIs;
   recentTransactions: FinanceTransaction[];
   monthlyPL: MonthlyPL[];
+  cashFlow: { month: string; inflows: number; outflows: number; net: number }[];
+  receivableAging: { label: string; amount: number; count: number; pct: number }[];
+  payableAging: { label: string; amount: number; count: number; pct: number }[];
+  treasury: {
+    activeAccounts: number;
+    accounts: {
+      id: number;
+      name: string;
+      bankName: string | null;
+      currency: string;
+      balance: string;
+      accountType: string;
+    }[];
+  };
+  upcoming: {
+    date: string;
+    type: "payment" | "collection";
+    label: string;
+    amount: number;
+    status: string;
+  }[];
+  reconciliation: {
+    bookBalance: number;
+    unreconciledAmount: number;
+    unreconciledCount: number;
+  };
+  lastUpdated: string;
 }
 
 // ── Hook ──────────────────────────────────────────────────────────────────────

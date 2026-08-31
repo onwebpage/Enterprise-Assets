@@ -2,7 +2,7 @@
  * Finance seed — populates finance_transactions and finance_monthly_summary.
  * Run with: pnpm --filter @workspace/db run seed:finance
  */
-import { db, financeTransactions, financeMonthlySummary } from "./index";
+import { db, financeTransactions, financeMonthlySummary, organizations } from "./index";
 
 // ── Monthly P&L (mirrors the static plData in the finance page) ───────────────
 const monthlyRows = [
@@ -38,15 +38,17 @@ const txRows = [
 
 async function main() {
   console.log("Seeding finance tables…");
+  const [organization] = await db.select({ id: organizations.id }).from(organizations).orderBy(organizations.id).limit(1);
+  if (!organization) throw new Error("No organization exists; seed organizations before finance.");
 
   // Upsert monthly summary — delete existing year rows then re-insert
   await db.delete(financeMonthlySummary);
-  await db.insert(financeMonthlySummary).values(monthlyRows);
+  await db.insert(financeMonthlySummary).values(monthlyRows.map((row) => ({ ...row, orgId: organization.id })));
   console.log(`  ✔ finance_monthly_summary — ${monthlyRows.length} rows`);
 
   // Replace transactions
   await db.delete(financeTransactions);
-  await db.insert(financeTransactions).values(txRows);
+  await db.insert(financeTransactions).values(txRows.map((row) => ({ ...row, orgId: organization.id })));
   console.log(`  ✔ finance_transactions — ${txRows.length} rows`);
 
   console.log("Finance seed complete.");
