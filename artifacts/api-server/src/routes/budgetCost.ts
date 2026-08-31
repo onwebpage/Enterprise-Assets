@@ -158,6 +158,49 @@ const budgetSchema = z.object({
     periodIndex: z.coerce.number().int().min(0).max(11), amount: z.coerce.number().min(0),
     description: z.string().max(500).nullable().optional(),
   })).optional(),
+ }).superRefine((value, ctx) => {
+   const maxPeriodIndex = value.periodType === "yearly" ? 0 : value.periodType === "quarterly" ? 3 : 11;
+   value.lines?.forEach((line, index) => {
+     if (line.periodIndex > maxPeriodIndex) {
+       ctx.addIssue({
+         code: z.ZodIssueCode.custom,
+         path: ["lines", index, "periodIndex"],
+         message: `Period must be between 0 and ${maxPeriodIndex} for ${value.periodType} budgets`,
+       });
+     }
+   });
+ });
+
+async function assertBudgetReferences(client: any, orgId: number, data: {
+  accountIds: number[];
+  costCentreId?: number | null;
+  profitCentreId?: number | null;
+}) {
+  const accountIds = [...new Set(data.accountIds)];
+  const refs = await client.query(
+    `select
+       (select count(*)::int from chart_of_accounts where id = any($1::int[]) and (org_id=$2 or org_id is null) and status='active') as account_count,
+       ($3::int is null or exists(select 1 from cost_centres where id=$3 and org_id=$2)) as cost_centre_valid,
+       ($4::int is null or exists(select 1 from profit_centres where id=$4 and org_id=$2)) as profit_centre_valid`,
+    [accountIds, orgId, data.costCentreId ?? null, data.profitCentreId ?? null],
+  );
+  const row = refs.rows[0];
+  if (Number(row.account_count) !== accountIds.length || !row.cost_centre_valid || !row.profit_centre_valid) {
+    throw new Error("Budget accounts and centres must belong to your organisation");
+  }
+}
+
+router.get("/accounts", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `select id, code, name, type, normal_balance, status
+         from chart_of_accounts
+        where (org_id=$1 or org_id is null) and status='active'
+        order by code`,
+      [org(req)],
+    );
+    res.json({ success: true, data: result.rows });
+  } catch { fail(res, "Failed to load budget accounts", 500); }
 });
 
 router.get("/budgets", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
@@ -181,6 +224,11 @@ router.post("/budgets", requirePermission(MODULE, "create"), async (req: AuthReq
   const d = parsed.data; const client = await pool.connect();
   try {
     const o = org(req); await client.query("begin");
+     await assertBudgetReferences(client, o, {
+       accountIds: (d.lines ?? []).map((line) => line.accountId),
+       costCentreId: d.costCentreId,
+       profitCentreId: d.profitCentreId,
+     });
     const number = await nextNumber("budgets", "budget_number", "BUD", o, client);
     const total = (d.lines ?? []).reduce((s, l) => s + l.amount, 0);
     const head = await client.query(
@@ -189,11 +237,11 @@ router.post("/budgets", requirePermission(MODULE, "create"), async (req: AuthReq
     for (const line of d.lines ?? []) {
       await client.query(
         `insert into budget_lines(budget_id,account_id,cost_centre_id,profit_centre_id,period_index,amount,description) values($1,$2,$3,$4,$5,$6,$7)`,
-        [head.rows[0].id, line.accountId, line.costCentreId ?? line.costCentreId ?? null, line.profitCentreId ?? line.profitCentreId ?? null, line.periodIndex, line.amount, line.description ?? null]);
+         [head.rows[0].id, line.accountId, line.costCentreId ?? d.costCentreId ?? null, line.profitCentreId ?? d.profitCentreId ?? null, line.periodIndex, line.amount, line.description ?? null]);
     }
     await client.query("commit");
     res.status(201).json({ success: true, data: head.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, "Failed to create budget", 500); }
+   } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Budget accounts and centres must belong to your organisation" ? e.message : "Failed to create budget", e.message === "Budget accounts and centres must belong to your organisation" ? 422 : 500); }
   finally { client.release(); }
 });
 
@@ -225,6 +273,11 @@ router.put("/budgets/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
     const existing = await client.query(`select * from budgets where id=$1 and org_id=$2 for update`, [budgetId, o]);
     if (!existing.rows[0]) throw new Error("Budget not found");
     if (existing.rows[0].status === "active") throw new Error("Active budgets cannot be edited");
+     await assertBudgetReferences(client, o, {
+       accountIds: (d.lines ?? []).map((line) => line.accountId),
+       costCentreId: d.costCentreId ?? existing.rows[0].cost_centre_id,
+       profitCentreId: d.profitCentreId ?? existing.rows[0].profit_centre_id,
+     });
     let total = Number(existing.rows[0].total_amount ?? 0);
     if (d.lines) { total = d.lines.reduce((s, l) => s + l.amount, 0); }
     const head = await client.query(
@@ -240,7 +293,7 @@ router.put("/budgets/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
     }
     await client.query("commit");
     res.json({ success: true, data: head.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Budget not found" ? e.message : e.message === "Active budgets cannot be edited" ? e.message : "Failed to update budget", e.message === "Budget not found" ? 404 : e.message === "Active budgets cannot be edited" ? 409 : 500); }
+   } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Budget not found" ? e.message : e.message === "Active budgets cannot be edited" ? e.message : e.message === "Budget accounts and centres must belong to your organisation" ? e.message : "Failed to update budget", e.message === "Budget not found" ? 404 : e.message === "Active budgets cannot be edited" ? 409 : e.message === "Budget accounts and centres must belong to your organisation" ? 422 : 500); }
   finally { client.release(); }
 });
 
@@ -262,6 +315,18 @@ router.post("/budgets/:id/close", requirePermission(MODULE, "edit"), async (req:
   } catch { fail(res, "Failed to close budget", 500); }
 });
 
+router.delete("/budgets/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
+  const budgetId = parsedId(req.params.id as string); if (!budgetId) return fail(res, "Invalid id");
+  try {
+    const result = await pool.query(
+      `delete from budgets where id=$1 and org_id=$2 and status='draft' returning id`,
+      [budgetId, org(req)],
+    );
+    if (!result.rows[0]) return fail(res, "Only draft budgets can be deleted", 409);
+    res.json({ success: true, data: { id: budgetId } });
+  } catch { fail(res, "Failed to delete budget", 500); }
+});
+
 router.get("/budgets/:id/vs-actual", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   const budgetId = parsedId(req.params.id as string); if (!budgetId) return fail(res, "Invalid id");
   try {
@@ -269,19 +334,34 @@ router.get("/budgets/:id/vs-actual", requirePermission(MODULE, "view"), async (r
     const h = await pool.query(`select * from budgets where id=$1 and org_id=$2`, [budgetId, o]);
     if (!h.rows[0]) return fail(res, "Budget not found", 404);
     const lines = await pool.query(
-      `select bl.*, ca.code as account_code, ca.name as account_name
+       `select bl.*, ca.code as account_code, ca.name as account_name, ca.type as account_type
        from budget_lines bl join chart_of_accounts ca on ca.id=bl.account_id
        where bl.budget_id=$1 order by bl.period_index, ca.code`, [budgetId]);
-    const actual = await pool.query(
-      `select coalesce(sum(amount),0)::text as amount from finance_transactions ft
-       join chart_of_accounts ca on ca.code = ft.category
-       where ft.transacted_at >= date_trunc('year', now())`, []);
+     const actual = await pool.query(
+       `select to_char(transacted_at,'YYYY-MM') as period,
+               coalesce(sum(amount) filter (where category='revenue'),0)::numeric as revenue,
+               coalesce(sum(amount) filter (where category='expense'),0)::numeric as expense
+          from finance_transactions
+         where transacted_at >= make_date($2,1,1)
+           and transacted_at < make_date($2 + 1,1,1)
+         group by 1 order by 1`,
+       [Number(h.rows[0].fiscal_year)],
+     );
     const periodLabels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     const rows = lines.rows.map((l: any) => {
       const label = h.rows[0].period_type === "monthly" ? periodLabels[l.period_index] ?? `P${l.period_index + 1}` : `Q${l.period_index + 1}`;
-      return { ...l, period_label: label, actual: "0", variance: Number(l.amount) - 0, variance_pct: "0.00" };
+       const month = h.rows[0].period_type === "monthly" ? l.period_index : h.rows[0].period_type === "quarterly" ? l.period_index * 3 : 0;
+       const periodActual = actual.rows
+         .filter((row: any) => {
+           const monthIndex = Number(String(row.period).slice(5, 7)) - 1;
+           return h.rows[0].period_type === "monthly" ? monthIndex === month : h.rows[0].period_type === "quarterly" ? Math.floor(monthIndex / 3) === l.period_index : true;
+         })
+         .reduce((sum: number, row: any) => sum + (["Income", "Revenue"].includes(l.account_type) ? Number(row.revenue) : Number(row.expense)), 0);
+       const variance = Number(l.amount) - periodActual;
+       return { ...l, period_label: label, actual: periodActual.toFixed(2), variance, variance_pct: l.amount > 0 ? ((variance / Number(l.amount)) * 100).toFixed(2) : "0.00" };
     });
-    res.json({ success: true, data: { budget: h.rows[0], lines: rows, actualTotal: actual.rows[0].amount } });
+     const actualTotal = actual.rows.reduce((sum: number, row: any) => sum + Number(row.revenue) + Number(row.expense), 0);
+     res.json({ success: true, data: { budget: h.rows[0], lines: rows, actualTotal: actualTotal.toFixed(2) } });
   } catch { fail(res, "Failed to load budget vs actual", 500); }
 });
 
@@ -481,6 +561,9 @@ router.post("/forecasts", requirePermission(MODULE, "create"), async (req: AuthR
   const d = parsed.data; const client = await pool.connect();
   try {
     const o = org(req); await client.query("begin");
+    await assertBudgetReferences(client, o, {
+      accountIds: (d.lines ?? []).map((line) => line.accountId),
+    });
     const number = await nextNumber("forecasts", "forecast_number", "FCST", o, client);
     const head = await client.query(
       `insert into forecasts(org_id,forecast_number,name,method,status,currency,notes,created_by) values($1,$2,$3,$4,'draft',$5,$6,$7) returning *`,
@@ -492,7 +575,7 @@ router.post("/forecasts", requirePermission(MODULE, "create"), async (req: AuthR
     }
     await client.query("commit");
     res.status(201).json({ success: true, data: head.rows[0] });
-  } catch { await client.query("rollback").catch(() => {}); fail(res, "Failed to create forecast", 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Budget accounts and centres must belong to your organisation" ? e.message : "Failed to create forecast", e.message === "Budget accounts and centres must belong to your organisation" ? 422 : 500); }
   finally { client.release(); }
 });
 
@@ -515,6 +598,7 @@ router.put("/forecasts/:id", requirePermission(MODULE, "edit"), async (req: Auth
     const o = org(req); await client.query("begin");
     const existing = await client.query(`select * from forecasts where id=$1 and org_id=$2 for update`, [forecastId, o]);
     if (!existing.rows[0]) throw new Error("Forecast not found");
+    if (d.lines) await assertBudgetReferences(client, o, { accountIds: d.lines.map((line) => line.accountId) });
     const head = await client.query(
       `update forecasts set name=coalesce($1,name),method=coalesce($2,method),status=coalesce($3,status),currency=coalesce($4,currency),notes=coalesce($5,notes),updated_at=now() where id=$6 and org_id=$7 returning *`,
       [d.name ?? null, d.method ?? null, (d as any).status ?? null, d.currency ?? null, d.notes ?? null, forecastId, o]);
@@ -535,7 +619,7 @@ router.put("/forecasts/:id", requirePermission(MODULE, "edit"), async (req: Auth
 router.post("/forecasts/:id/approve", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const forecastId = parsedId(req.params.id as string); if (!forecastId) return fail(res, "Invalid id");
   try {
-    const r = await pool.query(`update forecasts set status='approved',updated_at=now() where id=$1 and org_id=$2 returning *`, [forecastId, org(req)]);
+    const r = await pool.query(`update forecasts set status='approved',updated_at=now() where id=$1 and org_id=$2 and status='draft' returning *`, [forecastId, org(req)]);
     if (!r.rows[0]) return fail(res, "Forecast not found", 404);
     res.json({ success: true, data: r.rows[0] });
   } catch { fail(res, "Failed to approve forecast", 500); }
@@ -550,46 +634,69 @@ router.post("/forecasts/:id/generate", requirePermission(MODULE, "edit"), async 
     const f = await client.query(`select * from forecasts where id=$1 and org_id=$2 for update`, [forecastId, o]);
     if (!f.rows[0]) throw new Error("Forecast not found");
     const method = f.rows[0].method;
-    const hist = await client.query(
-      `select to_char(transacted_at,'YYYY-MM') as period, category,
-        coalesce(sum(amount),0)::numeric as total
-       from finance_transactions
-       where transacted_at >= now() - interval '12 months'
-       group by 1,2 order by 1`);
-    // Simple approach: average monthly by category and project forward 12 months
-    const months: Record<string, number> = {};
-    for (const row of hist.rows) {
-      const key = row.category === "revenue" ? "revenue" : "expense";
-      months[key] = (months[key] ?? 0) + Number(row.total);
-    }
-    const sampleSize = Math.max(hist.rows.length, 1);
-    const avgRevenue = (months["revenue"] ?? 0) / sampleSize;
-    const avgExpense = (months["expense"] ?? 0) / sampleSize;
+     const accounts = await client.query(
+       `select id, type from chart_of_accounts
+          where (org_id=$1 or org_id is null) and status='active' and type in ('Income','Expense')
+          order by code`,
+       [o],
+     );
+     const revenueAccount = accounts.rows.find((account: any) => account.type === "Income");
+     const expenseAccount = accounts.rows.find((account: any) => account.type === "Expense");
+     if (!revenueAccount || !expenseAccount) throw new Error("Create an active income and expense account before generating a forecast");
+     const hist = await client.query(
+       `select to_char(transacted_at,'YYYY-MM') as period, category,
+               coalesce(sum(amount),0)::numeric as total
+          from finance_transactions
+         where transacted_at >= date_trunc('month', now()) - interval '12 months'
+         group by 1,2 order by 1`,
+     );
+     const history: Record<string, number[]> = { revenue: [], expense: [] };
+     const byPeriod: Record<string, { revenue: number; expense: number }> = {};
+     for (const row of hist.rows) {
+       byPeriod[row.period] ??= { revenue: 0, expense: 0 };
+       if (row.category === "revenue" || row.category === "expense") byPeriod[row.period][row.category] = Number(row.total);
+     }
+     const periods = Object.keys(byPeriod).sort();
+     for (const periodValue of periods) {
+       history.revenue.push(byPeriod[periodValue].revenue);
+       history.expense.push(byPeriod[periodValue].expense);
+     }
+     const project = (values: number[], method: string) => {
+       if (!values.length) return 0;
+       if (method === "moving_average") return values.slice(-3).reduce((sum, value) => sum + value, 0) / Math.min(values.length, 3);
+       if (method === "linear" && values.length > 1) {
+         const xMean = (values.length - 1) / 2;
+         const yMean = values.reduce((sum, value) => sum + value, 0) / values.length;
+         const slope = values.reduce((sum, value, index) => sum + (index - xMean) * (value - yMean), 0) /
+           values.reduce((sum, _value, index) => sum + (index - xMean) ** 2, 0);
+         return Math.max(0, yMean + slope * values.length);
+       }
+       return values.reduce((sum, value) => sum + value, 0) / values.length;
+     };
     await client.query(`delete from forecast_lines where forecast_id=$1`, [forecastId]);
     const now = new Date();
     for (let i = 0; i < 12; i++) {
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const periodStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const m = method === "moving_average" ? 0.5 : 1;
-      const seasonal = 1 + 0.1 * Math.sin((d.getMonth() + 1) / 12 * Math.PI * 2);
+       const seasonal = method === "seasonal" ? 1 + 0.1 * Math.sin((d.getMonth() + 1) / 12 * Math.PI * 2) : 1;
       await client.query(
         `insert into forecast_lines(forecast_id,account_id,period,amount,is_actual,notes) values($1,$2,$3,$4,false,$5)`,
-        [forecastId, 1, periodStr, Number((avgRevenue * m * seasonal).toFixed(2)), method === "linear" ? "Linear trend projection" : `${method} projection`]);
+         [forecastId, revenueAccount.id, periodStr, Number((project(history.revenue, method) * seasonal).toFixed(2)), `${method} revenue projection`]);
       await client.query(
         `insert into forecast_lines(forecast_id,account_id,period,amount,is_actual,notes) values($1,$2,$3,$4,false,$5)`,
-        [forecastId, 2, periodStr, Number((avgExpense * m).toFixed(2)), `${method} projection`]);
+         [forecastId, expenseAccount.id, periodStr, Number((project(history.expense, method) * seasonal).toFixed(2)), `${method} expense projection`]);
     }
     await client.query("commit");
     res.json({ success: true, data: { id: forecastId, status: "regenerated" } });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Forecast not found" ? e.message : "Failed to generate forecast", e.message === "Forecast not found" ? 404 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Forecast not found" ? e.message : e.message === "Create an active income and expense account before generating a forecast" ? e.message : "Failed to generate forecast", e.message === "Forecast not found" ? 404 : e.message === "Create an active income and expense account before generating a forecast" ? 422 : 500); }
   finally { client.release(); }
 });
 
 router.delete("/forecasts/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
   const forecastId = parsedId(req.params.id as string); if (!forecastId) return fail(res, "Invalid id");
   try {
-    const r = await pool.query(`delete from forecasts where id=$1 and org_id=$2 returning id`, [forecastId, org(req)]);
-    if (!r.rows[0]) return fail(res, "Forecast not found", 404);
+    const r = await pool.query(`delete from forecasts where id=$1 and org_id=$2 and status='draft' returning id`, [forecastId, org(req)]);
+    if (!r.rows[0]) return fail(res, "Only draft forecasts can be deleted", 409);
     res.json({ success: true, data: { id: forecastId } });
   } catch (e: any) { fail(res, e.code === "23503" ? "Forecast is in use; cannot delete" : "Failed to delete forecast", 409); }
 });

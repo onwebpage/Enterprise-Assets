@@ -14,6 +14,15 @@ export type BudgetCostSummary = {
   activeForecasts: number;
 };
 
+export type BudgetAccount = {
+  id: number;
+  code: string;
+  name: string;
+  type: string;
+  normal_balance: string;
+  status: string;
+};
+
 export type CostCentre = {
   id: number;
   org_id: number;
@@ -70,7 +79,19 @@ export type BudgetDetail = Budget & {
     period_index: number;
     amount: string;
     description: string | null;
+    account_type?: string;
   }>;
+};
+
+export type BudgetVsActual = {
+  budget: Budget;
+  lines: Array<BudgetDetail["lines"][number] & {
+    period_label: string;
+    actual: string;
+    variance: number;
+    variance_pct: string;
+  }>;
+  actualTotal: string;
 };
 
 export type ProductCosting = {
@@ -124,6 +145,19 @@ export type Forecast = {
   notes: string | null;
 };
 
+export type ForecastDetail = Forecast & {
+  lines: Array<{
+    id: number;
+    account_id: number;
+    account_code: string;
+    account_name: string;
+    period: string;
+    amount: string;
+    is_actual: boolean;
+    notes: string | null;
+  }>;
+};
+
 export type AllocationRule = {
   id: number;
   org_id: number;
@@ -175,6 +209,7 @@ export type ProfitabilityReport = {
 
 const keys = {
   summary: ["budget-cost", "summary"],
+  accounts: ["budget-cost", "accounts"],
   costCentres: ["budget-cost", "cost-centres"],
   profitCentres: ["budget-cost", "profit-centres"],
   budgets: ["budget-cost", "budgets"],
@@ -197,6 +232,14 @@ export function useBudgetCostSummary() {
     queryKey: keys.summary,
     queryFn: () => api.get("/budget-cost/summary"),
     staleTime: 15000,
+  });
+}
+
+export function useBudgetAccounts() {
+  return useQuery<ApiResponse<BudgetAccount[]>>({
+    queryKey: keys.accounts,
+    queryFn: () => api.get("/budget-cost/accounts"),
+    staleTime: 60000,
   });
 }
 
@@ -233,6 +276,15 @@ export function useBudget(id: number | null) {
   });
 }
 
+export function useBudgetVsActual(id: number | null) {
+  return useQuery<ApiResponse<BudgetVsActual>>({
+    queryKey: [...keys.budgets, "vs-actual", id],
+    queryFn: () => api.get(`/budget-cost/budgets/${id}/vs-actual`),
+    enabled: !!id,
+    staleTime: 15000,
+  });
+}
+
 export function useProductCostings() {
   return useQuery<ApiResponse<ProductCosting[]>>({
     queryKey: keys.costings,
@@ -253,6 +305,15 @@ export function useForecasts() {
   return useQuery<ApiResponse<Forecast[]>>({
     queryKey: keys.forecasts,
     queryFn: () => api.get("/budget-cost/forecasts"),
+    staleTime: 15000,
+  });
+}
+
+export function useForecast(id: number | null) {
+  return useQuery<ApiResponse<ForecastDetail>>({
+    queryKey: [...keys.forecasts, id],
+    queryFn: () => api.get(`/budget-cost/forecasts/${id}`),
+    enabled: !!id,
     staleTime: 15000,
   });
 }
@@ -303,6 +364,7 @@ export function useCreateBudget() { return mutation((data: any) => api.post("/bu
 export function useUpdateBudget() { return mutation(({ id, data }: { id: number; data: any }) => api.put(`/budget-cost/budgets/${id}`, data)); }
 export function useActivateBudget() { return mutation((id: number) => api.post(`/budget-cost/budgets/${id}/activate`, {})); }
 export function useCloseBudget() { return mutation((id: number) => api.post(`/budget-cost/budgets/${id}/close`, {})); }
+export function useDeleteBudget() { return mutation((id: number) => api.delete(`/budget-cost/budgets/${id}`)); }
 
 // Product costings
 export function useCreateCosting() { return mutation((data: any) => api.post("/budget-cost/product-costings", data)); }

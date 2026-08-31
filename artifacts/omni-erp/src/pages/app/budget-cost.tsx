@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, GitBranch } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, GitBranch, Pencil, BarChart3, Save, X } from "lucide-react";
 import AppLayout from "@/components/app/AppLayout";
 import KPICard from "@/components/app/KPICard";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useInvProducts } from "@/hooks/useInventory";
 import {
-  useBudgetCostSummary, useCostCentres, useProfitCentres, useBudgets,
+  useBudgetCostSummary, useBudgetAccounts, useBudget, useBudgetVsActual, useCostCentres, useProfitCentres, useBudgets,
   useProductCostings, useVariances, useForecasts,
   useCreateCostCentre, useDeleteCostCentre,
   useCreateProfitCentre, useDeleteProfitCentre,
-  useCreateBudget, useActivateBudget, useCloseBudget,
+  useCreateBudget, useUpdateBudget, useActivateBudget, useCloseBudget, useDeleteBudget,
   useCreateCosting, useRecalculateCosting, useDeleteCosting,
   useCreateVariance, useDeleteVariance,
-  useCreateForecast, useApproveForecast, useGenerateForecast, useDeleteForecast,
+  useCreateForecast, useUpdateForecast, useForecast, useApproveForecast, useGenerateForecast, useDeleteForecast,
 } from "@/hooks/useBudgetCost";
 import ManagementAccountingTab from "@/components/app/finance/ManagementAccountingTab";
 
