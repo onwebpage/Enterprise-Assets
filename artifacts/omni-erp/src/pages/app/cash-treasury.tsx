@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Landmark, ArrowLeftRight, TrendingUp, ArrowDownToLine, ArrowUpFromLine,
-  Coins, Plus, Trash2, CheckCircle2, XCircle, Banknote, Loader2, Wallet, PiggyBank, ArrowRightCircle
+  Coins, Plus, Trash2, CheckCircle2, XCircle, Banknote, Loader2, Wallet, PiggyBank, ArrowRightCircle, Pencil
 } from "lucide-react";
 import AppLayout from "@/components/app/AppLayout";
 import KPICard from "@/components/app/KPICard";
@@ -12,11 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import {
   useTreasurySummary, useTreasuryAccounts, useTreasuryPositions, useTreasuryForecasts,
   useTreasuryPayments, useTreasuryCollections, useTreasuryTransfers,
-  useCreateTreasuryAccount, useDeleteTreasuryAccount,
-  useCreateTreasuryPosition, useDeleteTreasuryPosition,
-  useCreateTreasuryForecast, useDeleteTreasuryForecast,
-  useCreateTreasuryPayment, useApproveTreasuryPayment, useMarkPaymentPaid, useDeleteTreasuryPayment,
-  useCreateTreasuryCollection, useMarkCollectionReceived, useDeleteTreasuryCollection,
+  useCreateTreasuryAccount, useUpdateTreasuryAccount, useDeleteTreasuryAccount,
+  useCreateTreasuryPosition, useUpdateTreasuryPosition, useDeleteTreasuryPosition,
+  useCreateTreasuryForecast, useUpdateTreasuryForecast, useDeleteTreasuryForecast,
+  useCreateTreasuryPayment, useUpdateTreasuryPayment, useApproveTreasuryPayment, useMarkPaymentPaid, useDeleteTreasuryPayment,
+  useCreateTreasuryCollection, useUpdateTreasuryCollection, useMarkCollectionReceived, useDeleteTreasuryCollection,
   useCreateTreasuryTransfer, useAuthorizeTransfer, useExecuteTransfer, useDeleteTreasuryTransfer,
 } from "@/hooks/useCashTreasury";
 
@@ -85,17 +85,21 @@ export default function CashTreasury() {
 function Accounts() {
   const { toast } = useToast();
   const { data: accountsRes } = useTreasuryAccounts();
-  const create = useCreateTreasuryAccount(); const remove = useDeleteTreasuryAccount();
+  const create = useCreateTreasuryAccount(); const update = useUpdateTreasuryAccount(); const remove = useDeleteTreasuryAccount();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
   const save = async () => {
     try {
-      await create.mutateAsync({ name: form.name, accountNumber: form.accountNumber || null, bankName: form.bankName || null, bankBranch: form.bankBranch || null, currency: form.currency, currentBalance: Number(form.currentBalance) || 0, availableBalance: Number(form.availableBalance) || 0, accountType: form.accountType, status: form.status, isPrimary: form.isPrimary, notes: form.notes || null });
-      toast({ title: "Account created" });
+      const payload = { name: form.name, accountNumber: form.accountNumber || null, bankName: form.bankName || null, bankBranch: form.bankBranch || null, currency: form.currency, currentBalance: Number(form.currentBalance) || 0, availableBalance: Number(form.availableBalance) || 0, accountType: form.accountType, status: form.status, isPrimary: form.isPrimary, notes: form.notes || null };
+      if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
+      toast({ title: editingId ? "Account updated" : "Account created" });
       setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
+      setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to create account", description: e.message, variant: "destructive" }); }
   };
+  const edit = (a: any) => { setEditingId(a.id); setForm({ name: a.name, accountNumber: a.account_number ?? "", bankName: a.bank_name ?? "", bankBranch: a.bank_branch ?? "", currency: a.currency, currentBalance: String(a.current_balance), availableBalance: String(a.available_balance), accountType: a.account_type, status: a.status, isPrimary: a.is_primary, notes: a.notes ?? "" }); };
   return <div className="space-y-4">
-    <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">Create bank / cash account</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
+     <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">{editingId ? "Edit bank / cash account" : "Create bank / cash account"}</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
       <div><Label>Name *</Label><Input className={field} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
       <div><Label>Account number</Label><Input className={field} value={form.accountNumber} onChange={e => setForm({ ...form, accountNumber: e.target.value })} /></div>
       <div><Label>Bank name</Label><Input className={field} value={form.bankName} onChange={e => setForm({ ...form, bankName: e.target.value })} /></div>
@@ -105,9 +109,9 @@ function Accounts() {
       <div><Label>Current balance</Label><Input className={field} type="number" value={form.currentBalance} onChange={e => setForm({ ...form, currentBalance: e.target.value })} /></div>
       <div><Label>Available balance</Label><Input className={field} type="number" value={form.availableBalance} onChange={e => setForm({ ...form, availableBalance: e.target.value })} /></div>
       <div><Label>Status</Label><select className={select + " w-full"} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{["active", "inactive", "closed"].map(x => <option key={x}>{x}</option>)}</select></div>
-      <div className="flex items-end gap-2"><label className="flex h-9 items-center gap-1 text-xs text-white/50"><input type="checkbox" checked={form.isPrimary} onChange={e => setForm({ ...form, isPrimary: e.target.checked })} />Primary</label><Button onClick={save} disabled={create.isPending || !form.name} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending} /><Plus className="mr-1 h-3.5 w-3.5" />Create</Button></div>
+       <div className="flex items-end gap-2"><label className="flex h-9 items-center gap-1 text-xs text-white/50"><input type="checkbox" checked={form.isPrimary} onChange={e => setForm({ ...form, isPrimary: e.target.checked })} />Primary</label><Button onClick={save} disabled={create.isPending || update.isPending || !form.name} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1 h-3.5 w-3.5" />Create</>}</Button>{editingId && <Button variant="ghost" onClick={() => { setEditingId(null); setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" }); }} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
-    <Table headers={["Account", "Type", "Bank", "Currency", "Balance", "Available", "Status", "Actions"]}>{(accountsRes?.data ?? []).map(a => <Row key={a.id}><td className="px-4 py-3"><p className="font-medium text-white">{a.name}{a.is_primary ? <span className="ml-2 rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] text-cyan-400">PRIMARY</span> : null}</p><p className="text-xs text-white/35">{a.account_number || "—"}</p></td><td className="px-4 py-3 text-white/50 capitalize">{a.account_type}</td><td className="px-4 py-3 text-white/50">{a.bank_name || "—"}</td><td className="px-4 py-3 text-white/50">{a.currency}</td><td className="px-4 py-3 text-white/60">{money(a.current_balance)}</td><td className="px-4 py-3 text-emerald-400">{money(a.available_balance)}</td><td className="px-4 py-3"><Status value={a.status} /></td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => remove.mutate(a.id)} className="text-red-400"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(accountsRes?.data?.length) && <Empty cols={8} text="No accounts yet." />}</Table>
+     <Table headers={["Account", "Type", "Bank", "Currency", "Balance", "Available", "Status", "Actions"]}>{(accountsRes?.data ?? []).map(a => <Row key={a.id}><td className="px-4 py-3"><p className="font-medium text-white">{a.name}{a.is_primary ? <span className="ml-2 rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] text-cyan-400">PRIMARY</span> : null}</p><p className="text-xs text-white/35">{a.account_number || "—"}</p></td><td className="px-4 py-3 text-white/50 capitalize">{a.account_type}</td><td className="px-4 py-3 text-white/50">{a.bank_name || "—"}</td><td className="px-4 py-3 text-white/50">{a.currency}</td><td className="px-4 py-3 text-white/60">{money(a.current_balance)}</td><td className="px-4 py-3 text-emerald-400">{money(a.available_balance)}</td><td className="px-4 py-3"><Status value={a.status} /></td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => edit(a)} className="text-white/50" title="Edit account"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(a.id)} className="text-red-400" title="Delete account"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(accountsRes?.data?.length) && <Empty cols={8} text="No accounts yet." />}</Table>
   </div>;
 }
 
@@ -116,24 +120,28 @@ function Positions() {
   const { data: positionsRes } = useTreasuryPositions();
   const { data: accountsRes } = useTreasuryAccounts();
   const accounts = accountsRes?.data ?? [];
-  const create = useCreateTreasuryPosition(); const remove = useDeleteTreasuryPosition();
+  const create = useCreateTreasuryPosition(); const update = useUpdateTreasuryPosition(); const remove = useDeleteTreasuryPosition();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ accountId: "", positionDate: today(), openingBalance: "0", closingBalance: "0", notes: "" });
   const save = async () => {
     try {
-      await create.mutateAsync({ accountId: Number(form.accountId), positionDate: form.positionDate, openingBalance: Number(form.openingBalance) || 0, closingBalance: Number(form.closingBalance) || 0, notes: form.notes || null });
-      toast({ title: "Position recorded" });
+      const payload = { accountId: Number(form.accountId), positionDate: form.positionDate, openingBalance: Number(form.openingBalance) || 0, closingBalance: Number(form.closingBalance) || 0, notes: form.notes || null };
+      if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
+      toast({ title: editingId ? "Position updated" : "Position recorded" });
       setForm({ accountId: "", positionDate: today(), openingBalance: "0", closingBalance: "0", notes: "" });
+      setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to record position", description: e.message, variant: "destructive" }); }
   };
+  const edit = (p: any) => { setEditingId(p.id); setForm({ accountId: String(p.account_id), positionDate: p.position_date, openingBalance: String(p.opening_balance), closingBalance: String(p.closing_balance), notes: p.notes ?? "" }); };
   return <div className="space-y-4">
-    <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">Record daily cash position</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
+     <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">{editingId ? "Edit daily cash position" : "Record daily cash position"}</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
       <div><Label>Account *</Label><select className={select + " w-full"} value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })}><option value="">Select account</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
       <div><Label>Date *</Label><Input className={field} type="date" value={form.positionDate} onChange={e => setForm({ ...form, positionDate: e.target.value })} /></div>
       <div><Label>Opening</Label><Input className={field} type="number" value={form.openingBalance} onChange={e => setForm({ ...form, openingBalance: e.target.value })} /></div>
       <div><Label>Closing</Label><Input className={field} type="number" value={form.closingBalance} onChange={e => setForm({ ...form, closingBalance: e.target.value })} /></div>
-      <div className="flex items-end"><Button onClick={save} disabled={create.isPending || !form.accountId} className="h-9 w-full bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending} /><Plus className="mr-1.5 h-3.5 w-3.5" />Record</Button></div>
+       <div className="flex items-end gap-2"><Button onClick={save} disabled={create.isPending || update.isPending || !form.accountId} className="h-9 flex-1 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1.5 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1.5 h-3.5 w-3.5" />Record</>}</Button>{editingId && <Button variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
-    <Table headers={["Date", "Account", "Opening", "Closing", "Net cashflow", "Actions"]}>{(positionsRes?.data ?? []).map(p => <Row key={p.id}><td className="px-4 py-3 text-white/60">{p.position_date}</td><td className="px-4 py-3 text-white">{p.account_name || `Account #${p.account_id}`}</td><td className="px-4 py-3 text-white/50">{money(p.opening_balance)}</td><td className="px-4 py-3 text-white/60">{money(p.closing_balance)}</td><td className={`px-4 py-3 ${Number(p.net_cashflow) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{money(p.net_cashflow)}</td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="text-red-400"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(positionsRes?.data?.length) && <Empty cols={6} text="No positions recorded yet." />}</Table>
+     <Table headers={["Date", "Account", "Opening", "Closing", "Net cashflow", "Actions"]}>{(positionsRes?.data ?? []).map(p => <Row key={p.id}><td className="px-4 py-3 text-white/60">{p.position_date}</td><td className="px-4 py-3 text-white">{p.account_name || `Account #${p.account_id}`}</td><td className="px-4 py-3 text-white/50">{money(p.opening_balance)}</td><td className="px-4 py-3 text-white/60">{money(p.closing_balance)}</td><td className={`px-4 py-3 ${Number(p.net_cashflow) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{money(p.net_cashflow)}</td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => edit(p)} className="text-white/50" title="Edit position"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="text-red-400" title="Delete position"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(positionsRes?.data?.length) && <Empty cols={6} text="No positions recorded yet." />}</Table>
   </div>;
 }
 
@@ -142,17 +150,21 @@ function Forecasts() {
   const { data: forecastsRes } = useTreasuryForecasts();
   const { data: accountsRes } = useTreasuryAccounts();
   const accounts = accountsRes?.data ?? [];
-  const create = useCreateTreasuryForecast(); const remove = useDeleteTreasuryForecast();
+  const create = useCreateTreasuryForecast(); const update = useUpdateTreasuryForecast(); const remove = useDeleteTreasuryForecast();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ accountId: "", forecastDate: today(), projectedInflow: "0", projectedOutflow: "0", confidence: "medium", scenario: "base", notes: "" });
   const save = async () => {
     try {
-      await create.mutateAsync({ accountId: Number(form.accountId), forecastDate: form.forecastDate, projectedInflow: Number(form.projectedInflow) || 0, projectedOutflow: Number(form.projectedOutflow) || 0, confidence: form.confidence, scenario: form.scenario, notes: form.notes || null });
-      toast({ title: "Forecast created" });
+      const payload = { accountId: Number(form.accountId), forecastDate: form.forecastDate, projectedInflow: Number(form.projectedInflow) || 0, projectedOutflow: Number(form.projectedOutflow) || 0, confidence: form.confidence, scenario: form.scenario, notes: form.notes || null };
+      if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
+      toast({ title: editingId ? "Forecast updated" : "Forecast created" });
       setForm({ accountId: "", forecastDate: today(), projectedInflow: "0", projectedOutflow: "0", confidence: "medium", scenario: "base", notes: "" });
+      setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to create forecast", description: e.message, variant: "destructive" }); }
   };
+  const edit = (f: any) => { setEditingId(f.id); setForm({ accountId: String(f.account_id), forecastDate: f.forecast_date, projectedInflow: String(f.projected_inflow), projectedOutflow: String(f.projected_outflow), confidence: f.confidence, scenario: f.scenario, notes: f.notes ?? "" }); };
   return <div className="space-y-4">
-    <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">Create liquidity forecast</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
+     <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">{editingId ? "Edit liquidity forecast" : "Create liquidity forecast"}</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
       <div><Label>Account *</Label><select className={select + " w-full"} value={form.accountId} onChange={e => setForm({ ...form, accountId: e.target.value })}><option value="">Select account</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></div>
       <div><Label>Date *</Label><Input className={field} type="date" value={form.forecastDate} onChange={e => setForm({ ...form, forecastDate: e.target.value })} /></div>
       <div><Label>Projected inflow</Label><Input className={field} type="number" min="0" value={form.projectedInflow} onChange={e => setForm({ ...form, projectedInflow: e.target.value })} /></div>
@@ -160,9 +172,9 @@ function Forecasts() {
       <div><Label>Confidence</Label><select className={select + " w-full"} value={form.confidence} onChange={e => setForm({ ...form, confidence: e.target.value })}>{["high", "medium", "low"].map(x => <option key={x}>{x}</option>)}</select></div>
       <div><Label>Scenario</Label><select className={select + " w-full"} value={form.scenario} onChange={e => setForm({ ...form, scenario: e.target.value })}>{["base", "optimistic", "pessimistic"].map(x => <option key={x}>{x}</option>)}</select></div>
       <div><Label>Notes</Label><Input className={field} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-      <div className="flex items-end"><Button onClick={save} disabled={create.isPending || !form.accountId} className="h-9 w-full bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending} /><Plus className="mr-1.5 h-3.5 w-3.5" />Add</Button></div>
+       <div className="flex items-end gap-2"><Button onClick={save} disabled={create.isPending || update.isPending || !form.accountId} className="h-9 flex-1 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1.5 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1.5 h-3.5 w-3.5" />Add</>}</Button>{editingId && <Button variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
-    <Table headers={["Date", "Account", "Inflow", "Outflow", "Net", "Projected balance", "Confidence", "Scenario", "Actions"]}>{(forecastsRes?.data ?? []).map(f => <Row key={f.id}><td className="px-4 py-3 text-white/60">{f.forecast_date}</td><td className="px-4 py-3 text-white">{f.account_name || `Account #${f.account_id}`}</td><td className="px-4 py-3 text-emerald-400">{money(f.projected_inflow)}</td><td className="px-4 py-3 text-red-400">{money(f.projected_outflow)}</td><td className={`px-4 py-3 ${Number(f.net_cashflow) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{money(f.net_cashflow)}</td><td className="px-4 py-3 font-medium text-white">{money(f.projected_balance)}</td><td className="px-4 py-3"><Status value={f.confidence} /></td><td className="px-4 py-3 text-white/50 capitalize">{f.scenario}</td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => remove.mutate(f.id)} className="text-red-400"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(forecastsRes?.data?.length) && <Empty cols={9} text="No forecasts yet." />}</Table>
+     <Table headers={["Date", "Account", "Inflow", "Outflow", "Net", "Projected balance", "Confidence", "Scenario", "Actions"]}>{(forecastsRes?.data ?? []).map(f => <Row key={f.id}><td className="px-4 py-3 text-white/60">{f.forecast_date}</td><td className="px-4 py-3 text-white">{f.account_name || `Account #${f.account_id}`}</td><td className="px-4 py-3 text-emerald-400">{money(f.projected_inflow)}</td><td className="px-4 py-3 text-red-400">{money(f.projected_outflow)}</td><td className={`px-4 py-3 ${Number(f.net_cashflow) >= 0 ? "text-emerald-400" : "text-red-400"}`}>{money(f.net_cashflow)}</td><td className="px-4 py-3 font-medium text-white">{money(f.projected_balance)}</td><td className="px-4 py-3"><Status value={f.confidence} /></td><td className="px-4 py-3 text-white/50 capitalize">{f.scenario}</td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => edit(f)} className="text-white/50" title="Edit forecast"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(f.id)} className="text-red-400" title="Delete forecast"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(forecastsRes?.data?.length) && <Empty cols={9} text="No forecasts yet." />}</Table>
   </div>;
 }
 
@@ -171,17 +183,21 @@ function Payments() {
   const { data: paymentsRes } = useTreasuryPayments();
   const { data: accountsRes } = useTreasuryAccounts();
   const accounts = accountsRes?.data ?? [];
-  const create = useCreateTreasuryPayment(); const approve = useApproveTreasuryPayment(); const markPaid = useMarkPaymentPaid(); const remove = useDeleteTreasuryPayment();
+  const create = useCreateTreasuryPayment(); const update = useUpdateTreasuryPayment(); const approve = useApproveTreasuryPayment(); const markPaid = useMarkPaymentPaid(); const remove = useDeleteTreasuryPayment();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ accountId: "", payeeName: "", vendorName: "", amount: "0", paymentDate: today(), method: "bank_transfer", category: "operating", reference: "", status: "draft", notes: "" });
   const save = async () => {
     try {
-      await create.mutateAsync({ accountId: form.accountId ? Number(form.accountId) : null, payeeName: form.payeeName, vendorName: form.vendorName || null, amount: Number(form.amount) || 0, paymentDate: form.paymentDate, method: form.method, category: form.category, reference: form.reference || null, status: form.status, notes: form.notes || null });
-      toast({ title: "Payment plan created" });
+      const payload = { accountId: form.accountId ? Number(form.accountId) : null, payeeName: form.payeeName, vendorName: form.vendorName || null, amount: Number(form.amount) || 0, paymentDate: form.paymentDate, method: form.method, category: form.category, reference: form.reference || null, status: form.status, notes: form.notes || null };
+      if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
+      toast({ title: editingId ? "Payment plan updated" : "Payment plan created" });
       setForm({ accountId: "", payeeName: "", vendorName: "", amount: "0", paymentDate: today(), method: "bank_transfer", category: "operating", reference: "", status: "draft", notes: "" });
+      setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to create payment plan", description: e.message, variant: "destructive" }); }
   };
+  const edit = (p: any) => { setEditingId(p.id); setForm({ accountId: p.account_id ? String(p.account_id) : "", payeeName: p.payee_name, vendorName: p.vendor_name ?? "", amount: String(p.amount), paymentDate: p.payment_date, method: p.method, category: p.category, reference: p.reference ?? "", status: p.status, notes: p.notes ?? "" }); };
   return <div className="space-y-4">
-    <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">Plan outgoing payment</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
+     <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">{editingId ? "Edit outgoing payment" : "Plan outgoing payment"}</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
       <div><Label>Payee *</Label><Input className={field} value={form.payeeName} onChange={e => setForm({ ...form, payeeName: e.target.value })} /></div>
       <div><Label>Vendor</Label><Input className={field} value={form.vendorName} onChange={e => setForm({ ...form, vendorName: e.target.value })} /></div>
       <div><Label>Amount *</Label><Input className={field} type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
@@ -192,9 +208,9 @@ function Payments() {
       <div><Label>Reference</Label><Input className={field} value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} /></div>
       <div><Label>Status</Label><select className={select + " w-full"} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{PAYMENT_STATUSES.map(x => <option key={x}>{x}</option>)}</select></div>
       <div><Label>Notes</Label><Input className={field} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-      <div className="flex items-end"><Button onClick={save} disabled={create.isPending || !form.payeeName} className="h-9 w-full bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending} /><Plus className="mr-1.5 h-3.5 w-3.5" />Create</Button></div>
+       <div className="flex items-end gap-2"><Button onClick={save} disabled={create.isPending || update.isPending || !form.payeeName} className="h-9 flex-1 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1.5 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1.5 h-3.5 w-3.5" />Create</>}</Button>{editingId && <Button variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
-    <Table headers={["Plan", "Payee", "Date", "Amount", "Method", "Category", "Account", "Status", "Actions"]}>{(paymentsRes?.data ?? []).map(p => <Row key={p.id}><td className="px-4 py-3 font-mono text-cyan-400">{p.payment_number}</td><td className="px-4 py-3 text-white">{p.payee_name}</td><td className="px-4 py-3 text-white/50">{p.payment_date}</td><td className="px-4 py-3 font-medium text-white">{money(p.amount)}</td><td className="px-4 py-3 text-white/50 capitalize">{p.method}</td><td className="px-4 py-3 text-white/50 capitalize">{p.category}</td><td className="px-4 py-3 text-white/50">{p.account_name || "—"}</td><td className="px-4 py-3"><Status value={p.status} /></td><td className="px-4 py-3"><div className="flex gap-1">{p.status === "draft" && <Button variant="ghost" size="sm" onClick={() => approve.mutate(p.id)} className="text-emerald-400" title="Approve"><CheckCircle2 className="h-3.5 w-3.5" /></Button>}{p.status === "approved" && <Button variant="ghost" size="sm" onClick={() => markPaid.mutate(p.id)} className="text-emerald-400" title="Mark paid"><Banknote className="h-3.5 w-3.5" /></Button>}<Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="text-red-400"><Trash2 className="h-3.5 w-3.5" /></Button></div></td></Row>)}{!(paymentsRes?.data?.length) && <Empty cols={9} text="No payment plans yet." />}</Table>
+     <Table headers={["Plan", "Payee", "Date", "Amount", "Method", "Category", "Account", "Status", "Actions"]}>{(paymentsRes?.data ?? []).map(p => <Row key={p.id}><td className="px-4 py-3 font-mono text-cyan-400">{p.payment_number}</td><td className="px-4 py-3 text-white">{p.payee_name}</td><td className="px-4 py-3 text-white/50">{p.payment_date}</td><td className="px-4 py-3 font-medium text-white">{money(p.amount)}</td><td className="px-4 py-3 text-white/50 capitalize">{p.method}</td><td className="px-4 py-3 text-white/50 capitalize">{p.category}</td><td className="px-4 py-3 text-white/50">{p.account_name || "—"}</td><td className="px-4 py-3"><Status value={p.status} /></td><td className="px-4 py-3"><div className="flex gap-1">{p.status === "draft" && <><Button variant="ghost" size="sm" onClick={() => edit(p)} className="text-white/50" title="Edit payment"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => approve.mutate(p.id)} className="text-emerald-400" title="Approve"><CheckCircle2 className="h-3.5 w-3.5" /></Button></>}{p.status === "approved" && <Button variant="ghost" size="sm" onClick={() => markPaid.mutate(p.id)} className="text-emerald-400" title="Mark paid"><Banknote className="h-3.5 w-3.5" /></Button>}{p.status === "draft" && <Button variant="ghost" size="sm" onClick={() => remove.mutate(p.id)} className="text-red-400" title="Delete payment"><Trash2 className="h-3.5 w-3.5" /></Button>}</div></td></Row>)}{!(paymentsRes?.data?.length) && <Empty cols={9} text="No payment plans yet." />}</Table>
   </div>;
 }
 
@@ -203,17 +219,21 @@ function Collections() {
   const { data: collectionsRes } = useTreasuryCollections();
   const { data: accountsRes } = useTreasuryAccounts();
   const accounts = accountsRes?.data ?? [];
-  const create = useCreateTreasuryCollection(); const markReceived = useMarkCollectionReceived(); const remove = useDeleteTreasuryCollection();
+  const create = useCreateTreasuryCollection(); const update = useUpdateTreasuryCollection(); const markReceived = useMarkCollectionReceived(); const remove = useDeleteTreasuryCollection();
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ accountId: "", payerName: "", customerName: "", amount: "0", collectionDate: today(), method: "bank_transfer", reference: "", status: "draft", notes: "" });
   const save = async () => {
     try {
-      await create.mutateAsync({ accountId: form.accountId ? Number(form.accountId) : null, payerName: form.payerName, customerName: form.customerName || null, amount: Number(form.amount) || 0, collectionDate: form.collectionDate, method: form.method, reference: form.reference || null, status: form.status, notes: form.notes || null });
-      toast({ title: "Collection plan created" });
+      const payload = { accountId: form.accountId ? Number(form.accountId) : null, payerName: form.payerName, customerName: form.customerName || null, amount: Number(form.amount) || 0, collectionDate: form.collectionDate, method: form.method, reference: form.reference || null, status: form.status, notes: form.notes || null };
+      if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
+      toast({ title: editingId ? "Collection plan updated" : "Collection plan created" });
       setForm({ accountId: "", payerName: "", customerName: "", amount: "0", collectionDate: today(), method: "bank_transfer", reference: "", status: "draft", notes: "" });
+      setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to create collection plan", description: e.message, variant: "destructive" }); }
   };
+  const edit = (c: any) => { setEditingId(c.id); setForm({ accountId: c.account_id ? String(c.account_id) : "", payerName: c.payer_name, customerName: c.customer_name ?? "", amount: String(c.amount), collectionDate: c.collection_date, method: c.method, reference: c.reference ?? "", status: c.status, notes: c.notes ?? "" }); };
   return <div className="space-y-4">
-    <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">Plan incoming collection</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
+     <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><h2 className="text-sm font-semibold text-white">{editingId ? "Edit incoming collection" : "Plan incoming collection"}</h2><div className="mt-3 grid gap-3 md:grid-cols-5">
       <div><Label>Payer *</Label><Input className={field} value={form.payerName} onChange={e => setForm({ ...form, payerName: e.target.value })} /></div>
       <div><Label>Customer</Label><Input className={field} value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} /></div>
       <div><Label>Amount *</Label><Input className={field} type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} /></div>
@@ -223,9 +243,9 @@ function Collections() {
       <div><Label>Reference</Label><Input className={field} value={form.reference} onChange={e => setForm({ ...form, reference: e.target.value })} /></div>
       <div><Label>Status</Label><select className={select + " w-full"} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{COLLECTION_STATUSES.map(x => <option key={x}>{x}</option>)}</select></div>
       <div><Label>Notes</Label><Input className={field} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
-      <div className="flex items-end"><Button onClick={save} disabled={create.isPending || !form.payerName} className="h-9 w-full bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending} /><Plus className="mr-1.5 h-3.5 w-3.5" />Create</Button></div>
+       <div className="flex items-end gap-2"><Button onClick={save} disabled={create.isPending || update.isPending || !form.payerName} className="h-9 flex-1 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1.5 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1.5 h-3.5 w-3.5" />Create</>}</Button>{editingId && <Button variant="ghost" onClick={() => setEditingId(null)} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
-    <Table headers={["Plan", "Payer", "Date", "Amount", "Method", "Account", "Reference", "Status", "Actions"]}>{(collectionsRes?.data ?? []).map(c => <Row key={c.id}><td className="px-4 py-3 font-mono text-cyan-400">{c.collection_number}</td><td className="px-4 py-3 text-white">{c.payer_name}</td><td className="px-4 py-3 text-white/50">{c.collection_date}</td><td className="px-4 py-3 font-medium text-emerald-400">{money(c.amount)}</td><td className="px-4 py-3 text-white/50 capitalize">{c.method}</td><td className="px-4 py-3 text-white/50">{c.account_name || "—"}</td><td className="px-4 py-3 text-white/50">{c.reference || "—"}</td><td className="px-4 py-3"><Status value={c.status} /></td><td className="px-4 py-3"><div className="flex gap-1">{c.status !== "received" && c.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => markReceived.mutate(c.id)} className="text-emerald-400" title="Mark received"><Banknote className="h-3.5 w-3.5" /></Button>}<Button variant="ghost" size="sm" onClick={() => remove.mutate(c.id)} className="text-red-400"><Trash2 className="h-3.5 w-3.5" /></Button></div></td></Row>)}{!(collectionsRes?.data?.length) && <Empty cols={9} text="No collection plans yet." />}</Table>
+     <Table headers={["Plan", "Payer", "Date", "Amount", "Method", "Account", "Reference", "Status", "Actions"]}>{(collectionsRes?.data ?? []).map(c => <Row key={c.id}><td className="px-4 py-3 font-mono text-cyan-400">{c.collection_number}</td><td className="px-4 py-3 text-white">{c.payer_name}</td><td className="px-4 py-3 text-white/50">{c.collection_date}</td><td className="px-4 py-3 font-medium text-emerald-400">{money(c.amount)}</td><td className="px-4 py-3 text-white/50 capitalize">{c.method}</td><td className="px-4 py-3 text-white/50">{c.account_name || "—"}</td><td className="px-4 py-3 text-white/50">{c.reference || "—"}</td><td className="px-4 py-3"><Status value={c.status} /></td><td className="px-4 py-3"><div className="flex gap-1">{c.status === "draft" && <><Button variant="ghost" size="sm" onClick={() => edit(c)} className="text-white/50" title="Edit collection"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(c.id)} className="text-red-400" title="Delete collection"><Trash2 className="h-3.5 w-3.5" /></Button></>}{c.status !== "received" && c.status !== "cancelled" && <Button variant="ghost" size="sm" onClick={() => markReceived.mutate(c.id)} className="text-emerald-400" title="Mark received"><Banknote className="h-3.5 w-3.5" /></Button>}</div></td></Row>)}{!(collectionsRes?.data?.length) && <Empty cols={9} text="No collection plans yet." />}</Table>
   </div>;
 }
 

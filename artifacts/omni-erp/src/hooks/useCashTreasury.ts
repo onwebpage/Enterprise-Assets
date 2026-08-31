@@ -219,10 +219,12 @@ export function useDeleteTreasuryAccount() { return mutation((id: number) => api
 
 // Positions
 export function useCreateTreasuryPosition() { return mutation((data: any) => api.post("/cash-treasury/positions", data)); }
+export function useUpdateTreasuryPosition() { return mutation(({ id, data }: { id: number; data: any }) => api.put(`/cash-treasury/positions/${id}`, data)); }
 export function useDeleteTreasuryPosition() { return mutation((id: number) => api.delete(`/cash-treasury/positions/${id}`)); }
 
 // Forecasts
 export function useCreateTreasuryForecast() { return mutation((data: any) => api.post("/cash-treasury/forecasts", data)); }
+export function useUpdateTreasuryForecast() { return mutation(({ id, data }: { id: number; data: any }) => api.put(`/cash-treasury/forecasts/${id}`, data)); }
 export function useDeleteTreasuryForecast() { return mutation((id: number) => api.delete(`/cash-treasury/forecasts/${id}`)); }
 
 // Payments

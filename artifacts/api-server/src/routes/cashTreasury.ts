@@ -10,7 +10,8 @@ const MODULE = "Cash & Treasury Management";
 
 const id = z.coerce.number().int().positive();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const money = z.coerce.number().min(0);
+const money = z.coerce.number().finite().min(0);
+const positiveMoney = z.coerce.number().finite().positive();
 
 const accountSchema = z.object({
   name: z.string().min(1).max(200),
@@ -24,6 +25,8 @@ const accountSchema = z.object({
   status: z.enum(["active", "inactive", "closed"]).default("active"),
   isPrimary: z.boolean().default(false),
   notes: z.string().max(2000).nullable().optional(),
+}).refine((value) => value.currentBalance == null || value.availableBalance == null || value.availableBalance <= value.currentBalance, {
+  message: "Available balance cannot exceed current balance",
 });
 
 const positionSchema = z.object({
@@ -49,7 +52,7 @@ const paymentSchema = z.object({
   accountId: id.nullable().optional(),
   payeeName: z.string().min(1).max(300),
   vendorName: z.string().max(300).nullable().optional(),
-  amount: money,
+  amount: positiveMoney,
   currency: z.string().max(10).default("USD"),
   paymentDate: date,
   method: z.enum(["bank_transfer", "wire", "ach", "check", "cash", "credit_card", "upi", "rtgs", "neft"]).default("bank_transfer"),
@@ -162,7 +165,7 @@ router.put("/accounts/:id", requirePermission(MODULE, "edit"), async (req: AuthR
       await pool.query(`update treasury_accounts set is_primary=false where org_id=$1 and id<>$2`, [o, accountId]);
     }
     const r = await pool.query(
-      `update treasury_accounts set name=coalesce($1,name),account_number=coalesce($2,account_number),bank_name=coalesce($3,bank_name),bank_branch=coalesce($4,bank_branch),currency=coalesce($5,currency),current_balance=coalesce($6,current_balance),available_balance=coalesce($7,available_balance),account_type=coalesce($8,account_type),status=coalesce($9,status),is_primary=coalesce($10,is_primary),notes=coalesce($11,notes),updated_at=now() where id=$12 and org_id=$13 returning *`,
+      `update treasury_accounts set name=coalesce($1,name),account_number=coalesce($2,account_number),bank_name=coalesce($3,bank_name),bank_branch=coalesce($4,bank_branch),currency=coalesce($5,currency),current_balance=coalesce($6,current_balance),available_balance=coalesce($7,available_balance),account_type=coalesce($8,account_type),status=coalesce($9,status),is_primary=coalesce($10,is_primary),notes=coalesce($11,notes),updated_at=now() where id=$12 and org_id=$13 and coalesce($7,available_balance) <= coalesce($6,current_balance) returning *`,
       [d.name ?? null, d.accountNumber ?? null, d.bankName ?? null, d.bankBranch ?? null, d.currency ?? null, d.currentBalance ?? null, d.availableBalance ?? null, d.accountType ?? null, d.status ?? null, d.isPrimary ?? null, d.notes ?? null, accountId, o]);
     if (!r.rows[0]) return fail(res, "Account not found", 404);
     res.json({ success: true, data: r.rows[0] });
@@ -211,6 +214,24 @@ router.delete("/positions/:id", requirePermission(MODULE, "delete"), async (req:
   } catch { fail(res, "Failed to delete position", 500); }
 });
 
+router.put("/positions/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const posId = parsedId(req.params.id as string); if (!posId) return fail(res, "Invalid id");
+  const parsed = positionSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
+  const d = parsed.data;
+  try {
+    const o = org(req);
+    if (d.accountId != null) {
+      const acct = await pool.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
+      if (!acct.rows[0]) return fail(res, "Account not found", 404);
+    }
+    const r = await pool.query(
+      `update treasury_positions set account_id=coalesce($1,account_id),position_date=coalesce($2,position_date),opening_balance=coalesce($3,opening_balance),closing_balance=coalesce($4,closing_balance),net_cashflow=coalesce($4,closing_balance)-coalesce($3,opening_balance),currency=coalesce($5,currency),notes=coalesce($6,notes),updated_at=now() where id=$7 and org_id=$8 returning *`,
+      [d.accountId ?? null, d.positionDate ?? null, d.openingBalance ?? null, d.closingBalance ?? null, d.currency ?? null, d.notes ?? null, posId, o]);
+    if (!r.rows[0]) return fail(res, "Position not found", 404);
+    res.json({ success: true, data: r.rows[0] });
+  } catch (e: any) { fail(res, e.code === "23505" ? "Position already exists for this account/date" : "Failed to update position", e.code === "23505" ? 409 : 500); }
+});
+
 // ── Liquidity Forecasts ───────────────────────────────────────────────────────
 router.get("/forecasts", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   try {
@@ -228,8 +249,8 @@ router.post("/forecasts", requirePermission(MODULE, "create"), async (req: AuthR
     const acct = await pool.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
     if (!acct.rows[0]) return fail(res, "Account not found", 404);
     const net = d.projectedInflow - d.projectedOutflow;
-    const last = await pool.query(`select projected_balance from treasury_liquidity_forecasts where account_id=$1 and forecast_date<(select $2::date) order by forecast_date desc limit 1`, [d.accountId, d.forecastDate]);
-    const base = last.rows[0]?.projected_balance ?? (await pool.query(`select available_balance from treasury_accounts where id=$1`, [d.accountId])).rows[0]?.available_balance ?? 0;
+    const last = await pool.query(`select projected_balance from treasury_liquidity_forecasts where account_id=$1 and org_id=$3 and forecast_date<(select $2::date) and scenario=$4 order by forecast_date desc limit 1`, [d.accountId, d.forecastDate, o, d.scenario]);
+    const base = last.rows[0]?.projected_balance ?? (await pool.query(`select available_balance from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o])).rows[0]?.available_balance ?? 0;
     const projectedBalance = Number(base) + net;
     const r = await pool.query(
       `insert into treasury_liquidity_forecasts(org_id,account_id,forecast_date,projected_inflow,projected_outflow,net_cashflow,projected_balance,confidence,scenario,notes) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning *`,
@@ -245,6 +266,27 @@ router.delete("/forecasts/:id", requirePermission(MODULE, "delete"), async (req:
     if (!r.rows[0]) return fail(res, "Forecast not found", 404);
     res.json({ success: true, data: { id: fId } });
   } catch { fail(res, "Failed to delete forecast", 500); }
+});
+
+router.put("/forecasts/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const fId = parsedId(req.params.id as string); if (!fId) return fail(res, "Invalid id");
+  const parsed = forecastSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
+  const d = parsed.data;
+  try {
+    const o = org(req);
+    if (d.accountId != null) {
+      const acct = await pool.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
+      if (!acct.rows[0]) return fail(res, "Account not found", 404);
+    }
+    const existing = await pool.query(`select * from treasury_liquidity_forecasts where id=$1 and org_id=$2`, [fId, o]);
+    if (!existing.rows[0]) return fail(res, "Forecast not found", 404);
+    const inflow = d.projectedInflow ?? Number(existing.rows[0].projected_inflow);
+    const outflow = d.projectedOutflow ?? Number(existing.rows[0].projected_outflow);
+    const r = await pool.query(
+      `update treasury_liquidity_forecasts set account_id=coalesce($1,account_id),forecast_date=coalesce($2,forecast_date),projected_inflow=$3,projected_outflow=$4,net_cashflow=$5,projected_balance=projected_balance+($5-net_cashflow),confidence=coalesce($6,confidence),scenario=coalesce($7,scenario),notes=coalesce($8,notes),updated_at=now() where id=$9 and org_id=$10 returning *`,
+      [d.accountId ?? null, d.forecastDate ?? null, inflow, outflow, inflow - outflow, d.confidence ?? null, d.scenario ?? null, d.notes ?? null, fId, o]);
+    res.json({ success: true, data: r.rows[0] });
+  } catch (e: any) { fail(res, e.code === "23505" ? "Forecast already exists for this account/date/scenario" : "Failed to update forecast", e.code === "23505" ? 409 : 500); }
 });
 
 // ── Payment Plans ─────────────────────────────────────────────────────────────
@@ -280,21 +322,28 @@ router.put("/payments/:id", requirePermission(MODULE, "edit"), async (req: AuthR
   const parsed = paymentSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
   const d = parsed.data;
   try {
+    const o = org(req);
+    const existing = await pool.query(`select status from treasury_payment_plans where id=$1 and org_id=$2`, [payId, o]);
+    if (!existing.rows[0]) return fail(res, "Payment plan not found", 404);
+    if (existing.rows[0].status !== "draft") return fail(res, "Only draft payment plans can be edited", 422);
+    if (d.accountId != null) {
+      const account = await pool.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
+      if (!account.rows[0]) return fail(res, "Account not found", 404);
+    }
     const r = await pool.query(
       `update treasury_payment_plans set account_id=coalesce($1,account_id),payee_name=coalesce($2,payee_name),vendor_name=coalesce($3,vendor_name),amount=coalesce($4,amount),currency=coalesce($5,currency),payment_date=coalesce($6,payment_date),method=coalesce($7,method),category=coalesce($8,category),reference=coalesce($9,reference),status=coalesce($10,status),notes=coalesce($11,notes),updated_at=now() where id=$12 and org_id=$13 returning *`,
-      [d.accountId ?? null, d.payeeName ?? null, d.vendorName ?? null, d.amount ?? null, d.currency ?? null, d.paymentDate ?? null, d.method ?? null, d.category ?? null, d.reference ?? null, d.status ?? null, d.notes ?? null, payId, org(req)]);
-    if (!r.rows[0]) return fail(res, "Payment plan not found", 404);
+      [d.accountId ?? null, d.payeeName ?? null, d.vendorName ?? null, d.amount ?? null, d.currency ?? null, d.paymentDate ?? null, d.method ?? null, d.category ?? null, d.reference ?? null, d.status ?? null, d.notes ?? null, payId, o]);
     res.json({ success: true, data: r.rows[0] });
-  } catch { fail(res, "Failed to update payment plan", 500); }
+  } catch (e: any) { fail(res, e.code === "23505" ? "Payment number already exists" : "Failed to update payment plan", e.code === "23505" ? 409 : 500); }
 });
 
 router.post("/payments/:id/approve", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const payId = parsedId(req.params.id as string); if (!payId) return fail(res, "Invalid id");
   try {
     const r = await pool.query(
-      `update treasury_payment_plans set status='approved',updated_at=now() where id=$1 and org_id=$2 returning *`,
+      `update treasury_payment_plans set status='approved',updated_at=now() where id=$1 and org_id=$2 and status in ('draft','scheduled') returning *`,
       [payId, org(req)]);
-    if (!r.rows[0]) return fail(res, "Payment plan not found", 404);
+    if (!r.rows[0]) return fail(res, "Payment plan not found or not ready for approval", 422);
     res.json({ success: true, data: r.rows[0] });
   } catch { fail(res, "Failed to approve payment plan", 500); }
 });
@@ -306,7 +355,7 @@ router.post("/payments/:id/mark-paid", requirePermission(MODULE, "edit"), async 
     const o = org(req); await client.query("begin");
     const payment = await client.query(`select * from treasury_payment_plans where id=$1 and org_id=$2 for update`, [payId, o]);
     if (!payment.rows[0]) throw new Error("Payment plan not found");
-    if (payment.rows[0].status === "paid") throw new Error("Payment is already paid");
+    if (!payment.rows[0]) throw new Error("Payment must be approved before it is paid");
     if (payment.rows[0].account_id) {
       const account = await client.query(`select * from treasury_accounts where id=$1 and org_id=$2 for update`, [payment.rows[0].account_id, o]);
       if (!account.rows[0]) throw new Error("Account not found");
@@ -319,14 +368,14 @@ router.post("/payments/:id/mark-paid", requirePermission(MODULE, "edit"), async 
       [payId, o]);
     await client.query("commit");
     res.json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Payment plan not found" || e.message === "Account not found" ? e.message : e.message === "Payment is already paid" || e.message === "Insufficient available balance in account" ? e.message : "Failed to mark payment as paid", e.message === "Payment plan not found" || e.message === "Account not found" ? 404 : e.message === "Payment is already paid" || e.message === "Insufficient available balance in account" ? 422 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Payment plan not found" || e.message === "Account not found" ? e.message : e.message === "Payment must be approved before it is paid" || e.message === "Insufficient available balance in account" ? e.message : "Failed to mark payment as paid", e.message === "Payment plan not found" || e.message === "Account not found" ? 404 : e.message === "Payment must be approved before it is paid" || e.message === "Insufficient available balance in account" ? 422 : 500); }
   finally { client.release(); }
 });
 
 router.delete("/payments/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
   const payId = parsedId(req.params.id as string); if (!payId) return fail(res, "Invalid id");
   try {
-    const r = await pool.query(`delete from treasury_payment_plans where id=$1 and org_id=$2 returning id`, [payId, org(req)]);
+    const r = await pool.query(`delete from treasury_payment_plans where id=$1 and org_id=$2 and status='draft' returning id`, [payId, org(req)]);
     if (!r.rows[0]) return fail(res, "Payment plan not found", 404);
     res.json({ success: true, data: { id: payId } });
   } catch { fail(res, "Failed to delete payment plan", 500); }
@@ -365,12 +414,19 @@ router.put("/collections/:id", requirePermission(MODULE, "edit"), async (req: Au
   const parsed = collectionSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
   const d = parsed.data;
   try {
+    const o = org(req);
+    const existing = await pool.query(`select status from treasury_collection_plans where id=$1 and org_id=$2`, [colId, o]);
+    if (!existing.rows[0]) return fail(res, "Collection plan not found", 404);
+    if (["received", "cancelled"].includes(existing.rows[0].status)) return fail(res, "Received or cancelled collection plans cannot be edited", 422);
+    if (d.accountId != null) {
+      const account = await pool.query(`select id from treasury_accounts where id=$1 and org_id=$2`, [d.accountId, o]);
+      if (!account.rows[0]) return fail(res, "Account not found", 404);
+    }
     const r = await pool.query(
       `update treasury_collection_plans set account_id=coalesce($1,account_id),payer_name=coalesce($2,payer_name),customer_name=coalesce($3,customer_name),amount=coalesce($4,amount),currency=coalesce($5,currency),collection_date=coalesce($6,collection_date),method=coalesce($7,method),category=coalesce($8,category),reference=coalesce($9,reference),status=coalesce($10,status),notes=coalesce($11,notes),updated_at=now() where id=$12 and org_id=$13 returning *`,
-      [d.accountId ?? null, d.payerName ?? null, d.customerName ?? null, d.amount ?? null, d.currency ?? null, d.collectionDate ?? null, d.method ?? null, d.category ?? null, d.reference ?? null, d.status ?? null, d.notes ?? null, colId, org(req)]);
-    if (!r.rows[0]) return fail(res, "Collection plan not found", 404);
+      [d.accountId ?? null, d.payerName ?? null, d.customerName ?? null, d.amount ?? null, d.currency ?? null, d.collectionDate ?? null, d.method ?? null, d.category ?? null, d.reference ?? null, d.status ?? null, d.notes ?? null, colId, o]);
     res.json({ success: true, data: r.rows[0] });
-  } catch { fail(res, "Failed to update collection plan", 500); }
+  } catch (e: any) { fail(res, e.code === "23505" ? "Collection number already exists" : "Failed to update collection plan", e.code === "23505" ? 409 : 500); }
 });
 
 router.post("/collections/:id/mark-received", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
@@ -381,25 +437,26 @@ router.post("/collections/:id/mark-received", requirePermission(MODULE, "edit"),
     const collection = await client.query(`select * from treasury_collection_plans where id=$1 and org_id=$2 for update`, [colId, o]);
     if (!collection.rows[0]) throw new Error("Collection plan not found");
     if (collection.rows[0].status === "received") throw new Error("Collection is already received");
+    if (collection.rows[0].status === "cancelled") throw new Error("Cancelled collections cannot be received");
     if (collection.rows[0].account_id) {
       const account = await client.query(`select id from treasury_accounts where id=$1 and org_id=$2 for update`, [collection.rows[0].account_id, o]);
       if (!account.rows[0]) throw new Error("Account not found");
       await client.query(`update treasury_accounts set current_balance=current_balance+$1,available_balance=available_balance+$1,updated_at=now() where id=$2`, [Number(collection.rows[0].amount ?? 0), collection.rows[0].account_id]);
     }
     const r = await client.query(
-      `update treasury_collection_plans set status='received',received_date=to_char(now(),'YYYY-MM-DD'),updated_at=now() where id=$1 and org_id=$2 returning *`,
+      `update treasury_collection_plans set status='received',received_date=to_char(now(),'YYYY-MM-DD'),updated_at=now() where id=$1 and org_id=$2 and status not in ('received','cancelled') returning *`,
       [colId, o]);
     await client.query("commit");
     res.json({ success: true, data: r.rows[0] });
-  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Collection plan not found" || e.message === "Account not found" ? e.message : e.message === "Collection is already received" ? e.message : "Failed to mark collection as received", e.message === "Collection plan not found" || e.message === "Account not found" ? 404 : e.message === "Collection is already received" ? 422 : 500); }
+  } catch (e: any) { await client.query("rollback").catch(() => {}); fail(res, e.message === "Collection plan not found" || e.message === "Account not found" ? e.message : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" ? e.message : "Failed to mark collection as received", e.message === "Collection plan not found" || e.message === "Account not found" ? 404 : e.message === "Collection is already received" || e.message === "Cancelled collections cannot be received" ? 422 : 500); }
   finally { client.release(); }
 });
 
 router.delete("/collections/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
   const colId = parsedId(req.params.id as string); if (!colId) return fail(res, "Invalid id");
   try {
-    const r = await pool.query(`delete from treasury_collection_plans where id=$1 and org_id=$2 returning id`, [colId, org(req)]);
-    if (!r.rows[0]) return fail(res, "Collection plan not found", 404);
+    const r = await pool.query(`delete from treasury_collection_plans where id=$1 and org_id=$2 and status='draft' returning id`, [colId, org(req)]);
+    if (!r.rows[0]) return fail(res, "Only draft collection plans can be deleted", 422);
     res.json({ success: true, data: { id: colId } });
   } catch { fail(res, "Failed to delete collection plan", 500); }
 });
@@ -463,8 +520,9 @@ router.post("/transfers/:id/execute", requirePermission(MODULE, "edit"), async (
     if (!fromAcct.rows[0] || !toAcct.rows[0]) throw new Error("Transfer accounts not found");
     const amount = Number(t.rows[0].amount ?? 0);
     const fromBal = Number(fromAcct.rows[0].current_balance ?? 0);
+    const fromAvailable = Number(fromAcct.rows[0].available_balance ?? 0);
     const toBal = Number(toAcct.rows[0].current_balance ?? 0);
-    if (fromBal < amount) throw new Error("Insufficient balance in source account");
+    if (fromBal < amount || fromAvailable < amount) throw new Error("Insufficient available balance in source account");
     await client.query(`update treasury_accounts set current_balance=$1,available_balance=available_balance-$2,updated_at=now() where id=$3`, [fromBal - amount, amount, t.rows[0].from_account_id]);
     await client.query(`update treasury_accounts set current_balance=$1,available_balance=available_balance+$2,updated_at=now() where id=$3`, [toBal + amount, amount, t.rows[0].to_account_id]);
     const r = await client.query(
