@@ -7,6 +7,7 @@ import { db, organizations } from "./index";
 import {
   costCentres, profitCentres, budgets, budgetLines,
   productCostings, productCostingLines, costVariances, forecasts, forecastLines,
+  allocationRules, allocationRuns, allocationLines,
 } from "./schema/budgetCost";
 import { departments } from "./schema/departments";
 import { chartOfAccounts } from "./schema/chartOfAccounts";
@@ -36,6 +37,9 @@ async function main() {
   // ── Clean up existing budget & cost data for this org ─────────────────────
   await db.delete(forecastLines);
   await db.delete(forecasts).where(eq(forecasts.orgId, orgId));
+  await db.delete(allocationLines).where(sql`${allocationLines.runId} in (select id from allocation_runs where org_id = ${orgId})`);
+  await db.delete(allocationRuns).where(eq(allocationRuns.orgId, orgId));
+  await db.delete(allocationRules).where(eq(allocationRules.orgId, orgId));
   await db.delete(costVariances).where(eq(costVariances.orgId, orgId));
   await db.delete(productCostingLines);
   await db.delete(productCostings).where(eq(productCostings.orgId, orgId));
@@ -83,6 +87,23 @@ async function main() {
     { orgId, code: "PC-EU", name: "Europe", parentId: null, manager: "James Doyle", description: "Europe region", isActive: true },
   ]).returning();
   console.log("✓ Profit centres seeded");
+
+  // ── Allocation rules ──────────────────────────────────────────────────────
+  await db.insert(allocationRules).values([
+    {
+      orgId, ruleNumber: "ALLOC-0001", name: "IT shared services → Hardware",
+      sourceCostCentreId: ccList[0].id, targetProfitCentreId: pcList[0].id,
+      basis: "percentage", rate: "20", fixedAmount: "0", isActive: true,
+      notes: "Allocate a controlled share of IT overhead to the hardware product line.",
+    },
+    {
+      orgId, ruleNumber: "ALLOC-0002", name: "Marketing shared services → Software",
+      sourceCostCentreId: ccList[1].id, targetProfitCentreId: pcList[1].id,
+      basis: "percentage", rate: "35", fixedAmount: "0", isActive: true,
+      notes: "Allocate the software product line share of marketing overhead.",
+    },
+  ]);
+  console.log("✓ Allocation rules seeded");
 
   // ── Budgets ────────────────────────────────────────────────────────────────
   const [budget] = await db.insert(budgets).values({

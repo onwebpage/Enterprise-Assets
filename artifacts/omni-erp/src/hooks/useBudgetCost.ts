@@ -124,6 +124,53 @@ export type Forecast = {
   notes: string | null;
 };
 
+export type AllocationRule = {
+  id: number;
+  org_id: number;
+  rule_number: string;
+  name: string;
+  source_cost_centre_id: number;
+  source_cost_centre_code?: string;
+  source_cost_centre_name?: string;
+  target_profit_centre_id: number;
+  target_profit_centre_code?: string;
+  target_profit_centre_name?: string;
+  basis: "percentage" | "budget" | "fixed";
+  rate: string;
+  fixed_amount: string;
+  is_active: boolean;
+  notes: string | null;
+};
+
+export type AllocationRun = {
+  id: number;
+  org_id: number;
+  run_number: string;
+  period: string;
+  status: "draft" | "posted" | "cancelled";
+  total_amount: string;
+  line_count?: number;
+  line_total?: string;
+  notes: string | null;
+  created_at: string;
+};
+
+export type ProfitabilityReport = {
+  period: string;
+  rows: Array<{
+    id: number;
+    code: string;
+    name: string;
+    revenue: string;
+    budget_cost: string;
+    allocated_cost: string;
+    total_cost: string;
+    contribution: string;
+    margin_pct: string;
+  }>;
+  totals: { revenue: string; totalCost: string; contribution: string; marginPct: string };
+};
+
 // ── Query keys ─────────────────────────────────────────────────────────────────
 
 const keys = {
@@ -134,6 +181,9 @@ const keys = {
   costings: ["budget-cost", "product-costings"],
   variances: ["budget-cost", "variances"],
   forecasts: ["budget-cost", "forecasts"],
+  allocationRules: ["budget-cost", "allocation-rules"],
+  allocationRuns: ["budget-cost", "allocation-runs"],
+  profitability: ["budget-cost", "profitability"],
 };
 
 const invalidate = (qc: ReturnType<typeof useQueryClient>) => {
@@ -207,6 +257,30 @@ export function useForecasts() {
   });
 }
 
+export function useAllocationRules() {
+  return useQuery<ApiResponse<AllocationRule[]>>({
+    queryKey: keys.allocationRules,
+    queryFn: () => api.get("/budget-cost/allocation-rules"),
+    staleTime: 15000,
+  });
+}
+
+export function useAllocationRuns() {
+  return useQuery<ApiResponse<AllocationRun[]>>({
+    queryKey: keys.allocationRuns,
+    queryFn: () => api.get("/budget-cost/allocation-runs"),
+    staleTime: 15000,
+  });
+}
+
+export function useProfitability(period: string) {
+  return useQuery<ApiResponse<ProfitabilityReport>>({
+    queryKey: ["budget-cost", "profitability", period],
+    queryFn: () => api.get(`/budget-cost/profitability?period=${encodeURIComponent(period)}`),
+    staleTime: 15000,
+  });
+}
+
 // ── Mutation hooks ─────────────────────────────────────────────────────────────
 
 function mutation<T>(fn: (data: T) => Promise<unknown>) {
@@ -247,3 +321,11 @@ export function useUpdateForecast() { return mutation(({ id, data }: { id: numbe
 export function useApproveForecast() { return mutation((id: number) => api.post(`/budget-cost/forecasts/${id}/approve`, {})); }
 export function useGenerateForecast() { return mutation((id: number) => api.post(`/budget-cost/forecasts/${id}/generate`, {})); }
 export function useDeleteForecast() { return mutation((id: number) => api.delete(`/budget-cost/forecasts/${id}`)); }
+
+// Management accounting allocations
+export function useCreateAllocationRule() { return mutation((data: any) => api.post("/budget-cost/allocation-rules", data)); }
+export function useUpdateAllocationRule() { return mutation(({ id, data }: { id: number; data: any }) => api.put(`/budget-cost/allocation-rules/${id}`, data)); }
+export function useDeleteAllocationRule() { return mutation((id: number) => api.delete(`/budget-cost/allocation-rules/${id}`)); }
+export function useGenerateAllocationRun() { return mutation((data: any) => api.post("/budget-cost/allocation-runs", data)); }
+export function usePostAllocationRun() { return mutation((id: number) => api.post(`/budget-cost/allocation-runs/${id}/post`, {})); }
+export function useDeleteAllocationRun() { return mutation((id: number) => api.delete(`/budget-cost/allocation-runs/${id}`)); }

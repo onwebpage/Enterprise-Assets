@@ -34,7 +34,7 @@ const navGroups = [
     label: 'Finance',
     items: [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance' },
-      { icon: Coins, label: 'Budget & Cost', path: '/app/budget-cost' },
+      { icon: Coins, label: 'Advanced Cost & Management Accounting', path: '/app/budget-cost' },
       { icon: Landmark,  label: 'Cash & Treasury',     path: '/app/cash-treasury' },
       { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
       { icon: CreditCard, label: 'Accounts Payable',   path: '/app/ap' },

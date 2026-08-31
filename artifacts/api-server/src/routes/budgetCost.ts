@@ -18,7 +18,7 @@ function org(req: AuthRequest) { return req.user!.orgId!; }
 function parsedId(value: string) { const n = Number(value); return Number.isInteger(n) && n > 0 ? n : null; }
 function fail(res: any, message: string, status = 400) { res.status(status).json({ success: false, error: message }); }
 async function nextNumber(table: string, column: string, prefix: string, orgId: number, client: any = pool) {
-  const allowed = new Set(["budgets", "cost_variances", "forecasts"]);
+  const allowed = new Set(["budgets", "cost_variances", "forecasts", "allocation_rules", "allocation_runs"]);
   if (!allowed.has(table)) throw new Error("invalid number table");
   const result = await client.query(`select count(*)::int as count from ${table} where org_id=$1`, [orgId]);
   return `${prefix}-${String(Number(result.rows[0]?.count ?? 0) + 1).padStart(4, "0")}`;
@@ -592,6 +592,285 @@ router.delete("/forecasts/:id", requirePermission(MODULE, "delete"), async (req:
     if (!r.rows[0]) return fail(res, "Forecast not found", 404);
     res.json({ success: true, data: { id: forecastId } });
   } catch (e: any) { fail(res, e.code === "23503" ? "Forecast is in use; cannot delete" : "Failed to delete forecast", 409); }
+});
+
+// ── Management accounting allocations ─────────────────────────────────────────
+const allocationRuleSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  sourceCostCentreId: id,
+  targetProfitCentreId: id,
+  basis: z.enum(["percentage", "budget", "fixed"]).default("percentage"),
+  rate: z.coerce.number().min(0).max(100).default(100),
+  fixedAmount: z.coerce.number().min(0).max(999999999999).default(0),
+  isActive: z.boolean().default(true),
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+const allocationRunSchema = z.object({
+  period,
+  notes: z.string().max(1000).nullable().optional(),
+});
+
+async function assertAllocationReferences(client: any, orgId: number, sourceCostCentreId: number, targetProfitCentreId: number) {
+  const refs = await client.query(
+    `select
+       exists(select 1 from cost_centres where id=$1 and org_id=$3) as source_exists,
+       exists(select 1 from profit_centres where id=$2 and org_id=$3) as target_exists`,
+    [sourceCostCentreId, targetProfitCentreId, orgId],
+  );
+  if (!refs.rows[0]?.source_exists || !refs.rows[0]?.target_exists) {
+    throw new Error("Allocation centres must belong to your organisation");
+  }
+}
+
+async function budgetBasis(client: any, orgId: number, sourceCostCentreId: number, periodValue: string) {
+  const [yearText, monthText] = periodValue.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  const result = await client.query(
+    `select coalesce(sum(bl.amount),0)::numeric as amount
+       from budget_lines bl
+       join budgets b on b.id=bl.budget_id
+      where b.org_id=$1
+        and b.status in ('active','closed')
+        and b.fiscal_year=$2
+        and coalesce(bl.cost_centre_id,b.cost_centre_id)=$3
+        and (
+          (b.period_type='monthly' and bl.period_index=$4)
+          or (b.period_type='quarterly' and bl.period_index=floor($4 / 3))
+          or (b.period_type='yearly' and bl.period_index=0)
+        )`,
+    [orgId, year, sourceCostCentreId, monthIndex],
+  );
+  return Number(result.rows[0]?.amount ?? 0);
+}
+
+router.get("/allocation-rules", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `select ar.*, s.code as source_cost_centre_code, s.name as source_cost_centre_name,
+              t.code as target_profit_centre_code, t.name as target_profit_centre_name
+         from allocation_rules ar
+         join cost_centres s on s.id=ar.source_cost_centre_id
+         join profit_centres t on t.id=ar.target_profit_centre_id
+        where ar.org_id=$1
+        order by ar.is_active desc, ar.name`,
+      [org(req)],
+    );
+    res.json({ success: true, data: result.rows });
+  } catch { fail(res, "Failed to load allocation rules", 500); }
+});
+
+router.post("/allocation-rules", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
+  const parsed = allocationRuleSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, "Validation failed");
+  const client = await pool.connect();
+  try {
+    const d = parsed.data;
+    const o = org(req);
+    await assertAllocationReferences(client, o, d.sourceCostCentreId, d.targetProfitCentreId);
+    await client.query("begin");
+    const number = await nextNumber("allocation_rules", "rule_number", "ALLOC", o, client);
+    const result = await client.query(
+      `insert into allocation_rules
+        (org_id,rule_number,name,source_cost_centre_id,target_profit_centre_id,basis,rate,fixed_amount,is_active,notes,created_by)
+       values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning *`,
+      [o, number, d.name, d.sourceCostCentreId, d.targetProfitCentreId, d.basis, d.rate, d.fixedAmount, d.isActive, d.notes ?? null, req.user!.userId],
+    );
+    await client.query("commit");
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (e: any) {
+    await client.query("rollback").catch(() => {});
+    fail(res, e.message === "Allocation centres must belong to your organisation" ? e.message : "Failed to create allocation rule", e.message ? 422 : 500);
+  } finally { client.release(); }
+});
+
+router.put("/allocation-rules/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const ruleId = parsedId(req.params.id as string);
+  if (!ruleId) return fail(res, "Invalid id");
+  const parsed = allocationRuleSchema.partial().safeParse(req.body);
+  if (!parsed.success) return fail(res, "Validation failed");
+  const client = await pool.connect();
+  try {
+    const o = org(req);
+    const existing = await client.query(`select * from allocation_rules where id=$1 and org_id=$2`, [ruleId, o]);
+    if (!existing.rows[0]) return fail(res, "Allocation rule not found", 404);
+    const d = parsed.data;
+    if (d.sourceCostCentreId || d.targetProfitCentreId) {
+      await assertAllocationReferences(client, o, d.sourceCostCentreId ?? existing.rows[0].source_cost_centre_id, d.targetProfitCentreId ?? existing.rows[0].target_profit_centre_id);
+    }
+    const result = await client.query(
+      `update allocation_rules set
+         name=coalesce($1,name), source_cost_centre_id=coalesce($2,source_cost_centre_id),
+         target_profit_centre_id=coalesce($3,target_profit_centre_id), basis=coalesce($4,basis),
+         rate=coalesce($5,rate), fixed_amount=coalesce($6,fixed_amount),
+         is_active=coalesce($7,is_active), notes=coalesce($8,notes), updated_at=now()
+       where id=$9 and org_id=$10 returning *`,
+      [d.name ?? null, d.sourceCostCentreId ?? null, d.targetProfitCentreId ?? null, d.basis ?? null,
+        d.rate ?? null, d.fixedAmount ?? null, d.isActive ?? null, d.notes ?? null, ruleId, o],
+    );
+    res.json({ success: true, data: result.rows[0] });
+  } catch (e: any) {
+    fail(res, e.message === "Allocation centres must belong to your organisation" ? e.message : "Failed to update allocation rule", e.message ? 422 : 500);
+  } finally { client.release(); }
+});
+
+router.delete("/allocation-rules/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
+  const ruleId = parsedId(req.params.id as string);
+  if (!ruleId) return fail(res, "Invalid id");
+  try {
+    const result = await pool.query(`delete from allocation_rules where id=$1 and org_id=$2 returning id`, [ruleId, org(req)]);
+    if (!result.rows[0]) return fail(res, "Allocation rule not found", 404);
+    res.json({ success: true, data: { id: ruleId } });
+  } catch (e: any) { fail(res, e.code === "23503" ? "Allocation rule is used by a run; archive it instead" : "Failed to delete allocation rule", 409); }
+});
+
+router.get("/allocation-runs", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      `select r.*, count(l.id)::int as line_count,
+              coalesce(sum(l.amount),0)::text as line_total
+         from allocation_runs r
+         left join allocation_lines l on l.run_id=r.id
+        where r.org_id=$1
+        group by r.id
+        order by r.period desc, r.created_at desc`,
+      [org(req)],
+    );
+    res.json({ success: true, data: result.rows });
+  } catch { fail(res, "Failed to load allocation runs", 500); }
+});
+
+router.get("/allocation-runs/:id", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const runId = parsedId(req.params.id as string);
+  if (!runId) return fail(res, "Invalid id");
+  try {
+    const header = await pool.query(`select * from allocation_runs where id=$1 and org_id=$2`, [runId, org(req)]);
+    if (!header.rows[0]) return fail(res, "Allocation run not found", 404);
+    const lines = await pool.query(
+      `select l.*, ar.rule_number, ar.name as rule_name, s.code as source_cost_centre_code,
+              t.code as target_profit_centre_code
+         from allocation_lines l
+         join allocation_rules ar on ar.id=l.rule_id
+         join cost_centres s on s.id=l.source_cost_centre_id
+         join profit_centres t on t.id=l.target_profit_centre_id
+        where l.run_id=$1
+        order by l.id`,
+      [runId],
+    );
+    res.json({ success: true, data: { ...header.rows[0], lines: lines.rows } });
+  } catch { fail(res, "Failed to load allocation run", 500); }
+});
+
+router.post("/allocation-runs", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
+  const parsed = allocationRunSchema.safeParse(req.body);
+  if (!parsed.success) return fail(res, "Validation failed");
+  const client = await pool.connect();
+  try {
+    const o = org(req);
+    await client.query("begin");
+    const rules = await client.query(`select * from allocation_rules where org_id=$1 and is_active=true order by id`, [o]);
+    if (!rules.rows.length) throw new Error("Create at least one active allocation rule first");
+    const number = await nextNumber("allocation_runs", "run_number", "RUN", o, client);
+    const run = await client.query(
+      `insert into allocation_runs(org_id,run_number,period,status,total_amount,notes,created_by)
+       values($1,$2,$3,'draft',0,$4,$5) returning *`,
+      [o, number, parsed.data.period, parsed.data.notes ?? null, req.user!.userId],
+    );
+    let total = 0;
+    for (const rule of rules.rows) {
+      const basis = await budgetBasis(client, o, rule.source_cost_centre_id, parsed.data.period);
+      const amount = rule.basis === "fixed" ? Number(rule.fixed_amount) : rule.basis === "budget" ? basis : basis * Number(rule.rate) / 100;
+      const rounded = Number(amount.toFixed(2));
+      total += rounded;
+      await client.query(
+        `insert into allocation_lines(run_id,rule_id,source_cost_centre_id,target_profit_centre_id,basis_amount,rate,amount,description)
+         values($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [run.rows[0].id, rule.id, rule.source_cost_centre_id, rule.target_profit_centre_id, basis, rule.rate, rounded, `${rule.basis} allocation for ${parsed.data.period}`],
+      );
+    }
+    const updated = await client.query(`update allocation_runs set total_amount=$1,updated_at=now() where id=$2 returning *`, [total.toFixed(2), run.rows[0].id]);
+    await client.query("commit");
+    res.status(201).json({ success: true, data: updated.rows[0] });
+  } catch (e: any) {
+    await client.query("rollback").catch(() => {});
+    fail(res, e.message === "Create at least one active allocation rule first" ? e.message : "Failed to generate allocation run", e.message ? 422 : 500);
+  } finally { client.release(); }
+});
+
+router.post("/allocation-runs/:id/post", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const runId = parsedId(req.params.id as string);
+  if (!runId) return fail(res, "Invalid id");
+  try {
+    const result = await pool.query(
+      `update allocation_runs set status='posted',updated_at=now()
+        where id=$1 and org_id=$2 and status='draft' returning *`,
+      [runId, org(req)],
+    );
+    if (!result.rows[0]) return fail(res, "Only draft allocation runs can be posted", 409);
+    res.json({ success: true, data: result.rows[0] });
+  } catch { fail(res, "Failed to post allocation run", 500); }
+});
+
+router.delete("/allocation-runs/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
+  const runId = parsedId(req.params.id as string);
+  if (!runId) return fail(res, "Invalid id");
+  try {
+    const result = await pool.query(
+      `delete from allocation_runs where id=$1 and org_id=$2 and status in ('draft','cancelled') returning id`,
+      [runId, org(req)],
+    );
+    if (!result.rows[0]) return fail(res, "Only draft or cancelled allocation runs can be deleted", 409);
+    res.json({ success: true, data: { id: runId } });
+  } catch { fail(res, "Failed to delete allocation run", 500); }
+});
+
+// Profitability is deliberately computed from budgets and posted allocation runs
+// rather than cached values, so the report stays correct after CRUD changes.
+router.get("/profitability", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const parsed = period.safeParse(req.query.period);
+  const periodValue = parsed.success ? parsed.data : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+  const [yearText, monthText] = periodValue.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  try {
+    const result = await pool.query(
+      `select pc.id, pc.code, pc.name,
+              coalesce(sum(case when ca.type='Income' then bl.amount else 0 end),0)::text as revenue,
+              coalesce(sum(case when ca.type='Expense' then bl.amount else 0 end),0)::text as budget_cost,
+              coalesce((
+                select sum(al.amount)
+                  from allocation_lines al
+                  join allocation_runs ar on ar.id=al.run_id
+                 where ar.org_id=$1 and ar.period=$2 and ar.status='posted'
+                   and al.target_profit_centre_id=pc.id
+              ),0)::text as allocated_cost
+         from profit_centres pc
+         left join budgets b on b.org_id=pc.org_id and b.status in ('active','closed') and b.fiscal_year=$3
+         left join budget_lines bl on bl.budget_id=b.id
+           and coalesce(bl.profit_centre_id,b.profit_centre_id)=pc.id
+           and (
+             (b.period_type='monthly' and bl.period_index=$4)
+             or (b.period_type='quarterly' and bl.period_index=floor($4 / 3))
+             or (b.period_type='yearly' and bl.period_index=0)
+           )
+         left join chart_of_accounts ca on ca.id=bl.account_id
+        where pc.org_id=$1
+        group by pc.id
+        order by pc.code`,
+      [org(req), periodValue, year, monthIndex],
+    );
+    const rows = result.rows.map((row: any) => {
+      const revenue = Number(row.revenue ?? 0);
+      const cost = Number(row.budget_cost ?? 0) + Number(row.allocated_cost ?? 0);
+      const contribution = revenue - cost;
+      return { ...row, revenue: revenue.toFixed(2), total_cost: cost.toFixed(2), contribution: contribution.toFixed(2), margin_pct: revenue ? ((contribution / revenue) * 100).toFixed(2) : "0.00" };
+    });
+    const totals = rows.reduce((acc: any, row: any) => {
+      acc.revenue += Number(row.revenue); acc.totalCost += Number(row.total_cost); acc.contribution += Number(row.contribution); return acc;
+    }, { revenue: 0, totalCost: 0, contribution: 0 });
+    res.json({ success: true, data: { period: periodValue, rows, totals: { revenue: totals.revenue.toFixed(2), totalCost: totals.totalCost.toFixed(2), contribution: totals.contribution.toFixed(2), marginPct: totals.revenue ? ((totals.contribution / totals.revenue) * 100).toFixed(2) : "0.00" } } });
+  } catch { fail(res, "Failed to load profitability report", 500); }
 });
 
 export default router;

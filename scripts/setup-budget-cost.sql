@@ -134,3 +134,50 @@ CREATE TABLE IF NOT EXISTS forecast_lines (
   notes text
 );
 CREATE INDEX IF NOT EXISTS forecast_lines_forecast_idx ON forecast_lines(forecast_id);
+
+CREATE TABLE IF NOT EXISTS allocation_rules (
+  id serial PRIMARY KEY,
+  org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+  rule_number text NOT NULL,
+  name text NOT NULL,
+  source_cost_centre_id integer NOT NULL REFERENCES cost_centres(id) ON DELETE RESTRICT,
+  target_profit_centre_id integer NOT NULL REFERENCES profit_centres(id) ON DELETE RESTRICT,
+  basis text NOT NULL DEFAULT 'percentage',
+  rate numeric(8,2) NOT NULL DEFAULT 100,
+  fixed_amount numeric(15,2) NOT NULL DEFAULT 0,
+  is_active boolean NOT NULL DEFAULT true,
+  notes text,
+  created_by integer,
+  created_at timestamp NOT NULL DEFAULT now(),
+  updated_at timestamp NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS allocation_rules_org_number_idx ON allocation_rules(org_id, rule_number);
+CREATE INDEX IF NOT EXISTS allocation_rules_org_source_idx ON allocation_rules(org_id, source_cost_centre_id);
+
+CREATE TABLE IF NOT EXISTS allocation_runs (
+  id serial PRIMARY KEY,
+  org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+  run_number text NOT NULL,
+  period text NOT NULL,
+  status text NOT NULL DEFAULT 'draft',
+  total_amount numeric(15,2) NOT NULL DEFAULT 0,
+  notes text,
+  created_by integer,
+  created_at timestamp NOT NULL DEFAULT now(),
+  updated_at timestamp NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS allocation_runs_org_number_idx ON allocation_runs(org_id, run_number);
+CREATE INDEX IF NOT EXISTS allocation_runs_org_period_idx ON allocation_runs(org_id, period);
+
+CREATE TABLE IF NOT EXISTS allocation_lines (
+  id serial PRIMARY KEY,
+  run_id integer NOT NULL REFERENCES allocation_runs(id) ON DELETE CASCADE,
+  rule_id integer NOT NULL REFERENCES allocation_rules(id) ON DELETE RESTRICT,
+  source_cost_centre_id integer NOT NULL REFERENCES cost_centres(id) ON DELETE RESTRICT,
+  target_profit_centre_id integer NOT NULL REFERENCES profit_centres(id) ON DELETE RESTRICT,
+  basis_amount numeric(15,2) NOT NULL DEFAULT 0,
+  rate numeric(8,2) NOT NULL DEFAULT 0,
+  amount numeric(15,2) NOT NULL DEFAULT 0,
+  description text
+);
+CREATE INDEX IF NOT EXISTS allocation_lines_run_idx ON allocation_lines(run_id);

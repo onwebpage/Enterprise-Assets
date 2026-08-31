@@ -14,6 +14,8 @@ export const BUDGET_STATUSES = ["draft", "active", "closed", "cancelled"] as con
 export const VARIANCE_TYPES = ["price", "quantity", "usage", "labour_rate", "labour_efficiency", "overhead", "sales_volume", "sales_price", "material"] as const;
 export const FORECAST_METHODS = ["linear", "moving_average", "seasonal", "manual"] as const;
 export const FORECAST_STATUSES = ["draft", "approved", "archived"] as const;
+export const ALLOCATION_BASES = ["percentage", "budget", "fixed"] as const;
+export const ALLOCATION_STATUSES = ["draft", "posted", "cancelled"] as const;
 
 // ── Tables ────────────────────────────────────────────────────────────────────
 
@@ -170,6 +172,56 @@ export const forecastLines = pgTable("forecast_lines", {
   notes: text("notes"),
 });
 
+/**
+ * allocation_rules — repeatable rules for moving shared cost centre spend into
+ * profit centres for management reporting.
+ */
+export const allocationRules = pgTable("allocation_rules", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  ruleNumber: text("rule_number").notNull(),
+  name: text("name").notNull(),
+  sourceCostCentreId: integer("source_cost_centre_id").notNull().references(() => costCentres.id, { onDelete: "restrict" }),
+  targetProfitCentreId: integer("target_profit_centre_id").notNull().references(() => profitCentres.id, { onDelete: "restrict" }),
+  basis: text("basis").notNull().default("percentage"),
+  rate: numeric("rate", { precision: 8, scale: 2 }).notNull().default("100"),
+  fixedAmount: numeric("fixed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  isActive: boolean("is_active").notNull().default(true),
+  notes: text("notes"),
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * allocation_runs — an auditable execution of the active allocation rules for
+ * one management-accounting period.
+ */
+export const allocationRuns = pgTable("allocation_runs", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  runNumber: text("run_number").notNull(),
+  period: text("period").notNull(),
+  status: text("status").notNull().default("draft"),
+  totalAmount: numeric("total_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  notes: text("notes"),
+  createdBy: integer("created_by"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const allocationLines = pgTable("allocation_lines", {
+  id: serial("id").primaryKey(),
+  runId: integer("run_id").notNull().references(() => allocationRuns.id, { onDelete: "cascade" }),
+  ruleId: integer("rule_id").notNull().references(() => allocationRules.id, { onDelete: "restrict" }),
+  sourceCostCentreId: integer("source_cost_centre_id").notNull().references(() => costCentres.id, { onDelete: "restrict" }),
+  targetProfitCentreId: integer("target_profit_centre_id").notNull().references(() => profitCentres.id, { onDelete: "restrict" }),
+  basisAmount: numeric("basis_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  rate: numeric("rate", { precision: 8, scale: 2 }).notNull().default("0"),
+  amount: numeric("amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  description: text("description"),
+});
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type CostCentre = typeof costCentres.$inferSelect;
@@ -181,3 +233,6 @@ export type ProductCostingLine = typeof productCostingLines.$inferSelect;
 export type CostVariance = typeof costVariances.$inferSelect;
 export type Forecast = typeof forecasts.$inferSelect;
 export type ForecastLine = typeof forecastLines.$inferSelect;
+export type AllocationRule = typeof allocationRules.$inferSelect;
+export type AllocationRun = typeof allocationRuns.$inferSelect;
+export type AllocationLine = typeof allocationLines.$inferSelect;

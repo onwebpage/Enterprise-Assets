@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, GitBranch } from "lucide-react";
 import AppLayout from "@/components/app/AppLayout";
 import KPICard from "@/components/app/KPICard";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   useCreateVariance, useDeleteVariance,
   useCreateForecast, useApproveForecast, useGenerateForecast, useDeleteForecast,
 } from "@/hooks/useBudgetCost";
+import ManagementAccountingTab from "@/components/app/finance/ManagementAccountingTab";
 
 const field = "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/30 h-9 text-sm";
 const select = `${field} rounded-md px-3`;
@@ -43,6 +44,7 @@ export default function BudgetCost() {
     { id: "costing", label: "Product costing", icon: Package },
     { id: "variances", label: "Variance analysis", icon: Percent },
     { id: "forecasts", label: "Forecasting", icon: ChartLine },
+    { id: "management", label: "Management accounting", icon: GitBranch },
   ];
   const kpis = [
     { label: "Active budgets", value: isLoading ? "..." : fmt(summary?.activeBudgets), change: `$${fmt(summary?.budgetAmount)} budgeted`, icon: Wallet, iconColor: "text-cyan-400", gradient: "bg-cyan-500/15", sparkline: [3, 4, 3, 5, 4, 4, Number(summary?.activeBudgets ?? 0)] },
@@ -50,10 +52,10 @@ export default function BudgetCost() {
     { label: "Open variances", value: isLoading ? "..." : fmt(summary?.openVariances), change: `$${fmt(summary?.varianceAmount)} total`, icon: Percent, iconColor: "text-amber-400", gradient: "bg-amber-500/15", sparkline: [2, 3, 2, 3, 2, 1, Number(summary?.openVariances ?? 0)] },
     { label: "Product cost cards", value: isLoading ? "..." : fmt(summary?.productCosts), change: `${fmt(summary?.activeForecasts)} active forecasts`, icon: Package, iconColor: "text-purple-400", gradient: "bg-purple-500/15", sparkline: [1, 2, 2, 3, 3, 4, Number(summary?.productCosts ?? 0)] },
   ];
-  return <AppLayout breadcrumbs={[{ label: "Budget & Cost Accounting" }]}>
+  return <AppLayout breadcrumbs={[{ label: "Advanced Cost & Management Accounting" }]}>
     <div className="mx-auto max-w-[1800px] space-y-5 p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400"><Coins className="h-5 w-5" /></div><h1 className="text-2xl font-bold tracking-tight text-white">Budget & Cost Accounting</h1></div><p className="mt-1 text-sm text-white/40">Budgets, cost centres, product costing, variance analysis and forecasting.</p></div>
+        <div><div className="flex items-center gap-2"><div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400"><Coins className="h-5 w-5" /></div><h1 className="text-2xl font-bold tracking-tight text-white">Advanced Cost &amp; Management Accounting</h1></div><p className="mt-1 text-sm text-white/40">Budgets, cost centres, product costing, allocations, variance analysis and forecasting.</p></div>
         <Button onClick={() => setTab("budgets")} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Plus className="mr-2 h-4 w-4" />Create budget</Button>
       </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{kpis.map((k, i) => <KPICard key={k.label} {...k} index={i} />)}</div>
@@ -64,6 +66,7 @@ export default function BudgetCost() {
       {tab === "costing" && <Costing />}
       {tab === "variances" && <Variances />}
       {tab === "forecasts" && <Forecasts />}
+      {tab === "management" && <ManagementAccountingTab />}
     </div>
   </AppLayout>;
 }
