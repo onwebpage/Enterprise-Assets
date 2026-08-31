@@ -88,7 +88,7 @@ function PublicProfileMenu({ user, logout, mobile = false }: {
   );
 }
 
-function DropdownMenu({
+function NavDropdownMenu({
   label,
   items,
 }: {
@@ -210,7 +210,7 @@ export function Navbar() {
                 {link.label}
               </a>
             ))}
-            <DropdownMenu label="Industries" items={industriesItems} />
+            <NavDropdownMenu label="Industries" items={industriesItems} />
             <a
               href="#pricing"
               className="text-[13px] font-medium text-slate-400 hover:text-white transition-colors duration-200"
@@ -223,7 +223,7 @@ export function Navbar() {
             >
               Resources
             </a>
-            <DropdownMenu label="Developers" items={developerItems} />
+            <NavDropdownMenu label="Developers" items={developerItems} />
             <a
               href="#company"
               className="text-[13px] font-medium text-slate-400 hover:text-white transition-colors duration-200"

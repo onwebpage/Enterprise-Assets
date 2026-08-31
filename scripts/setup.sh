@@ -7,6 +7,12 @@
 # and intentionally want to apply destructive changes unattended.
 set -e
 
+DB_URL="${SUPABASE_DB_URL:-$DATABASE_URL}"
+if [ -z "$DB_URL" ]; then
+  echo "SUPABASE_DB_URL or DATABASE_URL must be set."
+  exit 1
+fi
+
 echo "📦 Installing dependencies..."
 pnpm install --frozen-lockfile
 
@@ -21,17 +27,11 @@ else
   pnpm --filter @workspace/db run push
 fi
 
-echo "🔐 Creating admin tables..."
-psql "$DATABASE_URL" -f scripts/setup-admin-db.sql
-
-echo "🏭 Creating WMS tables..."
-psql "$DATABASE_URL" -f scripts/setup-wms.sql
-
-echo "💰 Creating Budget & Cost tables..."
-psql "$DATABASE_URL" -f scripts/setup-budget-cost.sql
-
-echo "🔬 Creating Quality Management tables..."
-psql "$DATABASE_URL" -f scripts/setup-quality.sql
+echo "🧱 Creating supplemental module tables..."
+for schema_file in scripts/setup-*.sql; do
+  echo "   Applying ${schema_file}..."
+  psql "$DB_URL" -f "$schema_file"
+done
 
 echo "🌱 Seeding ERP data..."
 pnpm --filter @workspace/db run seed
@@ -48,7 +48,7 @@ JSEOF
 ADMIN_HASH=$(cd /home/runner/workspace/lib/db && node --input-type=module \
   --eval "import bcrypt from 'bcryptjs'; const h = await bcrypt.hash('admin123', 12); process.stdout.write(h);")
 
-psql "$DATABASE_URL" << SQL
+psql "$DB_URL" << SQL
 INSERT INTO super_admins (username, password_hash, display_name, email, is_active)
 VALUES ('admin', '${ADMIN_HASH}', 'Super Administrator', 'admin@omnierp.io', true)
 ON CONFLICT (username) DO UPDATE SET
