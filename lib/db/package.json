@@ -31,7 +31,8 @@
     ,"schema:manufacturing-logistics": "tsx src/apply-manufacturing-logistics-schema.ts"
     ,"schema:period-closing": "tsx src/apply-period-closing-schema.ts"
     ,"schema:intercompany": "tsx src/apply-intercompany-schema.ts"
-     ,"schema:multi-currency": "tsx src/apply-multi-currency-schema.ts"
+      ,"schema:multi-currency": "tsx src/apply-multi-currency-schema.ts"
+      ,"schema:financial-controls": "tsx src/apply-financial-controls-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

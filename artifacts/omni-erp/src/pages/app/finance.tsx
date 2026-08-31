@@ -11,6 +11,7 @@ import CashFlowTab from '@/components/app/finance/CashFlowTab';
 import PeriodClosingTab from '@/components/app/finance/PeriodClosingTab';
 import IntercompanyTab from '@/components/app/finance/IntercompanyTab';
 import MultiCurrencyTab from '@/components/app/finance/MultiCurrencyTab';
+import FinancialControlsTab from '@/components/app/finance/FinancialControlsTab';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart,
@@ -21,7 +22,7 @@ import {
   CreditCard, Banknote, ArrowUpRight, ArrowDownRight, ArrowRight,
   FileText, BookOpen, RefreshCw, CheckCircle2, AlertCircle,
   ChevronRight, ChevronDown, Calendar, Building2, Layers,
-  Scale, ReceiptText, Landmark, GitMerge, Clock, Check, Wallet, CalendarClock, ArrowLeftRight, ArrowRightLeft,
+  Scale, ReceiptText, Landmark, GitMerge, Clock, Check, Wallet, CalendarClock, ArrowLeftRight, ArrowRightLeft, ShieldCheck,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import KPICard from '@/components/app/KPICard';
@@ -355,6 +356,7 @@ export default function Finance() {
                 { value: 'closing',   label: 'Period Closing',  icon: CalendarClock },
                 { value: 'intercompany', label: 'Intercompany', icon: ArrowLeftRight },
                 { value: 'multi-currency', label: 'Multi-Currency', icon: ArrowRightLeft },
+                { value: 'controls', label: 'Financial Controls', icon: ShieldCheck },
               ].map(t => (
                 <TabsTrigger key={t.value} value={t.value}
                   className="text-xs h-8 px-3 data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/40 gap-1.5 whitespace-nowrap">
@@ -697,6 +699,11 @@ export default function Finance() {
           {/* ── ADVANCED MULTI-CURRENCY MANAGEMENT ───────────────────────── */}
           <TabsContent value="multi-currency" className="mt-4">
             <MultiCurrencyTab />
+          </TabsContent>
+
+          {/* ── FINANCIAL CONTROLS ─────────────────────────────────────────── */}
+          <TabsContent value="controls" className="mt-4">
+            <FinancialControlsTab />
           </TabsContent>
 
           {/* ── BANK RECONCILIATION ───────────────────────────────────────── */}

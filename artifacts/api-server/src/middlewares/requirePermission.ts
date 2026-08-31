@@ -1,5 +1,5 @@
 import type { Response, NextFunction } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db, permissions, roles } from "@workspace/db";
 import type { AuthRequest } from "./auth";
 
@@ -46,7 +46,7 @@ export function requirePermission(module: string, action: Action) {
         .where(
           and(
             eq(permissions.roleId, user.roleId),
-            eq(permissions.module, module),
+            sql`lower(${permissions.module}) = lower(${module})`,
           ),
         )
         .limit(1);

@@ -46,6 +46,7 @@ import cashTreasuryRouter from "./cashTreasury";
 import periodClosingRouter from "./periodClosing";
 import intercompanyRouter from "./intercompany";
 import multiCurrencyRouter from "./multiCurrency";
+import financialControlsRouter from "./financialControls";
 
 const router: IRouter = Router();
 
@@ -94,6 +95,7 @@ router.use("/cash-treasury", cashTreasuryRouter);
 router.use("/finance/closing", periodClosingRouter);
 router.use("/finance/intercompany", intercompanyRouter);
 router.use("/finance/multi-currency", multiCurrencyRouter);
+router.use("/finance/controls", financialControlsRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);
