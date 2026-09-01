@@ -975,7 +975,7 @@ function IntegrationsTab() {
                       {int.last_tested_at && <p className="text-xs text-white/30">Last tested: {fmtDateTime(int.last_tested_at)}</p>}
                       <div className="mt-3 flex justify-end">
                         <Button size="sm" variant="ghost" onClick={() => test(int)} disabled={testing === int.id} className="text-white/50 hover:text-white text-xs h-7">
-                          {testing === int.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Activity className="w-3 h-3 mr-1" />}Test Connection
+                          {testing === int.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Activity className="w-3 h-3 mr-1" />}Validate Configuration
                         </Button>
                       </div>
                     </CardContent>
@@ -1321,7 +1321,7 @@ function BackupTab() {
               <Label className="text-white/60 text-xs">Backup Type</Label>
               <Select value={form.type} onValueChange={v => setForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger className="w-36 bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="full">Full</SelectItem><SelectItem value="incremental">Incremental</SelectItem><SelectItem value="schema">Schema Only</SelectItem></SelectContent>
+                <SelectContent><SelectItem value="full">Full</SelectItem><SelectItem value="schema">Schema Only</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="flex-1">
@@ -1618,12 +1618,21 @@ function HealthTab() {
 function GlobalSettingsTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { admin, logout } = useAdminAuth();
   const { data: settings = [], isLoading } = useAdminQuery<SystemSetting[]>(['admin-settings'], '/settings');
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [newVal, setNewVal] = useState('');
   const [adding, setAdding] = useState(false);
+  const [credentialForm, setCredentialForm] = useState({
+    currentUsername: admin?.username ?? '',
+    currentPassword: '',
+    newUsername: admin?.username ?? '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [credentialSaving, setCredentialSaving] = useState(false);
 
   const cats = [...new Set(settings.map(s => s.category))];
 
@@ -1650,6 +1659,32 @@ function GlobalSettingsTab() {
       toast({ title: 'Setting added' });
     } catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
     setAdding(false);
+  };
+
+  const changeCredentials = async () => {
+    if (credentialForm.newPassword !== credentialForm.confirmPassword) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+    if (credentialForm.newPassword.length < 12) {
+      toast({ title: 'New password must be at least 12 characters', variant: 'destructive' });
+      return;
+    }
+    setCredentialSaving(true);
+    try {
+      await adminCall('/auth/credentials', 'PATCH', {
+        currentUsername: credentialForm.currentUsername,
+        currentPassword: credentialForm.currentPassword,
+        newUsername: credentialForm.newUsername,
+        newPassword: credentialForm.newPassword,
+      });
+      toast({ title: 'Admin credentials changed', description: 'All existing admin sessions were revoked. Sign in again with the new credentials.' });
+      logout();
+    } catch (e: unknown) {
+      toast({ title: 'Credential change failed', description: (e as Error).message, variant: 'destructive' });
+    } finally {
+      setCredentialSaving(false);
+    }
   };
 
   return (
@@ -1698,6 +1733,27 @@ function GlobalSettingsTab() {
               </Button>
             </div>
           )}
+
+          <Card className="bg-[#0a0f1e] border-amber-500/20">
+            <CardHeader>
+              <CardTitle className="text-sm font-semibold text-white/70 flex items-center gap-2"><Shield className="w-4 h-4 text-amber-400" />Admin Credential Management</CardTitle>
+              <CardDescription className="text-xs text-white/40">Re-enter the current credentials before changing the admin username or password. Every existing admin session will be revoked.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><Label className="text-white/60 text-xs">Current Username</Label><Input value={credentialForm.currentUsername} onChange={e => setCredentialForm(f => ({ ...f, currentUsername: e.target.value }))} autoComplete="username" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                <div><Label className="text-white/60 text-xs">Current Password</Label><Input type="password" value={credentialForm.currentPassword} onChange={e => setCredentialForm(f => ({ ...f, currentPassword: e.target.value }))} autoComplete="current-password" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                <div><Label className="text-white/60 text-xs">New Username</Label><Input value={credentialForm.newUsername} onChange={e => setCredentialForm(f => ({ ...f, newUsername: e.target.value }))} autoComplete="username" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                <div><Label className="text-white/60 text-xs">New Password</Label><Input type="password" value={credentialForm.newPassword} onChange={e => setCredentialForm(f => ({ ...f, newPassword: e.target.value }))} autoComplete="new-password" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                <div><Label className="text-white/60 text-xs">Confirm New Password</Label><Input type="password" value={credentialForm.confirmPassword} onChange={e => setCredentialForm(f => ({ ...f, confirmPassword: e.target.value }))} autoComplete="new-password" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={changeCredentials} disabled={credentialSaving || !credentialForm.currentUsername || !credentialForm.currentPassword || !credentialForm.newUsername || !credentialForm.newPassword} className="bg-amber-600 hover:bg-amber-700 text-white">
+                  {credentialSaving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Lock className="w-4 h-4 mr-1" />}Change Admin Credentials
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>

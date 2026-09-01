@@ -43,10 +43,9 @@ cd lib/db && pnpm run seed:finance
 cd lib/db && pnpm run seed:ar
 ```
 
-## Default Credentials
+## Admin Credentials
 
-- **Email:** `admin@omnierp.io`
-- **Password:** `Admin@1234`
+Super-admin credentials are stored as bcrypt hashes in the configured database. They are never stored in source code or printed by setup. Use the secure credential-management form in the Super Admin panel to rotate them.
 
 ## Environment Secrets
 

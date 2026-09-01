@@ -37,25 +37,25 @@ echo "🌱 Seeding ERP data..."
 pnpm --filter @workspace/db run seed
 
 echo "🔑 Seeding Super Admin..."
-cd /home/runner/workspace/lib/db && node --input-type=module << 'JSEOF'
-import bcrypt from 'bcryptjs';
-const hash = await bcrypt.hash('admin123', 12);
-// print for psql usage
-process.stdout.write(hash + '\n');
-JSEOF
+psql "$DB_URL" -v ON_ERROR_STOP=1 -c "ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;"
 
-# Capture hash and insert via psql
-ADMIN_HASH=$(cd /home/runner/workspace/lib/db && node --input-type=module \
-  --eval "import bcrypt from 'bcryptjs'; const h = await bcrypt.hash('admin123', 12); process.stdout.write(h);")
+if ! psql "$DB_URL" -Atc "SELECT 1 FROM super_admins LIMIT 1" | grep -q '^1$'; then
+  if [ -z "${SUPER_ADMIN_USERNAME:-}" ] || [ -z "${SUPER_ADMIN_PASSWORD:-}" ]; then
+    echo "No super admin exists. Set SUPER_ADMIN_USERNAME and SUPER_ADMIN_PASSWORD as secure environment values and rerun setup."
+    exit 1
+  fi
+  if [ "${#SUPER_ADMIN_PASSWORD}" -lt 12 ]; then
+    echo "SUPER_ADMIN_PASSWORD must be at least 12 characters."
+    exit 1
+  fi
+  ADMIN_HASH=$(SUPER_ADMIN_PASSWORD="$SUPER_ADMIN_PASSWORD" node --input-type=module --eval "import bcrypt from 'bcryptjs'; const h = await bcrypt.hash(process.env.SUPER_ADMIN_PASSWORD, 12); process.stdout.write(h);")
+  psql "$DB_URL" -v admin_user="$SUPER_ADMIN_USERNAME" -v admin_hash="$ADMIN_HASH" << SQL
+INSERT INTO super_admins (username, password_hash, display_name, is_active)
+VALUES (:'admin_user', :'admin_hash', 'Super Administrator', true);
+SQL
+fi
 
 psql "$DB_URL" << SQL
-INSERT INTO super_admins (username, password_hash, display_name, email, is_active)
-VALUES ('admin', '${ADMIN_HASH}', 'Super Administrator', 'admin@omnierp.io', true)
-ON CONFLICT (username) DO UPDATE SET
-  password_hash = EXCLUDED.password_hash,
-  is_active     = true,
-  updated_at    = NOW();
-
 INSERT INTO admin_system_settings (key, value, category, description) VALUES
   ('max_login_attempts', '5',               'security', 'Max failed logins before lockout'),
   ('lockout_minutes',    '15',              'security', 'Lockout duration in minutes'),
@@ -101,8 +101,7 @@ SQL
 
 echo ""
 echo "✅ Setup complete!"
-echo "   ERP Login:         admin@omnierp.io / Admin@1234"
-echo "   Super Admin Login: admin / admin123  (at /admin-login)"
+echo "   Super Admin credentials are managed in the database and are not printed by setup."
 echo ""
 echo "Start the app with:"
 echo "   pnpm --filter @workspace/api-server run dev"

@@ -10,21 +10,26 @@ import bcrypt from "bcryptjs";
 async function main() {
   console.log("🔐 Seeding Super Admin...");
 
-  // Hash password for admin / admin123
-  const passwordHash = await bcrypt.hash("admin123", 12);
+  const username = process.env.SUPER_ADMIN_USERNAME?.trim();
+  const password = process.env.SUPER_ADMIN_PASSWORD;
+  if (!username || !password) throw new Error("Set SUPER_ADMIN_USERNAME and SUPER_ADMIN_PASSWORD in the secure environment before seeding an admin.");
+  if (username.length < 3 || username.length > 100 || !/^[a-zA-Z0-9._-]+$/.test(username)) {
+    throw new Error("SUPER_ADMIN_USERNAME must be 3–100 characters and use only letters, numbers, dots, underscores, or hyphens.");
+  }
+  if (password.length < 12 || password.length > 200) throw new Error("SUPER_ADMIN_PASSWORD must be 12–200 characters.");
+  const passwordHash = await bcrypt.hash(password, 12);
 
   // Upsert super admin
   await db.execute(sql`
     INSERT INTO super_admins (username, password_hash, display_name, email, is_active)
-    VALUES ('admin', ${passwordHash}, 'Super Administrator', 'admin@omnierp.io', true)
+    VALUES (${username}, ${passwordHash}, 'Super Administrator', NULL, true)
     ON CONFLICT (username) DO UPDATE SET
       password_hash = EXCLUDED.password_hash,
-      display_name  = EXCLUDED.display_name,
-      email         = EXCLUDED.email,
       is_active     = true,
+      session_version = super_admins.session_version + 1,
       updated_at    = NOW()
   `);
-  console.log("  ✓ Super admin (admin / admin123)");
+  console.log("  ✓ Super admin credentials updated without printing them.");
 
   // Default system settings
   const settings = [
@@ -102,58 +107,8 @@ async function main() {
   }
   console.log("  ✓ Integrations config");
 
-  // Sample licenses
-  const orgs = await db.execute<{ id: number; name: string }>(sql`SELECT id, name FROM organizations LIMIT 3`);
-  for (const org of orgs) {
-    const key = "LIC-" + Math.random().toString(36).substring(2, 10).toUpperCase()
-      + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
-    await db.execute(sql`
-      INSERT INTO admin_licenses (license_key, org_id, plan_name, max_users, max_modules, issued_to, expires_at, status)
-      VALUES (${key}, ${org.id}, 'Enterprise', 100, 20, ${org.name}, NOW() + INTERVAL '1 year', 'active')
-      ON CONFLICT DO NOTHING
-    `);
-  }
-  console.log("  ✓ Sample licenses");
-
-  // Sample support tickets
-  const ticketData = [
-    { num: "TKT-001", subject: "Cannot access Finance module", desc: "Getting 403 error when opening Finance", priority: "high", category: "access", status: "open" },
-    { num: "TKT-002", subject: "Invoice PDF export broken", desc: "PDF download returns blank file", priority: "medium", category: "bug", status: "in_progress" },
-    { num: "TKT-003", subject: "Request for additional user licenses", desc: "Need to increase user limit from 50 to 100", priority: "low", category: "billing", status: "open" },
-    { num: "TKT-004", subject: "Data import from legacy system", desc: "Bulk import of historical AR data needed", priority: "medium", category: "data", status: "resolved" },
-    { num: "TKT-005", subject: "MFA not sending OTP", desc: "Users reporting OTP emails not received", priority: "critical", category: "security", status: "open" },
-  ];
-
-  for (const t of ticketData) {
-    await db.execute(sql`
-      INSERT INTO admin_support_tickets
-        (ticket_number, subject, description, priority, category, status, reporter_name, reporter_email)
-      VALUES (${t.num}, ${t.subject}, ${t.desc}, ${t.priority}, ${t.category}, ${t.status},
-              'System User', 'user@example.com')
-      ON CONFLICT (ticket_number) DO NOTHING
-    `);
-  }
-  console.log("  ✓ Sample support tickets");
-
-  // Sample backup logs
-  const backupNames = [
-    { name: "backup_2026_08_01T00_00_00_auto", type: "full", status: "completed", size: 524288000 },
-    { name: "backup_2026_08_03T00_00_00_auto", type: "full", status: "completed", size: 531234816 },
-    { name: "backup_2026_08_05T06_00_00_incremental", type: "incremental", status: "completed", size: 10485760 },
-    { name: "backup_2026_08_06T00_00_00_auto", type: "full", status: "completed", size: 537395200 },
-  ];
-
-  for (const b of backupNames) {
-    await db.execute(sql`
-      INSERT INTO admin_backup_logs (backup_name, type, status, initiated_by, size_bytes, completed_at)
-      VALUES (${b.name}, ${b.type}, ${b.status}, 'system', ${b.size}, NOW() - INTERVAL '1 hour')
-      ON CONFLICT DO NOTHING
-    `);
-  }
-  console.log("  ✓ Backup logs");
-
   console.log("\n✅ Admin seed complete!");
-  console.log("   Login: admin / admin123");
+  console.log("   Credentials are managed through the secure environment.");
 
   process.exit(0);
 }

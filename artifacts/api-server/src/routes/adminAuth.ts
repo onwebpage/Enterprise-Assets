@@ -52,9 +52,9 @@ router.post("/login", async (req, res) => {
     // Use pool.query directly to avoid any ORM row-mapping issues
     const result = await pool.query<{
       id: number; username: string; password_hash: string; display_name: string;
-      email: string | null; is_active: boolean;
+      email: string | null; is_active: boolean; session_version: number;
     }>(
-      "SELECT id, username, password_hash, display_name, email, is_active FROM super_admins WHERE username = $1 LIMIT 1",
+      "SELECT id, username, password_hash, display_name, email, is_active, session_version FROM super_admins WHERE username = $1 LIMIT 1",
       [username.trim()]
     );
     const admin = result.rows[0];
@@ -93,7 +93,17 @@ router.post("/login", async (req, res) => {
       [admin.id, admin.username, "LOGIN", "auth", ip]
     );
 
-    const token = signAdminToken({ adminId: admin.id, username: admin.username });
+    const sessionSetting = await pool.query<{ value: string }>(
+      "SELECT value FROM admin_system_settings WHERE key = 'session_hours' LIMIT 1",
+    );
+    const configuredHours = Number(sessionSetting.rows[0]?.value ?? 8);
+    const sessionHours = Number.isFinite(configuredHours)
+      ? Math.min(Math.max(Math.floor(configuredHours), 1), 168)
+      : 8;
+    const token = signAdminToken(
+      { adminId: admin.id, username: admin.username, sessionVersion: admin.session_version },
+      sessionHours * 60 * 60,
+    );
 
     res.json({
       success: true,
@@ -127,26 +137,113 @@ router.post("/logout", requireAdminAuth, async (req: AdminRequest, res) => {
   }
 });
 
-// PATCH /api/admin/auth/password — change admin password
-router.patch("/password", requireAdminAuth, async (req: AdminRequest, res) => {
+// PATCH /api/admin/auth/credentials — change the authenticated admin username and/or password.
+// The current username and password are always required, even when changing only one value.
+router.patch("/credentials", requireAdminAuth, async (req: AdminRequest, res) => {
+  const client = await pool.connect();
   try {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword || newPassword.length < 8) {
-      res.status(400).json({ success: false, error: "New password must be at least 8 characters" });
+    const {
+      currentUsername,
+      currentPassword,
+      newUsername,
+      newPassword,
+    } = req.body as {
+      currentUsername?: unknown;
+      currentPassword?: unknown;
+      newUsername?: unknown;
+      newPassword?: unknown;
+    };
+    if (
+      typeof currentUsername !== "string" ||
+      typeof currentPassword !== "string" ||
+      typeof newUsername !== "string" ||
+      typeof newPassword !== "string"
+    ) {
+      res.status(400).json({ success: false, error: "All credential fields are required" });
       return;
     }
-    const result = await pool.query<{ password_hash: string }>(
-      "SELECT password_hash FROM super_admins WHERE id = $1",
+    const normalizedCurrentUsername = currentUsername.trim();
+    const normalizedNewUsername = newUsername.trim();
+    if (!normalizedNewUsername || normalizedNewUsername.length < 3 || normalizedNewUsername.length > 100) {
+      res.status(400).json({ success: false, error: "New username must be 3–100 characters" });
+      return;
+    }
+    if (!/^[a-zA-Z0-9._-]+$/.test(normalizedNewUsername)) {
+      res.status(400).json({ success: false, error: "New username may only contain letters, numbers, dots, underscores, and hyphens" });
+      return;
+    }
+    if (newPassword.length < 12 || newPassword.length > 200) {
+      res.status(400).json({ success: false, error: "New password must be 12–200 characters" });
+      return;
+    }
+
+    const current = await client.query<{ username: string; password_hash: string }>(
+      "SELECT username, password_hash FROM super_admins WHERE id = $1 AND is_active = true FOR UPDATE",
+      [req.admin!.adminId],
+    );
+    const row = current.rows[0];
+    if (!row || row.username !== normalizedCurrentUsername || !(await verifyPassword(currentPassword, row.password_hash))) {
+      res.status(401).json({ success: false, error: "Current credentials are incorrect" });
+      return;
+    }
+
+    const newHash = await hashPassword(newPassword);
+    await client.query("BEGIN");
+    const updated = await client.query<{ id: number; username: string; session_version: number }>(
+      `UPDATE super_admins
+       SET username = $1, password_hash = $2, session_version = session_version + 1, updated_at = NOW()
+       WHERE id = $3
+       RETURNING id, username, session_version`,
+      [normalizedNewUsername, newHash, req.admin!.adminId],
+    );
+    await client.query(
+      `INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, details, ip_address)
+       VALUES ($1, $2, 'CHANGE_CREDENTIALS', 'auth', $3, $4)`,
+      [
+        req.admin!.adminId,
+        normalizedNewUsername,
+        JSON.stringify({ usernameChanged: row.username !== normalizedNewUsername, sessionsRevoked: true }),
+        req.socket.remoteAddress ?? "unknown",
+      ],
+    );
+    await client.query("COMMIT");
+    res.json({
+      success: true,
+      data: { id: updated.rows[0]?.id, username: updated.rows[0]?.username, sessionsRevoked: true },
+    });
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    if ((err as { code?: string }).code === "23505") {
+      res.status(409).json({ success: false, error: "That username is already in use" });
+      return;
+    }
+    console.error("Admin credential update error:", err);
+    res.status(500).json({ success: false, error: "Failed to update admin credentials" });
+  } finally {
+    client.release();
+  }
+});
+
+// PATCH /api/admin/auth/password — backwards-compatible password-only endpoint.
+router.patch("/password", requireAdminAuth, async (req: AdminRequest, res) => {
+  try {
+    const { currentUsername, currentPassword, newPassword } = req.body;
+    if (!currentUsername || !currentPassword || !newPassword || newPassword.length < 12) {
+      res.status(400).json({ success: false, error: "Current credentials and a new password of at least 12 characters are required" });
+      return;
+    }
+    const result = await pool.query<{ username: string; password_hash: string }>(
+      "SELECT username, password_hash FROM super_admins WHERE id = $1",
       [req.admin!.adminId]
     );
     const row = result.rows[0];
     if (!row) { res.status(404).json({ success: false, error: "Not found" }); return; }
-    const valid = await verifyPassword(currentPassword, row.password_hash);
+    const valid = row.username === String(currentUsername).trim() && await verifyPassword(currentPassword, row.password_hash);
     if (!valid) { res.status(401).json({ success: false, error: "Current password incorrect" }); return; }
 
     const newHash = await hashPassword(newPassword);
     await pool.query(
-      "UPDATE super_admins SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+      "UPDATE super_admins SET password_hash = $1, session_version = session_version + 1, updated_at = NOW() WHERE id = $2",
       [newHash, req.admin!.adminId]
     );
     await pool.query(

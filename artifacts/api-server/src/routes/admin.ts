@@ -1,9 +1,43 @@
 import { Router } from "express";
+import { execFile } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { mkdir, stat } from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
 import { pool } from "@workspace/db";
 import { requireAdminAuth, type AdminRequest } from "../middlewares/adminAuth";
 
 const router = Router();
 router.use(requireAdminAuth);
+const execFileAsync = promisify(execFile);
+const backupDirectory = process.env.ADMIN_BACKUP_DIR ?? "/tmp/omnierp-backups";
+
+async function runDatabaseBackup(id: number, name: string, type: string, initiatedBy: string) {
+  const outputPath = path.join(backupDirectory, `${name}.dump`);
+  try {
+    const databaseUrl = process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL;
+    if (!databaseUrl) throw new Error("Database connection is not configured");
+    await mkdir(backupDirectory, { recursive: true });
+    const args = ["--dbname", databaseUrl, "--format=custom", "--file", outputPath];
+    if (type === "schema") args.push("--schema-only");
+    await execFileAsync("pg_dump", args, { timeout: 10 * 60 * 1000, maxBuffer: 1024 * 1024 });
+    const file = await stat(outputPath);
+    await pool.query(
+      `UPDATE admin_backup_logs SET status='completed', completed_at=NOW(), size_bytes=$1, updated_at=NOW() WHERE id=$2`,
+      [file.size, id],
+    );
+  } catch (error) {
+    await pool.query(
+      `UPDATE admin_backup_logs SET status='failed', notes=COALESCE(notes || E'\n', '') || $1, updated_at=NOW() WHERE id=$2`,
+      [`Backup failed: ${error instanceof Error ? error.message : "unknown error"}`, id],
+    ).catch(() => undefined);
+    await pool.query(
+      `INSERT INTO admin_audit_logs (admin_username, action, resource, resource_id, details)
+       VALUES ($1, 'BACKUP_FAILED', 'backup', $2, $3)`,
+      [initiatedBy, id, JSON.stringify({ type })],
+    ).catch(() => undefined);
+  }
+}
 
 // ── Helper: audit log ─────────────────────────────────────────────────────────
 async function audit(req: AdminRequest, action: string, resource: string, resourceId?: string | number, details?: Record<string, unknown>) {
@@ -383,8 +417,7 @@ router.get("/licenses", async (_req, res) => {
 router.post("/licenses", async (req: AdminRequest, res) => {
   try {
     const { orgId, planName, maxUsers, maxModules, issuedTo, expiresAt, notes } = req.body;
-    const key = "LIC-" + Math.random().toString(36).substring(2, 10).toUpperCase()
-      + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const key = `LIC-${randomBytes(8).toString("hex").toUpperCase()}`;
     const result = await pool.query<{ id: number }>(
       `INSERT INTO admin_licenses (license_key, org_id, plan_name, max_users, max_modules, issued_to, expires_at, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
@@ -683,9 +716,31 @@ router.put("/integrations/:id", async (req: AdminRequest, res) => {
 router.post("/integrations/:id/test", async (req: AdminRequest, res) => {
   try {
     const id = parseInt(req.params["id"] as string);
-    await pool.query(`UPDATE admin_integrations_config SET last_tested_at=NOW() WHERE id=$1`, [id]);
-    await audit(req, "TEST", "integration", id);
-    res.json({ success: true, data: { connected: false, message: "Test connection not yet implemented for this integration" } });
+    const result = await pool.query<{ is_enabled: boolean; config: Record<string, unknown> }>(
+      `SELECT is_enabled, config FROM admin_integrations_config WHERE id=$1`,
+      [id],
+    );
+    const integration = result.rows[0];
+    if (!integration) {
+      res.status(404).json({ success: false, error: "Integration not found" });
+      return;
+    }
+    const configuredValues = Object.values(integration.config ?? {}).filter(
+      value => typeof value === "string" ? value.trim().length > 0 : value != null,
+    );
+    const connected = integration.is_enabled && configuredValues.length > 0;
+    const status = connected ? "active" : integration.is_enabled ? "error" : "inactive";
+    const message = connected
+      ? "Configuration is present and the integration is enabled."
+      : integration.is_enabled
+        ? "The integration is enabled but has no saved configuration."
+        : "Enable the integration before testing it.";
+    await pool.query(
+      `UPDATE admin_integrations_config SET status=$1, last_tested_at=NOW(), updated_at=NOW() WHERE id=$2`,
+      [status, id],
+    );
+    await audit(req, "TEST", "integration", id, { connected, status });
+    res.json({ success: true, data: { connected, status, message } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Test failed" });
@@ -717,15 +772,29 @@ router.get("/security", async (_req, res) => {
 router.put("/security", async (req: AdminRequest, res) => {
   try {
     const { maxLoginAttempts, lockoutMinutes, sessionHours } = req.body;
+    const values = [
+      ["maxLoginAttempts", maxLoginAttempts, 1, 20],
+      ["lockoutMinutes", lockoutMinutes, 1, 1440],
+      ["sessionHours", sessionHours, 1, 168],
+    ] as const;
+    for (const [name, value, min, max] of values) {
+      if (!Number.isInteger(value) || value < min || value > max) {
+        res.status(400).json({ success: false, error: `${name} must be an integer between ${min} and ${max}` });
+        return;
+      }
+    }
     const updates = [
-      { key: "max_login_attempts", value: String(maxLoginAttempts ?? 5) },
-      { key: "lockout_minutes", value: String(lockoutMinutes ?? 15) },
-      { key: "session_hours", value: String(sessionHours ?? 24) },
+      { key: "max_login_attempts", value: String(maxLoginAttempts) },
+      { key: "lockout_minutes", value: String(lockoutMinutes) },
+      { key: "session_hours", value: String(sessionHours) },
     ];
     for (const u of updates) {
       await pool.query(
-        `UPDATE admin_system_settings SET value=$1, updated_by=$2, updated_at=NOW() WHERE key=$3`,
-        [u.value, req.admin!.username, u.key]
+        `INSERT INTO admin_system_settings (key, value, category, description, updated_by, updated_at)
+         VALUES ($1, $2, 'security', $3, $4, NOW())
+         ON CONFLICT (key) DO UPDATE
+         SET value=EXCLUDED.value, category='security', updated_by=EXCLUDED.updated_by, updated_at=NOW()`,
+        [u.key, u.value, u.key === "max_login_attempts" ? "Max failed logins before lockout" : u.key === "lockout_minutes" ? "Lockout duration in minutes" : "Admin session duration in hours", req.admin!.username]
       );
     }
     await audit(req, "UPDATE", "security_settings", undefined, req.body);
@@ -836,24 +905,42 @@ router.get("/backups", async (_req, res) => {
 router.post("/backups", async (req: AdminRequest, res) => {
   try {
     const { type, notes } = req.body;
+    if (!["full", "schema"].includes(type ?? "full")) {
+      res.status(400).json({ success: false, error: "Only full and schema backups are supported" });
+      return;
+    }
     const name = `backup_${new Date().toISOString().replace(/[:.]/g, "_").slice(0, 19)}_manual`;
     const result = await pool.query<{ id: number }>(
       `INSERT INTO admin_backup_logs (backup_name, type, status, initiated_by, notes) VALUES ($1, $2, 'running', $3, $4) RETURNING id`,
       [name, type ?? "full", req.admin!.username, notes ?? null]
     );
     const id = result.rows[0]?.id;
-    // Simulate backup completion
-    setTimeout(async () => {
-      await pool.query(
-        `UPDATE admin_backup_logs SET status='completed', completed_at=NOW(), size_bytes=$1 WHERE id=$2`,
-        [Math.floor(Math.random() * 500_000_000 + 100_000_000), id]
-      );
-    }, 3000);
+    void runDatabaseBackup(id!, name, type ?? "full", req.admin!.username);
     await audit(req, "CREATE_BACKUP", "backup", id, { type });
     res.status(201).json({ success: true, data: { id, name } });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to initiate backup" });
+  }
+});
+
+router.get("/backups/:id/download", async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] as string);
+    const result = await pool.query<{ backup_name: string; status: string }>(
+      `SELECT backup_name, status FROM admin_backup_logs WHERE id=$1`,
+      [id],
+    );
+    const backup = result.rows[0];
+    if (!backup) { res.status(404).json({ success: false, error: "Backup not found" }); return; }
+    if (backup.status !== "completed") {
+      res.status(409).json({ success: false, error: "Backup is not completed" });
+      return;
+    }
+    const safeName = path.basename(backup.backup_name);
+    res.download(path.join(backupDirectory, `${safeName}.dump`), `${safeName}.dump`);
+  } catch {
+    res.status(404).json({ success: false, error: "Backup file not found" });
   }
 });
 
@@ -1023,6 +1110,14 @@ router.get("/settings", async (_req, res) => {
 router.put("/settings", async (req: AdminRequest, res) => {
   try {
     const { settings } = req.body as { settings: Array<{ key: string; value: string }> };
+    if (!Array.isArray(settings) || settings.length === 0 || settings.length > 100) {
+      res.status(400).json({ success: false, error: "Settings must be a non-empty list of at most 100 items" });
+      return;
+    }
+    if (settings.some(s => !s || !/^[a-z][a-z0-9_-]{1,99}$/.test(s.key) || typeof s.value !== "string" || s.value.length > 5000)) {
+      res.status(400).json({ success: false, error: "Each setting needs a valid key and a value of at most 5000 characters" });
+      return;
+    }
     for (const s of settings) {
       await pool.query(
         `INSERT INTO admin_system_settings (key, value, category, updated_by, updated_at)

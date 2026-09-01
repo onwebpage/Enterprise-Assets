@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS super_admins (
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE super_admins ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;
 
 -- 2. admin_login_attempts
 CREATE TABLE IF NOT EXISTS admin_login_attempts (
