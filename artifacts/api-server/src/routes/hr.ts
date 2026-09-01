@@ -7,7 +7,7 @@
 import { Router } from "express";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import {
-  db, permissions, roles, departments,
+  db, pool, permissions, roles, departments,
   hrEmployees, hrLeaveTypes, hrLeaveRequests,
   hrPayrollRuns, hrPayrollLines, hrJobPostings,
 } from "@workspace/db";
@@ -26,6 +26,13 @@ const router = Router();
 router.use(requireAuth);
 
 const MODULE = "HR & Payroll";
+
+const PAYROLL_TRANSITIONS: Record<string, string[]> = {
+  draft: ["draft", "processing"],
+  processing: ["processing", "approved"],
+  approved: ["approved", "paid"],
+  paid: ["paid"],
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +170,128 @@ router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthReques
   }
 });
 
+// ── Workforce analytics ───────────────────────────────────────────────────────
+
+router.get("/analytics", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const orgId = req.user?.orgId;
+  if (!orgId) {
+    res.status(400).json({ success: false, error: "User is not assigned to an organization" });
+    return;
+  }
+  try {
+    const [headcount, payroll, leaveMix, hiring, salaryByDepartment, recentActivity] = await Promise.all([
+      pool.query(
+        `select to_char(month_start, 'Mon') as month,
+                (select count(*)::int
+                   from hr_employees e
+                  where e.org_id=$1
+                    and e.status <> 'terminated'
+                    and e.date_of_joining::date < month_start + interval '1 month') as count
+           from generate_series(
+             date_trunc('month', current_date) - interval '5 months',
+             date_trunc('month', current_date),
+             interval '1 month'
+           ) as months(month_start)
+          order by month_start`,
+        [orgId],
+      ),
+      pool.query(
+        `select period, status, total_gross, total_deductions, total_net, employee_count
+           from hr_payroll_runs
+          where org_id=$1
+          order by period desc
+          limit 6`,
+        [orgId],
+      ),
+      pool.query(
+        `select lt.code, lt.name,
+                count(lr.id)::int as requests,
+                coalesce(sum(lr.total_days), 0)::numeric as days
+           from hr_leave_types lt
+           left join hr_leave_requests lr
+             on lr.leave_type_id=lt.id and lr.org_id=$1 and lr.status <> 'cancelled'
+          where lt.org_id=$1
+          group by lt.id
+          order by requests desc, lt.name`,
+        [orgId],
+      ),
+      pool.query(
+        `select status, coalesce(sum(openings), 0)::int as openings, count(*)::int as postings
+           from hr_job_postings
+          where org_id=$1
+          group by status
+          order by case status when 'open' then 0 when 'on_hold' then 1 when 'filled' then 2 else 3 end`,
+        [orgId],
+      ),
+      pool.query(
+        `select coalesce(d.name, 'Unassigned') as department,
+                count(*)::int as employees,
+                coalesce(sum(case when e.salary_type='annual' then e.salary / 12 else e.salary end), 0)::numeric as monthly_cost
+           from hr_employees e
+           left join departments d on d.id=e.dept_id
+          where e.org_id=$1 and e.status in ('active','on_leave')
+          group by d.name
+          order by monthly_cost desc
+          limit 7`,
+        [orgId],
+      ),
+      pool.query(
+        `select * from (
+           select created_at as happened_at, 'employee' as type,
+                  concat('Joined ', first_name, ' ', last_name) as label,
+                  emp_number as reference
+             from hr_employees where org_id=$1
+           union all
+           select created_at, 'leave',
+                  concat('Leave request from ', employee_name), request_number
+             from (
+               select lr.created_at, lr.request_number,
+                      e.first_name || ' ' || e.last_name as employee_name
+                 from hr_leave_requests lr
+                 join hr_employees e on e.id=lr.employee_id
+                where lr.org_id=$1
+             ) leaves
+           union all
+           select created_at, 'payroll',
+                  concat('Payroll ', run_number, ' · ', status), run_number
+             from hr_payroll_runs where org_id=$1
+         ) events order by happened_at desc limit 10`,
+        [orgId],
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        headcountTrend: headcount.rows.map((row) => ({ month: row.month, count: Number(row.count) })),
+        payrollTrend: payroll.rows.map((row) => ({
+          period: row.period,
+          status: row.status,
+          gross: Number(row.total_gross ?? 0),
+          deductions: Number(row.total_deductions ?? 0),
+          net: Number(row.total_net ?? 0),
+          employees: Number(row.employee_count ?? 0),
+        })).reverse(),
+        leaveMix: leaveMix.rows.map((row) => ({
+          code: row.code, name: row.name, requests: Number(row.requests), days: Number(row.days),
+        })),
+        hiringPipeline: hiring.rows.map((row) => ({
+          status: row.status, openings: Number(row.openings), postings: Number(row.postings),
+        })),
+        salaryByDepartment: salaryByDepartment.rows.map((row) => ({
+          department: row.department, employees: Number(row.employees), monthlyCost: Number(row.monthly_cost),
+        })),
+        recentActivity: recentActivity.rows.map((row) => ({
+          happenedAt: row.happened_at, type: row.type, label: row.label, reference: row.reference,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error("HR analytics query failed", err);
+    res.status(500).json({ success: false, error: "Failed to fetch HR analytics" });
+  }
+});
+
 // ══════════════════════════════════════════════════════════════════════════════
 // EMPLOYEES
 // ══════════════════════════════════════════════════════════════════════════════
@@ -240,7 +369,10 @@ router.get("/employees", requirePermission(MODULE, "view"), async (req: AuthRequ
       const mgrs = await db
         .select({ id: hrEmployees.id, firstName: hrEmployees.firstName, lastName: hrEmployees.lastName })
         .from(hrEmployees)
-        .where(sql`id = any(${sql.raw(`ARRAY[${managerIds.join(",")}]::int[]`)})`);
+        .where(and(
+          eq(hrEmployees.orgId, req.user!.orgId!),
+          sql`id = any(${sql.raw(`ARRAY[${managerIds.join(",")}]::int[]`)})`,
+        ));
       mgrs.forEach(m => { managerMap[m.id] = `${m.firstName} ${m.lastName}`; });
     }
 
@@ -472,6 +604,10 @@ router.post("/leaves/requests", requirePermission(MODULE, "create"), async (req:
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   try {
     const orgId = req.user!.orgId!;
+    if (parsed.data.endDate < parsed.data.startDate) {
+      res.status(422).json({ success: false, error: "End date must be on or after start date" });
+      return;
+    }
     // Verify employee belongs to org
     const [emp] = await db.select({ id: hrEmployees.id }).from(hrEmployees)
       .where(and(eq(hrEmployees.id, parsed.data.employeeId), eq(hrEmployees.orgId, orgId))).limit(1);
@@ -494,7 +630,11 @@ router.put("/leaves/requests/:id", requirePermission(MODULE, "edit"), async (req
   const parsed = updateHrLeaveRequestSchema.safeParse(req.body);
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   try {
-    const [existing] = await db.select({ id: hrLeaveRequests.id, status: hrLeaveRequests.status }).from(hrLeaveRequests)
+    const [existing] = await db.select({
+      id: hrLeaveRequests.id,
+      employeeId: hrLeaveRequests.employeeId,
+      status: hrLeaveRequests.status,
+    }).from(hrLeaveRequests)
       .where(and(eq(hrLeaveRequests.id, id), eq(hrLeaveRequests.orgId, req.user!.orgId!))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Leave request not found" }); return; }
     if (existing.status === "approved" || existing.status === "rejected") {
@@ -514,7 +654,7 @@ router.put("/leaves/requests/:id", requirePermission(MODULE, "edit"), async (req
     // Keep employee status in sync
     if (parsed.data.status === "approved") {
       await db.update(hrEmployees).set({ status: "on_leave", updatedAt: new Date() })
-        .where(eq(hrEmployees.id, existing.id));
+        .where(and(eq(hrEmployees.id, existing.employeeId), eq(hrEmployees.orgId, req.user!.orgId!)));
     }
 
     res.json({ success: true, data: updated });
@@ -670,8 +810,11 @@ router.put("/payroll/runs/:id", requirePermission(MODULE, "edit"), async (req: A
     const [existing] = await db.select({ id: hrPayrollRuns.id, status: hrPayrollRuns.status }).from(hrPayrollRuns)
       .where(and(eq(hrPayrollRuns.id, id), eq(hrPayrollRuns.orgId, req.user!.orgId!))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Payroll run not found" }); return; }
-    if (existing.status === "paid") {
-      res.status(409).json({ success: false, error: "Cannot modify a paid payroll run." });
+    if (!PAYROLL_TRANSITIONS[existing.status]?.includes(parsed.data.status)) {
+      res.status(409).json({
+        success: false,
+        error: `Invalid payroll transition from ${existing.status} to ${parsed.data.status}.`,
+      });
       return;
     }
     const updateData: any = { status: parsed.data.status, updatedAt: new Date() };

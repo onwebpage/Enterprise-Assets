@@ -21,8 +21,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import HRCommandCenter from '@/components/app/hr/HRCommandCenter';
 import {
-  useHrPermissions, useHrSummary,
+  useHrPermissions, useHrSummary, useHrAnalytics,
   useHrEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
   useHrLeaveTypes, useCreateLeaveType, useDeleteLeaveType,
   useHrLeaveRequests, useCreateLeaveRequest, useUpdateLeaveRequest, useDeleteLeaveRequest,
@@ -457,7 +458,7 @@ function JobPostingForm({ open, onClose, initial }: { open: boolean; onClose: ()
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function HR() {
-  const [tab, setTab] = useState('employees');
+  const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [empStatus, setEmpStatus] = useState('');
   const [leaveStatus, setLeaveStatus] = useState('');
@@ -476,8 +477,9 @@ export default function HR() {
   const { toast } = useToast();
   const { data: permsRes } = useHrPermissions();
   const p = permsRes?.data ?? { canCreate: true, canEdit: true, canDelete: true };
-  const { data: summaryRes, isLoading: summaryLoading } = useHrSummary();
+  const { data: summaryRes, isLoading: summaryLoading, refetch: refetchSummary } = useHrSummary();
   const s = summaryRes?.data;
+  const { data: analyticsRes, isLoading: analyticsLoading, refetch: refetchAnalytics } = useHrAnalytics();
 
   const { data: empRes,   isLoading: empLoading }   = useHrEmployees({ search: tab === 'employees' ? search : '', status: empStatus || undefined });
   const { data: leavesRes, isLoading: leavesLoading } = useHrLeaveRequests({ search: tab === 'leaves' ? search : '', status: leaveStatus || undefined });
@@ -578,6 +580,15 @@ export default function HR() {
           </div>
         </div>
 
+        {tab === 'overview' ? (
+          <HRCommandCenter
+            data={analyticsRes?.data}
+            summary={s}
+            isLoading={summaryLoading || analyticsLoading}
+            onRefresh={() => { void Promise.all([refetchSummary(), refetchAnalytics()]); }}
+            onTab={setTab}
+          />
+        ) : (<>
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {kpis.map((k, i) => (
@@ -608,12 +619,13 @@ export default function HR() {
             </div>
           </div>
         )}
+        </>)}
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={t => { setTab(t); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <TabsList className="bg-white/[0.04] border border-white/[0.07]">
-              {[['employees','Employees'],['payroll','Payroll'],['leaves','Leaves'],['recruitment','Recruitment']].map(([v, l]) => (
+              {[['overview','Overview'],['employees','Employees'],['payroll','Payroll'],['leaves','Leaves'],['recruitment','Recruitment']].map(([v, l]) => (
                 <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50">{l}</TabsTrigger>
               ))}
             </TabsList>

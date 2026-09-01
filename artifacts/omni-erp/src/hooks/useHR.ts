@@ -40,6 +40,15 @@ export interface HrSummary {
   deptBreakdown: { deptName: string; count: number }[];
 }
 
+export interface HrAnalytics {
+  headcountTrend: { month: string; count: number }[];
+  payrollTrend: { period: string; status: HrPayrollStatus; gross: number; deductions: number; net: number; employees: number }[];
+  leaveMix: { code: string; name: string; requests: number; days: number }[];
+  hiringPipeline: { status: HrJobStatus; openings: number; postings: number }[];
+  salaryByDepartment: { department: string; employees: number; monthlyCost: number }[];
+  recentActivity: { happenedAt: string; type: string; label: string; reference: string }[];
+}
+
 export interface HrEmployee {
   id: number;
   orgId: number | null;
@@ -217,6 +226,14 @@ export function useHrSummary() {
   return useQuery<ApiResponse<HrSummary>>({
     queryKey: ["hr", "summary"],
     queryFn: () => api.get("/hr/summary"),
+  });
+}
+
+export function useHrAnalytics() {
+  return useQuery<ApiResponse<HrAnalytics>>({
+    queryKey: ["hr", "analytics"],
+    queryFn: () => api.get("/hr/analytics"),
+    staleTime: 30_000,
   });
 }
 
