@@ -48,6 +48,7 @@ import periodClosingRouter from "./periodClosing";
 import intercompanyRouter from "./intercompany";
 import multiCurrencyRouter from "./multiCurrency";
 import financialControlsRouter from "./financialControls";
+import masterDataRouter from "./masterData";
 
 const router: IRouter = Router();
 
@@ -98,6 +99,7 @@ router.use("/finance/closing", periodClosingRouter);
 router.use("/finance/intercompany", intercompanyRouter);
 router.use("/finance/multi-currency", multiCurrencyRouter);
 router.use("/finance/controls", financialControlsRouter);
+router.use("/master-data", masterDataRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);
