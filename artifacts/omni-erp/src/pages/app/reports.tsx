@@ -18,14 +18,12 @@ import {
   useReportsOverview, useReportsARaging, useReportsAPaging,
   useReportsInventory, useReportsHR, useReportsPurchase,
 } from '@/hooks/useReports';
+import { formatINR } from '@/lib/currency';
 
 // ── Formatting helpers ────────────────────────────────────────────────────────
 
 function fmtCurrency(v: number, compact = true): string {
-  if (!compact) return `$${v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(0)}`;
+  return formatINR(v, compact);
 }
 
 function fmtPct(v: number): string { return `${v.toFixed(1)}%`; }
@@ -506,27 +504,8 @@ function HRTab() {
   );
 }
 
-// ── Saved reports (static, as the list UI is already functional) ──────────────
-
-const savedReports = [
-  { name: 'Monthly P&L Statement',      category: 'Finance',   lastRun: '2h ago',  scheduled: true,  format: 'PDF' },
-  { name: 'Sales Pipeline Summary',      category: 'Sales',     lastRun: '1d ago',  scheduled: true,  format: 'Excel' },
-  { name: 'Inventory Valuation Report',  category: 'Inventory', lastRun: '3d ago',  scheduled: false, format: 'PDF' },
-  { name: 'Employee Headcount Analysis', category: 'HR',        lastRun: '1w ago',  scheduled: false, format: 'Excel' },
-  { name: 'GST Filing Summary',          category: 'Tax',       lastRun: '5d ago',  scheduled: true,  format: 'PDF' },
-  { name: 'Cash Flow Forecast',          category: 'Finance',   lastRun: '12h ago', scheduled: true,  format: 'PDF' },
-];
-const catColors: Record<string, string> = {
-  Finance:   'bg-[#2563EB]/15 text-[#2563EB] border-[#2563EB]/20',
-  Sales:     'bg-[#06B6D4]/15 text-[#06B6D4] border-[#06B6D4]/20',
-  Inventory: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  HR:        'bg-purple-500/15 text-purple-400 border-purple-500/20',
-  Tax:       'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-};
-
 function SavedTab() {
   const [search, setSearch] = useState('');
-  const filtered = savedReports.filter(r => r.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
       <div className="flex items-center gap-3 p-4 border-b border-white/[0.07]">
@@ -539,49 +518,16 @@ function SavedTab() {
           />
         </div>
       </div>
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-white/[0.05]">
-            {['Report Name', 'Category', 'Last Run', 'Scheduled', 'Format', ''].map(h => (
-              <th key={h} className="text-left text-xs font-medium text-white/30 px-4 py-3">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map(r => (
-            <tr key={r.name} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-white/30" />
-                  <span className="text-sm font-medium text-white">{r.name}</span>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <Badge className={`text-[10px] border ${catColors[r.category] ?? 'bg-white/5 text-white/40 border-white/10'} px-2 py-0`}>{r.category}</Badge>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-sm text-white/40 flex items-center gap-1"><Clock className="w-3 h-3" />{r.lastRun}</span>
-              </td>
-              <td className="px-4 py-3">
-                <Badge className={`text-[10px] border px-2 py-0 ${r.scheduled ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-white/5 text-white/40 border-white/10'}`}>
-                  {r.scheduled ? 'Active' : 'Manual'}
-                </Badge>
-              </td>
-              <td className="px-4 py-3"><Badge className="bg-white/5 text-white/50 border-white/10 text-xs">{r.format}</Badge></td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-1">
-                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors"><Play className="w-3.5 h-3.5" /></button>
-                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><Download className="w-3.5 h-3.5" /></button>
-                  <button className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors"><MoreHorizontal className="w-3.5 h-3.5" /></button>
-                </div>
-              </td>
-            </tr>
-          ))}
-          {filtered.length === 0 && (
-            <tr><td colSpan={6} className="px-4 py-10 text-center text-white/30 text-sm">No reports match your search.</td></tr>
-          )}
-        </tbody>
-      </table>
+      <div className="px-6 py-16 text-center">
+        <FileText className="mx-auto mb-3 h-9 w-9 text-white/20" />
+        <p className="text-sm font-medium text-white/60">
+          {search ? 'No saved reports match your search.' : 'No saved reports are configured.'}
+        </p>
+        <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-white/30">
+          Saved reports will appear here after a report definition and schedule are created.
+          The application does not display placeholder report records.
+        </p>
+      </div>
     </div>
   );
 }

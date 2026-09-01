@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, type ApiResponse } from "@/lib/api";
+import { formatINRCompact } from "@/lib/currency";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -84,13 +85,9 @@ export function useFinanceDashboard() {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Format a dollar amount as "$1.2M", "$48.2K", or "$1,234" */
+/** Format an amount as an INR value, using compact notation for large values. */
 export function fmtMoney(n: number): string {
-  if (Math.abs(n) >= 1_000_000)
-    return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000)
-    return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toLocaleString()}`;
+  return formatINRCompact(n);
 }
 
 /** Relative time from ISO string: "2m ago", "3h ago", "2d ago" */
