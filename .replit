@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "web", "bash", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -45,8 +45,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=5173 pnpm --filter @workspace/omni-erp run dev"
-waitForPort = 5173
+args = "PORT=20679 pnpm --filter @workspace/omni-erp run dev"
+waitForPort = 20679
 
 [agent]
 stack = "PNPM_WORKSPACE"

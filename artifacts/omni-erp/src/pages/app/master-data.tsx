@@ -63,8 +63,8 @@ const inputClass = "bg-white/[0.03] border-white/[0.1] text-white placeholder:te
 const selectClass = "h-9 w-full rounded-md border border-white/[0.1] bg-[#0b1020] px-3 text-sm text-white outline-none focus:border-[#2563EB]";
 
 function blankFor(entity: Entity): FormState {
-  if (entity === "customers") return { name: "", email: "", phone: "", taxId: "", currency: "USD", creditLimit: "0", status: "active", city: "", country: "", address: "", notes: "" };
-  if (entity === "vendors") return { name: "", email: "", phone: "", taxId: "", currency: "USD", paymentTerms: "Net 30", status: "active", city: "", country: "", address: "", notes: "" };
+  if (entity === "customers") return { name: "", email: "", phone: "", taxId: "", currency: "INR", creditLimit: "0", status: "active", city: "", country: "", address: "", notes: "" };
+  if (entity === "vendors") return { name: "", email: "", phone: "", taxId: "", currency: "INR", paymentTerms: "Net 30", status: "active", city: "", country: "", address: "", notes: "" };
   if (entity === "products") return { sku: "", name: "", categoryId: "", unit: "each", costPrice: "0", sellingPrice: "0", reorderPoint: "0", reorderQty: "0", status: "active", description: "", notes: "" };
   if (entity === "warehouses") return { code: "", name: "", location: "", manager: "", capacity: "0", status: "active", notes: "" };
   return { name: "", description: "" };
@@ -166,9 +166,9 @@ export default function MasterData() {
       setFormError("");
       let payload: Record<string, unknown>;
       if (entity === "customers") {
-        payload = { name: form.name.trim(), email: cleanOptional(form.email), phone: cleanOptional(form.phone), taxId: cleanOptional(form.taxId), currency: form.currency.trim().toUpperCase() || "USD", creditLimit: form.creditLimit || "0", status: form.status, city: cleanOptional(form.city), country: cleanOptional(form.country), address: cleanOptional(form.address), notes: cleanOptional(form.notes) };
+        payload = { name: form.name.trim(), email: cleanOptional(form.email), phone: cleanOptional(form.phone), taxId: cleanOptional(form.taxId), currency: form.currency.trim().toUpperCase() || "INR", creditLimit: form.creditLimit || "0", status: form.status, city: cleanOptional(form.city), country: cleanOptional(form.country), address: cleanOptional(form.address), notes: cleanOptional(form.notes) };
       } else if (entity === "vendors") {
-        payload = { name: form.name.trim(), email: cleanOptional(form.email), phone: cleanOptional(form.phone), taxId: cleanOptional(form.taxId), currency: form.currency.trim().toUpperCase() || "USD", paymentTerms: cleanOptional(form.paymentTerms), status: form.status, city: cleanOptional(form.city), country: cleanOptional(form.country), address: cleanOptional(form.address), notes: cleanOptional(form.notes) };
+        payload = { name: form.name.trim(), email: cleanOptional(form.email), phone: cleanOptional(form.phone), taxId: cleanOptional(form.taxId), currency: form.currency.trim().toUpperCase() || "INR", paymentTerms: cleanOptional(form.paymentTerms), status: form.status, city: cleanOptional(form.city), country: cleanOptional(form.country), address: cleanOptional(form.address), notes: cleanOptional(form.notes) };
       } else if (entity === "products") {
         payload = { sku: form.sku.trim().toUpperCase(), name: form.name.trim(), categoryId: form.categoryId ? Number(form.categoryId) : null, unit: form.unit.trim() || "each", costPrice: form.costPrice || "0", sellingPrice: form.sellingPrice || "0", reorderPoint: Number(form.reorderPoint) || 0, reorderQty: Number(form.reorderQty) || 0, status: form.status, description: cleanOptional(form.description), notes: cleanOptional(form.notes) };
       } else if (entity === "warehouses") {

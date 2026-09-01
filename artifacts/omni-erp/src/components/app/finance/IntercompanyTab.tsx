@@ -20,21 +20,24 @@ import {
   type CompanyFormValues, type RelationshipFormValues, type TransactionFormValues,
   useCreateIntercompanyCompany, useDeleteIntercompanyCompany, useUpdateIntercompanyCompany,
 } from "@/hooks/useIntercompany";
+import { formatINR } from "@/lib/currency";
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const EMPTY_RELATIONSHIP: RelationshipFormValues = {
-  fromOrgId: 0, toOrgId: 0, fromDueFromAccountId: 0, toDueToAccountId: 0, currency: "USD", notes: "",
+  fromOrgId: 0, toOrgId: 0, fromDueFromAccountId: 0, toDueToAccountId: 0, currency: "INR", notes: "",
 };
 const EMPTY_TRANSACTION: TransactionFormValues = {
   relationshipId: 0, transactionDate: TODAY, dueDate: "", description: "", reference: "",
-  amount: 0, currency: "USD", fromSettlementAccountId: 0, toSettlementAccountId: 0,
+  amount: 0, currency: "INR", fromSettlementAccountId: 0, toSettlementAccountId: 0,
 };
 const EMPTY_COMPANY: CompanyFormValues = {
-  name: "", legalName: "", currency: "USD", type: "Subsidiary", status: "active", country: "", gstin: "",
+  name: "", legalName: "", currency: "INR", type: "Subsidiary", status: "active", country: "", gstin: "",
 };
 
-function money(amount: string | number, currency = "USD") {
-  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(amount) || 0);
+function money(amount: string | number, currency = "INR") {
+  return currency === "INR"
+    ? formatINR(amount)
+    : new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 2 }).format(Number(amount) || 0);
 }
 
 function dateLabel(value: string | null | undefined) {
@@ -88,7 +91,7 @@ function CompanyDialog({ open, onClose, editCompany, onSaved }: {
     if (!open) return;
     setError("");
     setForm(editCompany ? {
-      name: editCompany.name, legalName: editCompany.legalName ?? "", currency: editCompany.currency ?? "USD",
+      name: editCompany.name, legalName: editCompany.legalName ?? "", currency: editCompany.currency ?? "INR",
       type: editCompany.type === "Parent" ? "Parent" : "Subsidiary",
       status: editCompany.status === "inactive" ? "inactive" : "active",
     } : { ...EMPTY_COMPANY });
@@ -117,7 +120,7 @@ function CompanyDialog({ open, onClose, editCompany, onSaved }: {
     <DialogContent className="bg-[#0d1225] border-white/[0.1] text-white max-w-lg">
       <DialogHeader><DialogTitle className="text-white">{editCompany ? "Edit company" : "Add company"}</DialogTitle><DialogDescription className="text-white/45">Company records are shared with Finance and used as intercompany ledger entities.</DialogDescription></DialogHeader>
       <div className="space-y-4">
-        <div className="space-y-1.5"><FieldLabel>Company name</FieldLabel><Input value={form.name} onChange={(event) => set("name", event.target.value)} placeholder="Apex Global Europe Ltd." className="bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/25" /></div>
+        <div className="space-y-1.5"><FieldLabel>Company name</FieldLabel><Input value={form.name} onChange={(event) => set("name", event.target.value)} placeholder="e.g. Regional subsidiary" className="bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/25" /></div>
         <div className="space-y-1.5"><FieldLabel>Legal name</FieldLabel><Input value={form.legalName ?? ""} onChange={(event) => set("legalName", event.target.value)} placeholder="Optional registered name" className="bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/25" /></div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5"><FieldLabel>Currency</FieldLabel><Input maxLength={3} value={form.currency} onChange={(event) => set("currency", event.target.value.toUpperCase())} className="bg-white/[0.04] border-white/[0.1] text-white uppercase" /></div>
@@ -158,7 +161,7 @@ function RelationshipDialog({ open, onClose, editRelationship, onSaved }: {
       currency: editRelationship.currency, status: editRelationship.status, notes: editRelationship.notes ?? "",
     } : {
       ...EMPTY_RELATIONSHIP, fromOrgId: companies[0]?.id ?? 0, toOrgId: companies[1]?.id ?? 0,
-      currency: companies[0]?.currency ?? "USD",
+      currency: companies[0]?.currency ?? "INR",
     });
   }, [open, editRelationship, companiesRes]);
 
@@ -265,7 +268,7 @@ function TransactionDialog({ open, onClose, editTransaction, relationships, onSa
     <DialogContent className="bg-[#0d1225] border-white/[0.1] text-white max-w-xl">
       <DialogHeader><DialogTitle className="text-white">{editTransaction ? "Edit intercompany transaction" : "New intercompany transaction"}</DialogTitle><DialogDescription className="text-white/45">Save as draft first, then post to create balanced journal entries in both companies.</DialogDescription></DialogHeader>
       <div className="space-y-4">
-        <div className="space-y-1.5"><FieldLabel>Company relationship</FieldLabel><NativeSelect value={form.relationshipId} onChange={(value) => { const id = Number(value); const next = relationships.find((item) => item.id === id); set("relationshipId", id); set("currency", next?.currency ?? "USD"); set("fromSettlementAccountId", 0); set("toSettlementAccountId", 0); }} disabled={!!editTransaction}><option value={0}>Select active relationship</option>{relationships.filter((item) => item.status === "active").map((item) => <option key={item.id} value={item.id}>{item.fromCompany} → {item.toCompany} · {item.currency}</option>)}</NativeSelect></div>
+        <div className="space-y-1.5"><FieldLabel>Company relationship</FieldLabel><NativeSelect value={form.relationshipId} onChange={(value) => { const id = Number(value); const next = relationships.find((item) => item.id === id); set("relationshipId", id); set("currency", next?.currency ?? "INR"); set("fromSettlementAccountId", 0); set("toSettlementAccountId", 0); }} disabled={!!editTransaction}><option value={0}>Select active relationship</option>{relationships.filter((item) => item.status === "active").map((item) => <option key={item.id} value={item.id}>{item.fromCompany} → {item.toCompany} · {item.currency}</option>)}</NativeSelect></div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5"><FieldLabel>Transaction date</FieldLabel><Input type="date" value={form.transactionDate} onChange={(event) => set("transactionDate", event.target.value)} className="bg-white/[0.04] border-white/[0.1] text-white" /></div>
           <div className="space-y-1.5"><FieldLabel>Due date</FieldLabel><Input type="date" value={form.dueDate ?? ""} onChange={(event) => set("dueDate", event.target.value)} className="bg-white/[0.04] border-white/[0.1] text-white" /></div>
@@ -360,7 +363,7 @@ export default function IntercompanyTab() {
         <div><h3 className="text-sm font-semibold text-white">Companies</h3><p className="text-xs text-white/35 mt-0.5">Active legal entities available for group finance.</p></div>
         <div className="flex items-center gap-2">{perms.canManageCompanies && <Button size="sm" onClick={() => { setEditCompany(null); setCompanyOpen(true); }} className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8"><Plus className="w-3.5 h-3.5 mr-1.5" />Add company</Button>}<button onClick={() => setShowCompanies((value) => !value)} className="p-1.5 rounded hover:bg-white/[0.07] text-white/35">{showCompanies ? <X className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</button></div>
       </div>
-      {showCompanies && <div className="overflow-x-auto">{companies.length === 0 ? <div className="p-8 text-center text-sm text-white/35">No active companies found.</div> : <table className="w-full min-w-[650px]"><thead><tr className="border-b border-white/[0.05]">{["Company", "Type", "Currency", "Status", "Actions"].map((heading) => <th key={heading} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-5 py-3">{heading}</th>)}</tr></thead><tbody>{companies.map((company) => <tr key={company.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]"><td className="px-5 py-3"><p className="text-sm font-medium text-white">{company.name}</p><p className="text-xs text-white/30 mt-0.5">{company.legalName || "No legal name supplied"}</p></td><td className="px-5 py-3 text-xs text-white/55">{company.type || "Subsidiary"}</td><td className="px-5 py-3 text-sm text-white/60">{company.currency || "USD"}</td><td className="px-5 py-3"><Badge className={company.status === "active" ? "bg-emerald-500/12 text-emerald-300 border-emerald-500/25" : "bg-white/[0.06] text-white/40 border-white/10"}>{company.status}</Badge></td><td className="px-5 py-3"><div className="flex items-center gap-1">{perms.canManageCompanies && <><button onClick={() => companyAction(company, "edit")} title="Edit company" className="p-1.5 rounded text-white/35 hover:bg-white/[0.07] hover:text-white"><Edit3 className="w-3.5 h-3.5" /></button><button onClick={() => companyAction(company, "delete")} title="Delete company" className="p-1.5 rounded text-white/35 hover:bg-red-500/10 hover:text-red-400"><Trash2 className="w-3.5 h-3.5" /></button></>}</div></td></tr>)}</tbody></table>}</div>}
+      {showCompanies && <div className="overflow-x-auto">{companies.length === 0 ? <div className="p-8 text-center text-sm text-white/35">No active companies found.</div> : <table className="w-full min-w-[650px]"><thead><tr className="border-b border-white/[0.05]">{["Company", "Type", "Currency", "Status", "Actions"].map((heading) => <th key={heading} className="text-left text-[11px] font-semibold text-white/30 uppercase tracking-wide px-5 py-3">{heading}</th>)}</tr></thead><tbody>{companies.map((company) => <tr key={company.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]"><td className="px-5 py-3"><p className="text-sm font-medium text-white">{company.name}</p><p className="text-xs text-white/30 mt-0.5">{company.legalName || "No legal name supplied"}</p></td><td className="px-5 py-3 text-xs text-white/55">{company.type || "Subsidiary"}</td><td className="px-5 py-3 text-sm text-white/60">{company.currency || "INR"}</td><td className="px-5 py-3"><Badge className={company.status === "active" ? "bg-emerald-500/12 text-emerald-300 border-emerald-500/25" : "bg-white/[0.06] text-white/40 border-white/10"}>{company.status}</Badge></td><td className="px-5 py-3"><div className="flex items-center gap-1">{perms.canManageCompanies && <><button onClick={() => companyAction(company, "edit")} title="Edit company" className="p-1.5 rounded text-white/35 hover:bg-white/[0.07] hover:text-white"><Edit3 className="w-3.5 h-3.5" /></button><button onClick={() => companyAction(company, "delete")} title="Delete company" className="p-1.5 rounded text-white/35 hover:bg-red-500/10 hover:text-red-400"><Trash2 className="w-3.5 w-3.5" /></button></>}</div></td></tr>)}</tbody></table>}</div>}
     </div>
 
     <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">

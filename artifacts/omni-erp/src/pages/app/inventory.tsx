@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { formatINR } from '@/lib/currency';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -1182,7 +1183,7 @@ export default function Inventory() {
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-white">{parseFloat(p.totalOnHand ?? '0').toFixed(0)}</td>
                       <td className="px-4 py-3 text-sm text-white/50">{p.reorderPoint}</td>
-                      <td className="px-4 py-3 text-sm text-white/70">${parseFloat(p.costPrice).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-white/70">{formatINR(p.costPrice)}</td>
                       <td className="px-4 py-3">
                         <StatusBadge status={p.status === 'active' ? 'active' : p.status === 'inactive' ? 'inactive' : 'overdue'} />
                       </td>
@@ -1339,7 +1340,7 @@ export default function Inventory() {
                       <td className="px-4 py-3 text-sm text-amber-400">{parseFloat(item.qtyReserved).toFixed(0)}</td>
                       <td className="px-4 py-3 text-sm text-emerald-400 font-semibold">{parseFloat(item.available).toFixed(0)}</td>
                       <td className="px-4 py-3 text-sm text-white/50">{item.reorderPoint}</td>
-                      <td className="px-4 py-3 text-sm text-white/70">${parseFloat(item.stockValue).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-white/70">{formatINR(item.stockValue)}</td>
                       <td className="px-4 py-3">
                         <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-md', stockStatusStyles[item.stockStatus])}>
                           {stockStatusLabel[item.stockStatus]}

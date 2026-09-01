@@ -20,54 +20,7 @@ import {
 } from "lucide-react";
 
 /* ─── Data ─────────────────────────────────────────────────────────── */
-const revenueData = [
-  { m: "Feb", v: 3.4 },
-  { m: "Mar", v: 2.9 },
-  { m: "Apr", v: 4.1 },
-  { m: "May", v: 4.8 },
-  { m: "Jun", v: 4.3 },
-  { m: "Jul", v: 5.2 },
-  { m: "Aug", v: 5.9 },
-  { m: "Sep", v: 5.4 },
-  { m: "Oct", v: 6.3 },
-  { m: "Nov", v: 6.8 },
-  { m: "Dec", v: 7.2 },
-];
-
-const pipelineStages = [
-  { label: "Leads", count: 284, pct: 100 },
-  { label: "Qualified", count: 181, pct: 64 },
-  { label: "Proposal", count: 97, pct: 34 },
-  { label: "Negotiation", count: 54, pct: 19 },
-  { label: "Closed", count: 38, pct: 13 },
-];
-
-const invoices = [
-  {
-    id: "INV-4821",
-    client: "Stratford Industries",
-    amount: "$48,200",
-    status: "Paid",
-  },
-  {
-    id: "INV-4820",
-    client: "Apex Global",
-    amount: "$31,500",
-    status: "Pending",
-  },
-  {
-    id: "INV-4819",
-    client: "Meridian Corp",
-    amount: "$92,750",
-    status: "Paid",
-  },
-];
-
-const aiInsights = [
-  { text: "Pipeline value $2.84M" },
-  { text: "Inventory for SKU-2841 below threshold" },
-  { text: "3 procurement approvals pending" },
-];
+const revenueData: { m: string; v: number }[] = [];
 
 const sidebarItems = [
   { icon: LayoutDashboard, label: "Dashboard", active: true },
@@ -255,26 +208,26 @@ export function Hero() {
                       {[
                         {
                           label: "Total Revenue",
-                          value: "$7.2M",
-                          delta: "+14.3%",
+                          value: "—",
+                          delta: "Live after sign-in",
                           up: true,
                         },
                         {
                           label: "Orders",
-                          value: "1,847",
-                          delta: "+8.2%",
+                          value: "—",
+                          delta: "Live after sign-in",
                           up: true,
                         },
                         {
                           label: "Inventory",
-                          value: "94.1%",
-                          delta: "-1.2%",
-                          up: false,
+                          value: "—",
+                          delta: "Live after sign-in",
+                          up: true,
                         },
                         {
                           label: "Employees",
-                          value: "342",
-                          delta: "+4",
+                          value: "—",
+                          delta: "Live after sign-in",
                           up: true,
                         },
                       ].map((kpi, i) => (
@@ -309,8 +262,12 @@ export function Hero() {
                         <div className="text-[13px] font-medium text-white mb-4">
                           Revenue Analytics
                         </div>
-                        <div className="flex-1 min-h-0">
-                          <ResponsiveContainer width="100%" height="100%">
+                         <div className="flex min-h-0 flex-1 items-center justify-center">
+                           <p className="max-w-xs text-center text-xs leading-5 text-slate-500">
+                             Connect your workspace to populate revenue analytics.
+                           </p>
+                           {/* The public preview intentionally has no fabricated chart series. */}
+                           <ResponsiveContainer width="0%" height="0%">
                             <AreaChart
                               data={revenueData}
                               margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
@@ -344,7 +301,7 @@ export function Hero() {
                                 fill="url(#colorRev)"
                               />
                             </AreaChart>
-                          </ResponsiveContainer>
+                           </ResponsiveContainer>
                         </div>
                       </div>
 
@@ -353,25 +310,10 @@ export function Hero() {
                         <div className="text-[13px] font-medium text-white mb-4">
                           Sales Pipeline
                         </div>
-                        <div className="flex-1 flex flex-col justify-between">
-                          {pipelineStages.map((stage, i) => (
-                            <div key={i}>
-                              <div className="flex items-center justify-between text-[11px] mb-1.5">
-                                <span className="text-slate-400">
-                                  {stage.label}
-                                </span>
-                                <span className="text-white font-medium tabular-nums">
-                                  {stage.count}
-                                </span>
-                              </div>
-                              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-primary rounded-full"
-                                  style={{ width: `${stage.pct}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
+                         <div className="flex flex-1 items-center justify-center">
+                           <p className="text-center text-xs leading-5 text-slate-500">
+                             Live sales pipeline data appears after sign-in.
+                           </p>
                         </div>
                       </div>
                     </div>
@@ -383,34 +325,10 @@ export function Hero() {
                         <div className="text-[13px] font-medium text-white mb-3">
                           Recent Invoices
                         </div>
-                        <div className="flex flex-col gap-2.5">
-                          {invoices.map((inv, i) => (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between text-[12px]"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-slate-400 font-mono">
-                                  {inv.id}
-                                </span>
-                                <span className="text-white">{inv.client}</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <span className="text-slate-300 tabular-nums">
-                                  {inv.amount}
-                                </span>
-                                <span
-                                  className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                                    inv.status === "Paid"
-                                      ? "bg-green-500/10 text-green-400"
-                                      : "bg-amber-500/10 text-amber-400"
-                                  }`}
-                                >
-                                  {inv.status}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                         <div className="flex min-h-16 items-center">
+                           <p className="text-xs text-slate-500">
+                             No invoice data is shown before a workspace is connected.
+                           </p>
                         </div>
                       </div>
 
@@ -421,16 +339,10 @@ export function Hero() {
                           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                           AI Insights
                         </div>
-                        <div className="flex flex-col gap-2">
-                          {aiInsights.map((insight, i) => (
-                            <div
-                              key={i}
-                              className="text-[11px] text-slate-300 leading-snug flex items-start gap-1.5"
-                            >
-                              <ArrowRight className="w-3 h-3 text-primary mt-0.5 shrink-0" />
-                              {insight.text}
-                            </div>
-                          ))}
+                         <div className="flex min-h-16 items-center">
+                           <p className="text-xs leading-5 text-slate-500">
+                             AI insights will use your connected operational data.
+                           </p>
                         </div>
                       </div>
                     </div>

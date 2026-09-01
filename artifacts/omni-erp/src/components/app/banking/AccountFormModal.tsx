@@ -18,7 +18,7 @@ interface Props {
 
 export default function AccountFormModal({ open, onClose, onSubmit, isSubmitting, account, error }: Props) {
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<BankAccountFormValues>({
-    defaultValues: { currency: 'USD', accountType: 'checking', status: 'active', currentBalance: '0' },
+    defaultValues: { currency: 'INR', accountType: 'checking', status: 'active', currentBalance: '0' },
   });
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function AccountFormModal({ open, onClose, onSubmit, isSubmitting
         name: account.name, accountNumber: account.accountNumber ?? '', bankName: account.bankName ?? '',
         bankBranch: account.bankBranch ?? '', currency: account.currency, currentBalance: account.currentBalance,
         accountType: account.accountType, status: account.status, notes: account.notes ?? '',
-      } : { currency: 'USD', accountType: 'checking', status: 'active', currentBalance: '0' });
+      } : { currency: 'INR', accountType: 'checking', status: 'active', currentBalance: '0' });
     }
   }, [open, account]);
 
@@ -86,7 +86,7 @@ export default function AccountFormModal({ open, onClose, onSubmit, isSubmitting
             </div>
             <div>
               <Label className="text-xs text-white/60">Currency</Label>
-              <Input {...register('currency')} className="mt-1 bg-white/[0.04] border-white/[0.1] text-white" placeholder="USD" maxLength={10} />
+              <Input {...register('currency')} className="mt-1 bg-white/[0.04] border-white/[0.1] text-white" placeholder="INR" maxLength={10} />
             </div>
           </div>
           {!account && (

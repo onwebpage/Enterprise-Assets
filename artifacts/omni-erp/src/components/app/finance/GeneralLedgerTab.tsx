@@ -10,15 +10,16 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useAccountParents } from '@/hooks/useChartOfAccounts';
 import { useAccountLedger, useLedgerSummary } from '@/hooks/useGeneralLedger';
+import { formatINR } from '@/lib/currency';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtMoney(n: number | string | undefined | null, opts?: { sign?: boolean }): string {
   const v = typeof n === 'string' ? parseFloat(n) : (n ?? 0);
   if (isNaN(v) || v === 0) return '—';
-  const abs = `$${Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  if (opts?.sign) return v >= 0 ? `+${abs}` : `(${abs.slice(1)})`;
-  return v < 0 ? `(${abs.slice(1)})` : abs;
+  const abs = formatINR(Math.abs(v));
+  if (opts?.sign) return v >= 0 ? `+${abs}` : `(${abs})`;
+  return v < 0 ? `(${abs})` : abs;
 }
 
 function fmtDate(d: string) {
@@ -300,10 +301,10 @@ function AccountLedgerView({
                       {line.description || line.memo}
                     </td>
                     <td className="px-4 py-3 text-sm tabular-nums font-medium text-emerald-400">
-                      {d > 0 ? `$${d.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
+                      {d > 0 ? formatINR(d) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm tabular-nums font-medium text-red-400">
-                      {c > 0 ? `$${c.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
+                      {c > 0 ? formatINR(c) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm tabular-nums font-semibold text-white">
                       {fmtMoney(line.runningBalance)}

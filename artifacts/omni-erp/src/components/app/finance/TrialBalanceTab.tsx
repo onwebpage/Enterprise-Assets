@@ -4,13 +4,14 @@ import { CheckCircle2, AlertCircle, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTrialBalance, type TrialBalanceRow } from '@/hooks/useGeneralLedger';
+import { formatINR } from '@/lib/currency';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt(v: string) {
   const n = parseFloat(v);
   if (n === 0) return null;
-  return '$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatINR(n);
 }
 
 const TYPE_COLORS: Record<string, string> = {

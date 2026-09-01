@@ -26,7 +26,7 @@ const relationshipInput = z.object({
   toOrgId: z.coerce.number().int().positive(),
   fromDueFromAccountId: z.coerce.number().int().positive(),
   toDueToAccountId: z.coerce.number().int().positive(),
-  currency: z.string().trim().length(3).default("USD").transform((value) => value.toUpperCase()),
+  currency: z.string().trim().length(3).default("INR").transform((value) => value.toUpperCase()),
   status: z.enum(["active", "inactive"]).optional().default("active"),
   notes: z.string().trim().max(500).optional().nullable(),
 }).superRefine((value, ctx) => {
@@ -42,7 +42,7 @@ const transactionInput = z.object({
   description: z.string().trim().min(1).max(500),
   reference: z.string().trim().max(100).optional().nullable(),
   amount: z.coerce.number().positive().finite(),
-  currency: z.string().trim().length(3).default("USD").transform((value) => value.toUpperCase()),
+  currency: z.string().trim().length(3).default("INR").transform((value) => value.toUpperCase()),
   fromSettlementAccountId: z.coerce.number().int().positive(),
   toSettlementAccountId: z.coerce.number().int().positive(),
 });
@@ -50,7 +50,7 @@ const transactionInput = z.object({
 const companyInput = z.object({
   name: z.string().trim().min(1).max(160),
   legalName: z.string().trim().max(200).optional().nullable(),
-  currency: z.string().trim().length(3).default("USD").transform((value) => value.toUpperCase()),
+  currency: z.string().trim().length(3).default("INR").transform((value) => value.toUpperCase()),
   type: z.enum(["Parent", "Subsidiary"]).default("Subsidiary"),
   status: z.enum(["active", "inactive"]).default("active"),
   country: z.string().trim().max(80).optional().nullable(),

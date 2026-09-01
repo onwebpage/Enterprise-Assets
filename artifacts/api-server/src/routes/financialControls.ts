@@ -139,7 +139,12 @@ async function namesFor(ids: Array<number | null>) {
 }
 
 async function nextNumber(table: typeof financialControls | typeof controlRuns | typeof controlExceptions, prefix: string, tx: any = db) {
-  const [row] = await tx.select({ max: sql<string>`max(${table.controlNumber ?? table.runNumber ?? table.exceptionNumber})` }).from(table);
+  const numberColumn = table === financialControls
+    ? financialControls.controlNumber
+    : table === controlRuns
+      ? controlRuns.runNumber
+      : controlExceptions.exceptionNumber;
+  const [row] = await tx.select({ max: sql<string>`max(${numberColumn})` }).from(table);
   const max = row?.max ? parseInt(String(row.max).replace(new RegExp(`^${prefix}-0*`), "") || "0", 10) : 0;
   return `${prefix}-${String(max + 1).padStart(4, "0")}`;
 }

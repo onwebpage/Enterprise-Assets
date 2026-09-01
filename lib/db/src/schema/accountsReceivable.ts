@@ -32,7 +32,7 @@ export const arCustomers = pgTable("ar_customers", {
   country:      text("country"),
   taxId:        text("tax_id"),
   creditLimit:  numeric("credit_limit",  { precision: 15, scale: 2 }).notNull().default("0"),
-  currency:     text("currency").notNull().default("USD"),
+  currency:     text("currency").notNull().default("INR"),
   status:       text("status").notNull().default("active"),   // ARCustomerStatus
   notes:        text("notes"),
   createdAt:    timestamp("created_at").notNull().defaultNow(),
@@ -109,7 +109,7 @@ export const insertARCustomerSchema = z.object({
   country:     z.string().trim().max(100).nullable().optional(),
   taxId:       z.string().trim().max(100).nullable().optional(),
   creditLimit: amountStr.optional().default("0"),
-  currency:    z.string().trim().min(3).max(10).optional().default("USD"),
+  currency:    z.string().trim().min(3).max(10).optional().default("INR"),
   status:      z.enum(AR_CUSTOMER_STATUSES).optional().default("active"),
   notes:       z.string().trim().max(1000).nullable().optional(),
 });

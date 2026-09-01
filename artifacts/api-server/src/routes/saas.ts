@@ -327,7 +327,7 @@ router.post("/tenants", async (req: AuthRequest, res) => {
     // Create org
     const [org] = await db
       .insert(organizations)
-      .values({ name, legalName, industry, country, currency: currency ?? "USD", status: "active" })
+      .values({ name, legalName, industry, country, currency: currency ?? "INR", status: "active" })
       .returning();
 
     // Determine plan

@@ -147,7 +147,7 @@ router.delete("/profit-centres/:id", requirePermission(MODULE, "delete"), async 
 });
 
 // ── Budgets ────────────────────────────────────────────────────────────────────
-const budgetSchema = z.object({
+const budgetSchemaBase = z.object({
   name: z.string().min(1).max(200), fiscalYear: z.coerce.number().int().min(2000).max(2100),
   periodType: z.enum(["monthly", "quarterly", "yearly"]).default("monthly"),
   budgetType: z.enum(["operating", "capital", "cash_flow", "project"]).default("operating"),
@@ -158,7 +158,8 @@ const budgetSchema = z.object({
     periodIndex: z.coerce.number().int().min(0).max(11), amount: z.coerce.number().min(0),
     description: z.string().max(500).nullable().optional(),
   })).optional(),
- }).superRefine((value, ctx) => {
+  });
+const budgetSchema = budgetSchemaBase.superRefine((value, ctx) => {
    const maxPeriodIndex = value.periodType === "yearly" ? 0 : value.periodType === "quarterly" ? 3 : 11;
    value.lines?.forEach((line, index) => {
      if (line.periodIndex > maxPeriodIndex) {
@@ -275,7 +276,7 @@ router.get("/budgets/:id", requirePermission(MODULE, "view"), async (req: AuthRe
 
 router.put("/budgets/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const budgetId = parsedId(req.params.id as string); if (!budgetId) return fail(res, "Invalid id");
-  const parsed = budgetSchema.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
+  const parsed = budgetSchemaBase.partial().safeParse(req.body); if (!parsed.success) return fail(res, "Validation failed");
   const d = parsed.data; const client = await pool.connect();
   try {
     const o = org(req); await client.query("begin");
@@ -550,7 +551,7 @@ router.delete("/variances/:id", requirePermission(MODULE, "delete"), async (req:
 // ── Forecasts ─────────────────────────────────────────────────────────────────
 const forecastSchema = z.object({
   name: z.string().min(1).max(200), method: z.enum(["linear", "moving_average", "seasonal", "manual"]).default("manual"),
-  currency: z.string().max(10).default("USD"), notes: z.string().max(1000).nullable().optional(),
+  currency: z.string().max(10).default("INR"), notes: z.string().max(1000).nullable().optional(),
   lines: z.array(z.object({
     accountId: id, period: period, amount: z.coerce.number().min(0).default(0),
     isActual: z.boolean().default(false), notes: z.string().max(500).nullable().optional(),
@@ -669,7 +670,9 @@ router.post("/forecasts/:id/generate", requirePermission(MODULE, "edit"), async 
      const byPeriod: Record<string, { revenue: number; expense: number }> = {};
      for (const row of hist.rows) {
        byPeriod[row.period] ??= { revenue: 0, expense: 0 };
-       if (row.category === "revenue" || row.category === "expense") byPeriod[row.period][row.category] = Number(row.total);
+        if (row.category === "revenue" || row.category === "expense") {
+          byPeriod[row.period][row.category as "revenue" | "expense"] = Number(row.total);
+        }
      }
      const periods = Object.keys(byPeriod).sort();
      for (const periodValue of periods) {

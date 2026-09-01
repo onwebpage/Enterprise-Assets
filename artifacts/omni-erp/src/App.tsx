@@ -15,7 +15,6 @@ import { Route, Switch, Router as WouterRouter } from 'wouter';
 // App pages
 import Dashboard from '@/pages/app/dashboard';
 import Finance from '@/pages/app/finance';
-import Sales from '@/pages/app/sales';
 import Purchase from '@/pages/app/purchase';
 import Inventory from '@/pages/app/inventory';
 import Wms from '@/pages/app/wms';
@@ -79,7 +78,7 @@ function AppRoutes() {
         <ProtectedRoute><Finance /></ProtectedRoute>
       </Route>
       <Route path="/app/sales">
-        <ProtectedRoute><Sales /></ProtectedRoute>
+        <ProtectedRoute><OrderManagement /></ProtectedRoute>
       </Route>
       <Route path="/app/purchase">
         <ProtectedRoute><Purchase /></ProtectedRoute>

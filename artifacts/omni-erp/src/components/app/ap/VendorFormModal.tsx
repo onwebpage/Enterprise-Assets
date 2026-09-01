@@ -50,8 +50,8 @@ export default function VendorFormModal({ open, onClose, onSubmit, isSubmitting,
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: '', email: '', phone: '', address: '', city: '', country: 'USA',
-      taxId: '', currency: 'USD', paymentTerms: 'Net 30', status: 'active', notes: '',
+       name: '', email: '', phone: '', address: '', city: '', country: 'India',
+       taxId: '', currency: 'INR', paymentTerms: 'Net 30', status: 'active', notes: '',
     },
   });
 
@@ -67,8 +67,8 @@ export default function VendorFormModal({ open, onClose, onSubmit, isSubmitting,
             paymentTerms: vendor.paymentTerms ?? '', status: vendor.status, notes: vendor.notes ?? '',
           }
         : {
-            name: '', email: '', phone: '', address: '', city: '', country: 'USA',
-            taxId: '', currency: 'USD', paymentTerms: 'Net 30', status: 'active', notes: '',
+             name: '', email: '', phone: '', address: '', city: '', country: 'India',
+             taxId: '', currency: 'INR', paymentTerms: 'Net 30', status: 'active', notes: '',
           });
     }
   }, [open, vendor, reset]);
@@ -157,7 +157,7 @@ export default function VendorFormModal({ open, onClose, onSubmit, isSubmitting,
             <div>
               <label className={labelCls}>Currency</label>
               <select {...register('currency')} className={cn('w-full rounded-md border px-3 h-9 text-sm appearance-none', inputCls)}>
-                {['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+                {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
                   <option key={c} value={c} className="bg-[#0d1225]">{c}</option>
                 ))}
               </select>

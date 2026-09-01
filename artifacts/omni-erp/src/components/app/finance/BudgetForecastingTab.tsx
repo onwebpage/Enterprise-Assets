@@ -21,10 +21,11 @@ import {
   useUpdateBudget,
   useUpdateForecast,
 } from "@/hooks/useBudgetCost";
+import { formatINR } from "@/lib/currency";
 
 const field = "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/30 h-9 text-sm";
 const select = `${field} rounded-md px-3`;
-const money = (value: unknown) => Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const money = (value: unknown) => formatINR(Number(value ?? 0));
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="mb-1 block text-[11px] font-medium text-white/45">{children}</label>;
@@ -114,7 +115,7 @@ function ForecastPlanning() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const detailRes = useForecast(editingId);
   const blankLine = (): ForecastLineForm => ({ accountId: "", period: new Date().toISOString().slice(0, 7), amount: "", isActual: false, notes: "" });
-  const blankForm = () => ({ name: "", method: "manual", currency: "USD", notes: "", lines: [blankLine()] });
+  const blankForm = () => ({ name: "", method: "manual", currency: "INR", notes: "", lines: [blankLine()] });
   const [form, setForm] = useState(blankForm);
   useEffect(() => {
     const forecast = detailRes.data?.data;

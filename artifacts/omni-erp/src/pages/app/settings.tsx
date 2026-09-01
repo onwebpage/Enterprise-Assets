@@ -115,7 +115,7 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
 
   const [form, setForm] = useState({
     name: '', legalName: '', taxId: '', industry: '',
-    foundedYear: '', employeeCount: '', currency: 'USD',
+    foundedYear: '', employeeCount: '', currency: 'INR',
     fiscalYearStart: 'Jan', country: '', gstin: '',
   });
 
@@ -128,7 +128,7 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
         industry: org.industry ?? '',
         foundedYear: org.foundedYear ? String(org.foundedYear) : '',
         employeeCount: org.employeeCount ? String(org.employeeCount) : '',
-        currency: org.currency ?? 'USD',
+        currency: org.currency ?? 'INR',
         fiscalYearStart: org.fiscalYearStart ?? 'Jan',
         country: org.country ?? '',
         gstin: org.gstin ?? '',
@@ -193,7 +193,7 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
               onChange={f('currency')}
               className="w-full h-9 rounded-md px-3 text-sm bg-white/[0.04] border border-white/[0.07] text-white focus:outline-none focus:border-[#2563EB]/50"
             >
-              {['USD','EUR','GBP','INR','AUD','CAD','SGD','AED','JPY'].map(c => (
+              {['INR','USD','EUR','GBP','AUD','CAD','SGD','AED','JPY'].map(c => (
                 <option key={c} value={c} className="bg-[#0a0f1e]">{c}</option>
               ))}
             </select>

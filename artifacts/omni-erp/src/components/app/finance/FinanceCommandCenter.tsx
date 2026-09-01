@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FinanceDashboardData } from "@/hooks/useFinanceDashboard";
 import { fmtMoney, timeAgo } from "@/hooks/useFinanceDashboard";
+import { formatINR } from "@/lib/currency";
 
 type Props = {
   data?: FinanceDashboardData;
@@ -36,11 +37,11 @@ type Props = {
 };
 
 const money = (value: number) =>
-  value.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  formatINR(value);
 
 const compactMoney = (value: number) => {
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
+  if (Math.abs(value) >= 1_000_000) return formatINR(value, true);
+  if (Math.abs(value) >= 1_000) return formatINR(value, true);
   return money(value);
 };
 

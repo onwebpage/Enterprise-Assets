@@ -16,6 +16,7 @@ import {
   type JournalEntry,
 } from '@/hooks/useGeneralLedger';
 import JournalEntryFormModal from './JournalEntryFormModal';
+import { formatINR } from '@/lib/currency';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -40,7 +41,7 @@ function fmtDate(d: string) {
 
 function fmtMoney(s: string) {
   const n = parseFloat(s ?? '0');
-  return n === 0 ? '—' : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return n === 0 ? '—' : formatINR(n);
 }
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────

@@ -19,12 +19,13 @@ import {
   useCreateTreasuryCollection, useUpdateTreasuryCollection, useMarkCollectionReceived, useDeleteTreasuryCollection,
   useCreateTreasuryTransfer, useAuthorizeTransfer, useExecuteTransfer, useDeleteTreasuryTransfer,
 } from "@/hooks/useCashTreasury";
+import { formatINR } from "@/lib/currency";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const field = "bg-white/[0.04] border-white/[0.1] text-white placeholder:text-white/30 h-9 text-sm";
 const select = `${field} rounded-md px-3`;
 function fmt(value: unknown) { return Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
-function money(value: unknown) { return `$${fmt(value)}`; }
+function money(value: unknown) { return formatINR(Number(value ?? 0)); }
 function Status({ value }: { value: string }) {
   const tone = value === "active" || value === "approved" || value === "received" || value === "executed" || value === "paid" ? "text-emerald-400 bg-emerald-500/10" : value === "cancelled" || value === "failed" || value === "closed" || value === "overdue" ? "text-red-400 bg-red-500/10" : value === "draft" ? "text-white/40 bg-white/10" : value === "scheduled" || value === "processing" || value === "authorized" ? "text-amber-400 bg-amber-500/10" : "text-blue-400 bg-blue-500/10";
   return <Badge className={`border-0 capitalize ${tone}`}>{value.replaceAll("_", " ")}</Badge>;
@@ -87,13 +88,13 @@ function Accounts() {
   const { data: accountsRes } = useTreasuryAccounts();
   const create = useCreateTreasuryAccount(); const update = useUpdateTreasuryAccount(); const remove = useDeleteTreasuryAccount();
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
+  const [form, setForm] = useState({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "INR", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
   const save = async () => {
     try {
       const payload = { name: form.name, accountNumber: form.accountNumber || null, bankName: form.bankName || null, bankBranch: form.bankBranch || null, currency: form.currency, currentBalance: Number(form.currentBalance) || 0, availableBalance: Number(form.availableBalance) || 0, accountType: form.accountType, status: form.status, isPrimary: form.isPrimary, notes: form.notes || null };
       if (editingId) await update.mutateAsync({ id: editingId, data: payload }); else await create.mutateAsync(payload);
       toast({ title: editingId ? "Account updated" : "Account created" });
-      setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
+      setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "INR", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" });
       setEditingId(null);
     } catch (e: any) { toast({ title: "Failed to create account", description: e.message, variant: "destructive" }); }
   };
@@ -109,7 +110,7 @@ function Accounts() {
       <div><Label>Current balance</Label><Input className={field} type="number" value={form.currentBalance} onChange={e => setForm({ ...form, currentBalance: e.target.value })} /></div>
       <div><Label>Available balance</Label><Input className={field} type="number" value={form.availableBalance} onChange={e => setForm({ ...form, availableBalance: e.target.value })} /></div>
       <div><Label>Status</Label><select className={select + " w-full"} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>{["active", "inactive", "closed"].map(x => <option key={x}>{x}</option>)}</select></div>
-       <div className="flex items-end gap-2"><label className="flex h-9 items-center gap-1 text-xs text-white/50"><input type="checkbox" checked={form.isPrimary} onChange={e => setForm({ ...form, isPrimary: e.target.checked })} />Primary</label><Button onClick={save} disabled={create.isPending || update.isPending || !form.name} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1 h-3.5 w-3.5" />Create</>}</Button>{editingId && <Button variant="ghost" onClick={() => { setEditingId(null); setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "USD", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" }); }} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
+       <div className="flex items-end gap-2"><label className="flex h-9 items-center gap-1 text-xs text-white/50"><input type="checkbox" checked={form.isPrimary} onChange={e => setForm({ ...form, isPrimary: e.target.checked })} />Primary</label><Button onClick={save} disabled={create.isPending || update.isPending || !form.name} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Busy pending={create.isPending || update.isPending} />{editingId ? <><Pencil className="mr-1 h-3.5 w-3.5" />Update</> : <><Plus className="mr-1 h-3.5 w-3.5" />Create</>}</Button>{editingId && <Button variant="ghost" onClick={() => { setEditingId(null); setForm({ name: "", accountNumber: "", bankName: "", bankBranch: "", currency: "INR", currentBalance: "0", availableBalance: "0", accountType: "checking", status: "active", isPrimary: false, notes: "" }); }} className="h-9 text-xs text-white/50">Cancel</Button>}</div>
     </div></div>
      <Table headers={["Account", "Type", "Bank", "Currency", "Balance", "Available", "Status", "Actions"]}>{(accountsRes?.data ?? []).map(a => <Row key={a.id}><td className="px-4 py-3"><p className="font-medium text-white">{a.name}{a.is_primary ? <span className="ml-2 rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] text-cyan-400">PRIMARY</span> : null}</p><p className="text-xs text-white/35">{a.account_number || "—"}</p></td><td className="px-4 py-3 text-white/50 capitalize">{a.account_type}</td><td className="px-4 py-3 text-white/50">{a.bank_name || "—"}</td><td className="px-4 py-3 text-white/50">{a.currency}</td><td className="px-4 py-3 text-white/60">{money(a.current_balance)}</td><td className="px-4 py-3 text-emerald-400">{money(a.available_balance)}</td><td className="px-4 py-3"><Status value={a.status} /></td><td className="px-4 py-3"><Button variant="ghost" size="sm" onClick={() => edit(a)} className="text-white/50" title="Edit account"><Pencil className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(a.id)} className="text-red-400" title="Delete account"><Trash2 className="h-3.5 w-3.5" /></Button></td></Row>)}{!(accountsRes?.data?.length) && <Empty cols={8} text="No accounts yet." />}</Table>
   </div>;

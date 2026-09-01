@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Package, TrendingDown, AlertCircle, DollarSign, BarChart3 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { cn } from '@/lib/utils';
+import { formatINR } from '@/lib/currency';
 import { useAssetsSummary, useAssetsPermissions } from '@/hooks/useFixedAssets';
 import AssetsTab from '@/components/app/assets/AssetsTab';
 import DepreciationTab from '@/components/app/assets/DepreciationTab';
@@ -14,11 +15,7 @@ type Tab = 'overview' | 'assets' | 'depreciation';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtMoney(v: string | undefined) {
-  if (!v) return '$0';
-  const n = parseFloat(v);
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(2)}`;
+  return formatINR(v);
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────

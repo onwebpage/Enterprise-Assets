@@ -17,6 +17,7 @@ import {
   useCreateAccount, useUpdateAccount, useDeleteAccount,
   type Account, type AccountFormValues, type AccountType,
 } from '@/hooks/useChartOfAccounts';
+import { formatINR } from '@/lib/currency';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -36,8 +37,8 @@ const PAGE_LIMIT = 20;
 
 function fmt(n: number) {
   return n < 0
-    ? `(${Math.abs(n).toLocaleString()})`
-    : `$${n.toLocaleString()}`;
+    ? `(${formatINR(Math.abs(n))})`
+    : formatINR(n);
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

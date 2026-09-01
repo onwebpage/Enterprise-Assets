@@ -10,13 +10,6 @@ const trustItems = [
   { icon: Activity, label: '99.99% Uptime SLA' },
 ];
 
-const testimonial = {
-  quote: "OmniERP transformed how we operate. We consolidated six systems into one and cut reporting time by 80%.",
-  name: "Sarah Okonkwo",
-  title: "CFO, Stratford Industries",
-  initials: "SO",
-};
-
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -91,26 +84,11 @@ export default function Login() {
           <p className="text-sm text-muted-foreground/70 leading-relaxed max-w-sm mb-10">
             Finance, operations, HR, supply chain, and CRM — all connected, all intelligent, all in real time.
           </p>
-          <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl p-5">
-            <div className="flex gap-0.5 mb-3">
-              {[...Array(5)].map((_, i) => (
-                <svg key={i} width="12" height="12" viewBox="0 0 12 12" fill="hsl(221,83%,53%)">
-                  <path d="M6 1l1.3 2.6L10 4.1 8 6l.5 2.9L6 7.5l-2.5 1.4L4 6 2 4.1l2.7-.5z" />
-                </svg>
-              ))}
-            </div>
-            <p className="text-sm text-foreground/80 leading-relaxed mb-4 italic">
-              "{testimonial.quote}"
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-5">
+            <p className="text-sm font-medium text-foreground/80">Connect your workspace data</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground/60">
+              Sign in to view live finance, operations, HR, and customer records from your organization.
             </p>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/60 to-accent/60 flex items-center justify-center text-xs font-bold">
-                {testimonial.initials}
-              </div>
-              <div>
-                <div className="text-xs font-semibold">{testimonial.name}</div>
-                <div className="text-[11px] text-muted-foreground/50">{testimonial.title}</div>
-              </div>
-            </div>
           </div>
         </motion.div>
 

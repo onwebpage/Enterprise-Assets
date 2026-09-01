@@ -31,7 +31,7 @@ export const apVendors = pgTable("ap_vendors", {
   city:        text("city"),
   country:     text("country"),
   taxId:       text("tax_id"),
-  currency:    text("currency").notNull().default("USD"),
+  currency:    text("currency").notNull().default("INR"),
   paymentTerms: text("payment_terms"),            // e.g. "Net 30"
   status:      text("status").notNull().default("active"), // APVendorStatus
   notes:       text("notes"),
@@ -108,7 +108,7 @@ export const insertAPVendorSchema = z.object({
   city:         z.string().trim().max(100).nullable().optional(),
   country:      z.string().trim().max(100).nullable().optional(),
   taxId:        z.string().trim().max(100).nullable().optional(),
-  currency:     z.string().trim().min(3).max(10).optional().default("USD"),
+  currency:     z.string().trim().min(3).max(10).optional().default("INR"),
   paymentTerms: z.string().trim().max(50).nullable().optional(),
   status:       z.enum(AP_VENDOR_STATUSES).optional().default("active"),
   notes:        z.string().trim().max(1000).nullable().optional(),

@@ -130,7 +130,7 @@ export default function Organization() {
                       {[
                         { label: 'Country',    value: org.country ?? '—' },
                         { label: 'Employees',  value: String(org.employeeCount ?? 0) },
-                        { label: 'Currency',   value: org.currency ?? 'USD' },
+            { label: 'Currency',   value: org.currency ?? 'INR' },
                       ].map(s => (
                         <div key={s.label} className="bg-white/[0.03] rounded-lg p-2.5 text-center">
                           <p className="text-sm font-semibold text-white">{s.value}</p>

@@ -112,13 +112,6 @@ const navGroups = [
   },
 ];
 
-const companies = [
-  { name: 'Apex Global Inc.', plan: 'Enterprise', logo: 'AG' },
-  { name: 'Meridian Corp', plan: 'Professional', logo: 'MC' },
-  { name: 'Stratford Industries', plan: 'Enterprise', logo: 'SI' },
-];
-
-
 interface AppLayoutProps {
   children: React.ReactNode;
   breadcrumbs?: { label: string; path?: string }[];
@@ -128,7 +121,6 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [currentCompany, setCurrentCompany] = useState(companies[0]);
   const [searchOpen, setSearchOpen] = useState(false);
   const { user, logout } = useAuth();
   const { data: notifSummary } = useNotificationSummary();
@@ -137,6 +129,11 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   const markAllRead = useMarkAllRead();
   const unreadCount = notifSummary?.unread ?? 0;
   const recentNotifs = notifList?.data ?? [];
+  const currentOrganization = {
+    name: user?.orgId ? `Organization ${user.orgId}` : 'Current organization',
+    plan: user?.roleName || 'Workspace',
+    logo: user?.initials || 'OR',
+  };
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -174,37 +171,15 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
       {/* Company Switcher */}
       {sidebarOpen && (
         <div className="px-3 pt-3 pb-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.05] transition-colors group">
-                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-                  {currentCompany.logo}
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{currentCompany.name}</p>
-                  <p className="text-xs text-white/40">{currentCompany.plan}</p>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-white/40 group-hover:text-white/70 transition-colors" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56 bg-[#0a0f1e] border-white/[0.07] text-white">
-              <DropdownMenuLabel className="text-white/40 text-xs">Switch Company</DropdownMenuLabel>
-              {companies.map((co) => (
-                <DropdownMenuItem key={co.name} onClick={() => setCurrentCompany(co)} className="hover:bg-white/[0.05] cursor-pointer">
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 flex items-center justify-center text-xs font-bold mr-2">{co.logo}</div>
-                  <div className="flex-1">
-                    <p className="text-sm text-white">{co.name}</p>
-                    <p className="text-xs text-white/40">{co.plan}</p>
-                  </div>
-                  {currentCompany.name === co.name && <Check className="w-3.5 h-3.5 text-[#2563EB]" />}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator className="bg-white/[0.07]" />
-              <DropdownMenuItem className="hover:bg-white/[0.05] text-white/60 cursor-pointer">
-                <Plus className="w-3.5 h-3.5 mr-2" /> Add Company
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2 px-3 py-2">
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 text-xs font-bold text-white">
+              {currentOrganization.logo}
+            </div>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate text-sm font-medium text-white">{currentOrganization.name}</p>
+              <p className="text-xs text-white/40">{currentOrganization.plan}</p>
+            </div>
+          </div>
         </div>
       )}
 

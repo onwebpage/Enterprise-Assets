@@ -74,7 +74,7 @@ function getError(error: unknown, fallback: string) {
 function money(value: number | string, currency: string) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency: /^[A-Z]{3}$/.test(currency) ? currency : "USD",
+    currency: /^[A-Z]{3}$/.test(currency) ? currency : "INR",
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
 }
@@ -891,7 +891,7 @@ export default function MultiCurrencyTab() {
               ["Active currencies", summary.data?.data?.activeCurrencyCount ?? "—"],
               ["Active rates", summary.data?.data?.activeRateCount ?? "—"],
               ["Draft revaluations", summary.data?.data?.draftRevaluationCount ?? "—"],
-              ["Posted gain/loss", summary.data?.data ? money(summary.data.data.postedGainLoss, activeCurrencies[0]?.code ?? "USD") : "—"],
+              ["Posted gain/loss", summary.data?.data ? money(summary.data.data.postedGainLoss, activeCurrencies[0]?.code ?? "INR") : "—"],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
                 <p className="text-[10px] uppercase tracking-wider text-white/30">{label}</p>

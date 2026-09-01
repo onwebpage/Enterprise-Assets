@@ -25,6 +25,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { formatINR } from '@/lib/currency';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const api = (path: string) => `${BASE}/api${path}`;
@@ -359,9 +360,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 function fmt(n: number) {
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n.toFixed(0)}`;
+  return formatINR(n, true);
 }
 function fmtNum(n: number) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -943,7 +942,7 @@ function OnboardingTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState({
-    name: '', legalName: '', industry: '', country: '', currency: 'USD',
+    name: '', legalName: '', industry: '', country: '', currency: 'INR',
     planId: '', billingCycle: 'monthly', trialDays: '', notes: '',
   });
   const [step, setStep] = useState(1);
@@ -961,7 +960,7 @@ function OnboardingTab() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['saas-tenants'] }); qc.invalidateQueries({ queryKey: ['saas-metrics'] });
       toast({ title: 'Tenant onboarded successfully! 🎉' });
-      setForm({ name: '', legalName: '', industry: '', country: '', currency: 'USD', planId: '', billingCycle: 'monthly', trialDays: '', notes: '' });
+      setForm({ name: '', legalName: '', industry: '', country: '', currency: 'INR', planId: '', billingCycle: 'monthly', trialDays: '', notes: '' });
       setStep(1);
     },
     onError: () => toast({ title: 'Error', description: 'Failed to create tenant', variant: 'destructive' }),
@@ -1002,7 +1001,7 @@ function OnboardingTab() {
               <label className="text-xs text-white/40 mb-1.5 block">Currency</label>
               <select value={form.currency} onChange={e => setForm(x => ({ ...x, currency: e.target.value }))}
                 className="w-full bg-[#050816] border border-white/[0.08] text-white text-sm rounded-md px-3 h-9 outline-none focus:border-[#2563EB]/50">
-                {['USD', 'EUR', 'GBP', 'INR', 'AUD', 'CAD'].map(c => <option key={c} value={c}>{c}</option>)}
+                {['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
@@ -2496,7 +2495,7 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
   const { toast } = useToast();
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: '', legalName: '', industry: '', country: '', currency: 'USD',
+    name: '', legalName: '', industry: '', country: '', currency: 'INR',
     planId: '', billingCycle: 'monthly', notes: '',
     currentUsers: '', currentStorageGb: '',
   });
@@ -2508,7 +2507,7 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
         legalName: data.legalName ?? '',
         industry: data.industry ?? '',
         country: data.country ?? '',
-        currency: data.currency ?? 'USD',
+        currency: data.currency ?? 'INR',
         planId: String(data.planId ?? ''),
         billingCycle: data.billingCycle ?? 'monthly',
         notes: data.notes ?? '',
@@ -2980,7 +2979,7 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
                   <div>
                     <label className="text-xs text-white/40 mb-1 block">Currency</label>
                     <Input value={editForm.currency} onChange={e => setEditForm(x => ({ ...x, currency: e.target.value }))}
-                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="USD" />
+                      className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" placeholder="INR" />
                   </div>
                   <div>
                     <label className="text-xs text-white/40 mb-1 block">Billing Cycle</label>

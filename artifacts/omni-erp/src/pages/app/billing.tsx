@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { formatINR } from '@/lib/currency';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const apiFetch = (path: string, init?: RequestInit) => {
@@ -130,7 +131,7 @@ function fmtDate(d: string | null | undefined) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 function fmtMoney(n: number | string) {
-  return Number(n).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  return formatINR(n);
 }
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',

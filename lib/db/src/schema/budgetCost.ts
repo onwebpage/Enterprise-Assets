@@ -152,7 +152,7 @@ export const forecasts = pgTable("forecasts", {
   name: text("name").notNull(),
   method: text("method").notNull().default("manual"),
   status: text("status").notNull().default("draft"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("INR"),
   notes: text("notes"),
   createdBy: integer("created_by"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -34,7 +34,7 @@ export const bankAccounts = pgTable("bank_accounts", {
   accountNumber:  text("account_number"),
   bankName:       text("bank_name"),
   bankBranch:     text("bank_branch"),
-  currency:       text("currency").notNull().default("USD"),
+  currency:       text("currency").notNull().default("INR"),
   currentBalance: numeric("current_balance", { precision: 15, scale: 2 }).notNull().default("0"),
   accountType:    text("account_type").notNull().default("checking"), // BankAccountType
   status:         text("status").notNull().default("active"),          // BankAccountStatus
@@ -103,7 +103,7 @@ export const insertBankAccountSchema = z.object({
   accountNumber:  z.string().max(100).nullable().optional(),
   bankName:       z.string().max(200).nullable().optional(),
   bankBranch:     z.string().max(200).nullable().optional(),
-  currency:       z.string().max(10).optional().default("USD"),
+  currency:       z.string().max(10).optional().default("INR"),
   currentBalance: amountStr.optional().default("0"),
   accountType:    z.enum(BANK_ACCOUNT_TYPES).optional().default("checking"),
   status:         z.enum(BANK_ACCOUNT_STATUSES).optional().default("active"),

@@ -54,7 +54,7 @@ export const billingInvoices = pgTable("billing_invoices", {
   subtotal: numeric("subtotal", { precision: 10, scale: 2 }).notNull().default("0"),
   tax: numeric("tax", { precision: 10, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 10, scale: 2 }).notNull().default("0"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("INR"),
   paidAt: timestamp("paid_at"),
   dueDate: timestamp("due_date"),
   lineItems: jsonb("line_items").notNull().default([]),

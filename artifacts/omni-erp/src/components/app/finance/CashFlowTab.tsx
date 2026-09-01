@@ -4,15 +4,15 @@ import { RefreshCw, Download, TrendingUp, TrendingDown, Minus } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useCashFlow, type CFLineItem } from '@/hooks/useGeneralLedger';
+import { formatINR } from '@/lib/currency';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtAmt(v: string | number, showSign = false): string {
   const n = typeof v === 'string' ? parseFloat(v) : v;
-  const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  if (n < 0) return `(${abs})`;
-  if (showSign && n > 0) return `+$${abs}`;
-  return `$${abs}`;
+  if (n < 0) return `(${formatINR(Math.abs(n))})`;
+  if (showSign && n > 0) return `+${formatINR(n)}`;
+  return formatINR(n);
 }
 
 function amtColor(v: string) {

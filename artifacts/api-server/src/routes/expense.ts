@@ -39,7 +39,7 @@ const itemSchema = z.object({
   expenseDate: date,
   description: z.string().min(1).max(500),
   amount: money,
-  currency: z.string().max(10).default("USD"),
+  currency: z.string().max(10).default("INR"),
   paymentMethod: z.string().max(50).nullable().optional(),
   vendor: z.string().max(200).nullable().optional(),
   receiptNumber: z.string().max(100).nullable().optional(),

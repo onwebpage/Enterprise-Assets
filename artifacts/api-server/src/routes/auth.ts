@@ -95,7 +95,7 @@ router.post("/register", async (req, res) => {
           legalName: displayCompanyName,
           employeeCount: 1,
           status: "active",
-          currency: "USD",
+          currency: "INR",
           fiscalYearStart: "Jan",
           type: "Parent",
         })

@@ -75,7 +75,7 @@ export default function BuyerFormModal({ buyer, onClose }: Props) {
             {/* Name */}
             <div>
               <label className="block text-xs font-medium text-white/50 mb-1.5">Company / Name <span className="text-red-400">*</span></label>
-              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Apex Global Inc."
+              <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="Buyer company name"
                 className="bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/25" />
             </div>
 

@@ -188,7 +188,7 @@ function CustomerFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-white/70 text-xs">Company</Label>
-              <Input value={company} onChange={e => setCompany(e.target.value)} placeholder="Stratford Industries"
+                  <Input value={company} onChange={e => setCompany(e.target.value)} placeholder="Your company name"
                 className="bg-white/[0.05] border-white/[0.08] text-white placeholder:text-white/20" />
             </div>
             <div className="space-y-1.5">

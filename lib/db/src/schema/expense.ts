@@ -99,7 +99,7 @@ export const expenseItems = pgTable("expense_items", {
   expenseDate: text("expense_date").notNull(),
   description: text("description").notNull(),
   amount: numeric("amount", { precision: 15, scale: 2 }).notNull().default("0"),
-  currency: text("currency").notNull().default("USD"),
+  currency: text("currency").notNull().default("INR"),
   paymentMethod: text("payment_method"),
   vendor: text("vendor"),
   receiptNumber: text("receipt_number"),

@@ -65,7 +65,7 @@ INSERT INTO admin_system_settings (key, value, category, description) VALUES
   ('support_email',      'support@omnierp.io','general','Support email address'),
   ('timezone',           'UTC',             'general',  'System timezone'),
   ('date_format',        'YYYY-MM-DD',      'general',  'Default date format'),
-  ('currency',           'USD',             'general',  'Default currency'),
+  ('currency',           'INR',             'general',  'Default currency'),
   ('maintenance_mode',   'false',           'general',  'Maintenance mode toggle'),
   ('max_file_size_mb',   '50',              'general',  'Max upload file size in MB'),
   ('smtp_host',          '',                'email',    'SMTP host'),

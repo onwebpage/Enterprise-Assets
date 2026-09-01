@@ -49,7 +49,7 @@ export default function CustomerFormModal({ open, onClose, onSubmit, isSubmittin
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', phone: '', address: '', city: '', country: 'USA', taxId: '', creditLimit: '0', currency: 'USD', status: 'active', notes: '' },
+    defaultValues: { name: '', email: '', phone: '', address: '', city: '', country: 'India', taxId: '', creditLimit: '0', currency: 'INR', status: 'active', notes: '' },
   });
 
   const watchedStatus = watch('status');
@@ -58,7 +58,7 @@ export default function CustomerFormModal({ open, onClose, onSubmit, isSubmittin
     if (open) {
       reset(customer
         ? { name: customer.name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', country: customer.country ?? '', taxId: customer.taxId ?? '', creditLimit: customer.creditLimit, currency: customer.currency, status: customer.status, notes: customer.notes ?? '' }
-        : { name: '', email: '', phone: '', address: '', city: '', country: 'USA', taxId: '', creditLimit: '0', currency: 'USD', status: 'active', notes: '' });
+        : { name: '', email: '', phone: '', address: '', city: '', country: 'India', taxId: '', creditLimit: '0', currency: 'INR', status: 'active', notes: '' });
     }
   }, [open, customer, reset]);
 
@@ -97,7 +97,7 @@ export default function CustomerFormModal({ open, onClose, onSubmit, isSubmittin
           {/* Name */}
           <div>
             <label className={labelCls}>Customer Name *</label>
-            <Input {...register('name')} placeholder="e.g. Stratford Industries" className={inputCls} />
+            <Input {...register('name')} placeholder="e.g. Your customer name" className={inputCls} />
             {errors.name && <p className={errorCls}>{errors.name.message}</p>}
           </div>
 
@@ -146,7 +146,7 @@ export default function CustomerFormModal({ open, onClose, onSubmit, isSubmittin
             <div>
               <label className={labelCls}>Currency</label>
               <select {...register('currency')} className={cn('w-full rounded-md border px-3 h-9 text-sm appearance-none', inputCls)}>
-                {['USD', 'EUR', 'GBP', 'INR', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+                {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
                   <option key={c} value={c} className="bg-[#0d1225]">{c}</option>
                 ))}
               </select>

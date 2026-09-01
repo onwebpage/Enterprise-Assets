@@ -4,6 +4,7 @@ import { TrendingUp, TrendingDown, Clock, Users, AlertCircle, DollarSign } from 
 import AppLayout from '@/components/app/AppLayout';
 import { cn } from '@/lib/utils';
 import { useARSummary, useARPermissions } from '@/hooks/useAccountsReceivable';
+import { formatINR } from '@/lib/currency';
 import CustomersTab from '@/components/app/ar/CustomersTab';
 import InvoicesTab from '@/components/app/ar/InvoicesTab';
 import PaymentsTab from '@/components/app/ar/PaymentsTab';
@@ -15,11 +16,7 @@ type Tab = 'overview' | 'customers' | 'invoices' | 'payments';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtMoney(v: string | undefined) {
-  if (!v) return '$0';
-  const n = parseFloat(v);
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(2)}`;
+  return formatINR(v, true);
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────

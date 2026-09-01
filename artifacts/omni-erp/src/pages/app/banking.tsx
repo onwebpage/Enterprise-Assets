@@ -4,6 +4,7 @@ import { Building2, ArrowUpRight, GitMerge, AlertCircle, DollarSign } from 'luci
 import AppLayout from '@/components/app/AppLayout';
 import { cn } from '@/lib/utils';
 import { useBankingSummary, useBankingPermissions } from '@/hooks/useBanking';
+import { formatINR } from '@/lib/currency';
 import AccountsTab from '@/components/app/banking/AccountsTab';
 import TransactionsTab from '@/components/app/banking/TransactionsTab';
 import ReconciliationsTab from '@/components/app/banking/ReconciliationsTab';
@@ -15,11 +16,7 @@ type Tab = 'overview' | 'accounts' | 'transactions' | 'reconciliations';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtMoney(v: string | undefined) {
-  if (!v) return '$0';
-  const n = parseFloat(v);
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toFixed(2)}`;
+  return formatINR(v, true);
 }
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────

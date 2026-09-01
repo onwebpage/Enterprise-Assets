@@ -12,7 +12,7 @@ export const organizations = pgTable("organizations", {
   employeeCount: integer("employee_count").default(0),
   logoUrl: text("logo_url"),
   status: text("status").notNull().default("active"),
-  currency: text("currency").default("USD"),
+  currency: text("currency").default("INR"),
   fiscalYearStart: text("fiscal_year_start").default("Jan"),
   type: text("type").default("Parent"), // Parent, Subsidiary
   country: text("country"),

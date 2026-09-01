@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { formatINR } from "@/lib/currency";
 import {
   useExpenseSummary, useExpenseCategories, useExpensePolicies, useExpenseClaims,
   useCreateExpenseCategory, useDeleteExpenseCategory,
@@ -42,8 +43,8 @@ export default function Expense() {
   ];
   const kpis = [
     { label: "Total claims", value: summaryLoading ? "..." : fmt(summary?.totalClaims), change: `${fmt(summary?.draftClaims)} drafts`, icon: FileText, iconColor: "text-cyan-400", gradient: "bg-cyan-500/15", sparkline: [2, 3, 4, 3, 5, 4, Number(summary?.totalClaims ?? 0)] },
-    { label: "Pending approval", value: summaryLoading ? "..." : fmt(summary?.pendingClaims), change: `$${fmt(summary?.pendingAmount)} pending`, icon: Wallet, iconColor: "text-amber-400", gradient: "bg-amber-500/15", sparkline: [1, 2, 2, 3, 2, 3, Number(summary?.pendingClaims ?? 0)] },
-    { label: "Reimbursed", value: summaryLoading ? "..." : fmt(summary?.reimbursedClaims), change: `$${fmt(summary?.totalAmount)} total`, icon: Banknote, iconColor: "text-emerald-400", gradient: "bg-emerald-500/15", sparkline: [2, 1, 2, 1, 2, 1, Number(summary?.reimbursedClaims ?? 0)] },
+    { label: "Pending approval", value: summaryLoading ? "..." : fmt(summary?.pendingClaims), change: `${formatINR(summary?.pendingAmount)} pending`, icon: Wallet, iconColor: "text-amber-400", gradient: "bg-amber-500/15", sparkline: [1, 2, 2, 3, 2, 3, Number(summary?.pendingClaims ?? 0)] },
+    { label: "Reimbursed", value: summaryLoading ? "..." : fmt(summary?.reimbursedClaims), change: `${formatINR(summary?.totalAmount)} total`, icon: Banknote, iconColor: "text-emerald-400", gradient: "bg-emerald-500/15", sparkline: [2, 1, 2, 1, 2, 1, Number(summary?.reimbursedClaims ?? 0)] },
     { label: "Active policies", value: summaryLoading ? "..." : fmt(summary?.activePolicies), change: `${fmt(summary?.totalCategories)} categories`, icon: ShieldCheck, iconColor: "text-purple-400", gradient: "bg-purple-500/15", sparkline: [1, 2, 2, 3, 2, 2, Number(summary?.activePolicies ?? 0)] },
   ];
   return <AppLayout breadcrumbs={[{ label: "Expense Management" }]}>
