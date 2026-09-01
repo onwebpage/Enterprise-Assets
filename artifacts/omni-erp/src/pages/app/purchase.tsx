@@ -11,10 +11,11 @@ import VendorsTab  from '@/components/app/purchase/VendorsTab';
 import OrdersTab   from '@/components/app/purchase/OrdersTab';
 import GRNTab      from '@/components/app/purchase/GRNTab';
 import RFQTab      from '@/components/app/purchase/RFQTab';
+import SourceToPayTab from '@/components/app/purchase/SourceToPayTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'vendors' | 'orders' | 'grn' | 'rfq';
+type Tab = 'overview' | 'source-to-pay' | 'vendors' | 'orders' | 'grn' | 'rfq';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ function OverviewTab({ onNavigate }: { onNavigate: (t: Tab) => void }) {
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview'        },
+  { id: 'source-to-pay', label: 'Source-to-Pay' },
   { id: 'vendors',  label: 'Vendors'         },
   { id: 'orders',   label: 'Purchase Orders' },
   { id: 'grn',      label: 'Goods Receipts'  },
@@ -276,6 +278,7 @@ export default function PurchasePage() {
         {/* Tab content */}
         <motion.div key={activeTab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
           {activeTab === 'overview' && <OverviewTab onNavigate={setActiveTab} />}
+          {activeTab === 'source-to-pay' && <SourceToPayTab />}
           {activeTab === 'vendors'  && <VendorsTab />}
           {activeTab === 'orders'   && <OrdersTab />}
           {activeTab === 'grn'      && <GRNTab />}

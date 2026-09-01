@@ -18,6 +18,17 @@ export type GRNStatus = (typeof GRN_STATUSES)[number];
 export const RFQ_STATUSES = ["draft", "sent", "responded", "converted", "cancelled"] as const;
 export type RFQStatus = (typeof RFQ_STATUSES)[number];
 
+export const PURCHASE_REQUISITION_STATUSES = ["draft", "submitted", "approved", "rejected", "converted", "cancelled"] as const;
+export type PurchaseRequisitionStatus = (typeof PURCHASE_REQUISITION_STATUSES)[number];
+export const PURCHASE_QUOTE_STATUSES = ["draft", "submitted", "awarded", "rejected", "expired"] as const;
+export type PurchaseQuoteStatus = (typeof PURCHASE_QUOTE_STATUSES)[number];
+export const PURCHASE_INVOICE_STATUSES = ["draft", "received", "matched", "exception", "approved", "partially_paid", "paid", "blocked"] as const;
+export type PurchaseInvoiceStatus = (typeof PURCHASE_INVOICE_STATUSES)[number];
+export const PURCHASE_PAYMENT_STATUSES = ["draft", "initiated", "processing", "paid", "failed", "cancelled"] as const;
+export type PurchasePaymentStatus = (typeof PURCHASE_PAYMENT_STATUSES)[number];
+export const PURCHASE_PAYMENT_METHODS = ["razorpay", "bank_transfer", "manual"] as const;
+export type PurchasePaymentMethod = (typeof PURCHASE_PAYMENT_METHODS)[number];
+
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface PurchaseVendor {
@@ -146,6 +157,56 @@ export interface PurchaseSummary {
   recentOrders: { id: number; poNumber: string; vendorName: string; orderDate: string; totalAmount: string; status: PurchaseOrderStatus }[];
 }
 
+export interface SourceToPaySummary {
+  requisitions: { total: number; pendingApproval: number; approved: number; committed: string };
+  invoices: { total: number; exceptions: number; awaitingApproval: number; outstanding: string };
+  payments: { total: number; pending: number; paid: string };
+  quotes: { total: number; active: number };
+  razorpayConfigured: boolean;
+}
+
+export interface PurchaseRequisitionLine {
+  id: number; requisitionId: number; itemCode: string | null; description: string; unit: string;
+  quantity: string; estimatedUnitPrice: string; taxRate: string; totalEstimate: string; sequence: number; createdAt: string;
+}
+export interface PurchaseRequisition {
+  id: number; orgId: number | null; requisitionNumber: string; requestedBy: number | null; department: string;
+  costCenter: string | null; neededBy: string; justification: string; estimatedAmount: string;
+  status: PurchaseRequisitionStatus; approvedBy: number | null; approvedAt: string | null;
+  rejectionReason: string | null; convertedPoId: number | null; lines?: PurchaseRequisitionLine[];
+  createdAt: string; updatedAt: string;
+}
+export interface PurchaseQuoteLine {
+  id: number; quoteId: number; itemCode: string | null; description: string; unit: string; quantity: string;
+  unitPrice: string; taxRate: string; taxAmount: string; totalAmount: string; sequence: number; createdAt: string;
+}
+export interface PurchaseQuote {
+  id: number; rfqId: number; vendorId: number; vendorName: string; quoteNumber: string; quoteDate: string;
+  validUntil: string | null; subtotal: string; taxAmount: string; totalAmount: string; deliveryDays: number | null;
+  paymentTerms: string | null; status: PurchaseQuoteStatus; awardReason: string | null; lines?: PurchaseQuoteLine[];
+  createdAt: string;
+}
+export interface PurchaseRfqInvite {
+  id: number; rfqId: number; vendorId: number; vendorName: string; status: string; invitedAt: string;
+  respondedAt: string | null; notes: string | null;
+}
+export interface PurchaseInvoiceLine {
+  id: number; invoiceId: number; poLineId: number | null; description: string; quantity: string;
+  unitPrice: string; taxRate: string; taxAmount: string; amount: string; sequence: number; createdAt: string;
+}
+export interface PurchaseInvoice {
+  id: number; orgId: number | null; invoiceNumber: string; vendorId: number; vendorName: string; poId: number | null;
+  grnId: number | null; invoiceDate: string; dueDate: string | null; currency: string; subtotal: string;
+  taxAmount: string; totalAmount: string; status: PurchaseInvoiceStatus; matchStatus: string; matchVariance: string;
+  notes: string | null; lines?: PurchaseInvoiceLine[]; createdAt: string; updatedAt: string;
+}
+export interface PurchasePayment {
+  id: number; paymentNumber: string; invoiceId: number; invoiceNumber: string; vendorId: number; vendorName: string;
+  amount: string; paymentDate: string; method: PurchasePaymentMethod; status: PurchasePaymentStatus;
+  providerOrderId: string | null; providerPaymentId: string | null; failureReason: string | null;
+  notes: string | null; paidAt: string | null; createdAt: string;
+}
+
 export interface PurchasePermissions {
   canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean;
 }
@@ -226,6 +287,24 @@ export interface RFQFormValues {
   notes?: string | null;
 }
 
+export interface PurchaseRequisitionFormValues {
+  department: string; costCenter?: string | null; neededBy: string; justification: string;
+  status?: PurchaseRequisitionStatus; lines: Array<{ itemCode?: string | null; description: string; unit?: string; quantity: string; estimatedUnitPrice: string; taxRate?: string; sequence?: number }>;
+}
+export interface PurchaseQuoteFormValues {
+  rfqId: number; vendorId: number; quoteNumber: string; quoteDate: string; validUntil?: string | null;
+  deliveryDays?: number | null; paymentTerms?: string | null; status?: PurchaseQuoteStatus;
+  lines: Array<{ itemCode?: string | null; description: string; unit?: string; quantity: string; unitPrice: string; taxRate?: string; sequence?: number }>;
+}
+export interface PurchaseInvoiceFormValues {
+  invoiceNumber: string; vendorId: number; poId?: number | null; grnId?: number | null; invoiceDate: string;
+  dueDate?: string | null; currency?: string; notes?: string | null;
+  lines: Array<{ poLineId?: number | null; description: string; quantity: string; unitPrice: string; taxRate?: string; sequence?: number }>;
+}
+export interface PurchasePaymentFormValues {
+  invoiceId: number; amount: string; paymentDate: string; method: PurchasePaymentMethod; notes?: string | null;
+}
+
 interface ListResponse<T> {
   success: boolean;
   data: T[];
@@ -238,12 +317,20 @@ interface ListResponse<T> {
 
 const QK = {
   summary:     ["purchase", "summary"] as const,
+  sourceSummary: ["purchase", "source-to-pay", "summary"] as const,
   permissions: ["purchase", "permissions"] as const,
   vendors:     (p?: object) => ["purchase", "vendors", p ?? {}] as const,
   orders:      (p?: object) => ["purchase", "orders",  p ?? {}] as const,
   order:       (id: number) => ["purchase", "order",   id]      as const,
   grns:        (p?: object) => ["purchase", "grns",    p ?? {}] as const,
   rfqs:        (p?: object) => ["purchase", "rfqs",    p ?? {}] as const,
+  requisitions: (p?: object) => ["purchase", "requisitions", p ?? {}] as const,
+  requisition: (id: number) => ["purchase", "requisition", id] as const,
+  invites: (id: number) => ["purchase", "rfq-invites", id] as const,
+  quotes: (id: number) => ["purchase", "quotes", id] as const,
+  invoices: (p?: object) => ["purchase", "invoices", p ?? {}] as const,
+  invoice: (id: number) => ["purchase", "invoice", id] as const,
+  payments: (p?: object) => ["purchase", "payments", p ?? {}] as const,
 };
 
 // ── Hooks ─────────────────────────────────────────────────────────────────────
@@ -261,6 +348,14 @@ export function usePurchasePermissions() {
     queryKey: QK.permissions,
     queryFn:  () => api.get("/purchase/my-permissions"),
     staleTime: 60_000,
+  });
+}
+
+export function useSourceToPaySummary() {
+  return useQuery<ApiResponse<SourceToPaySummary>>({
+    queryKey: QK.sourceSummary,
+    queryFn: () => api.get("/purchase/source-to-pay/summary"),
+    staleTime: 15_000,
   });
 }
 
@@ -473,5 +568,223 @@ export function useDeleteRFQ() {
       qc.invalidateQueries({ queryKey: ["purchase", "rfqs"] });
       qc.invalidateQueries({ queryKey: QK.summary });
     },
+  });
+}
+
+// Requisitions
+export interface RequisitionParams { search?: string; status?: string; page?: number; limit?: number; }
+
+export function usePurchaseRequisitions(params: RequisitionParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set("search", params.search);
+  if (params.status) qs.set("status", params.status);
+  qs.set("page", String(params.page ?? 1));
+  qs.set("limit", String(params.limit ?? 25));
+  return useQuery<ListResponse<PurchaseRequisition>>({
+    queryKey: QK.requisitions(params),
+    queryFn: () => api.get(`/purchase/requisitions?${qs}`),
+    staleTime: 15_000,
+  });
+}
+
+export function usePurchaseRequisition(id: number | null) {
+  return useQuery<ApiResponse<PurchaseRequisition>>({
+    queryKey: QK.requisition(id ?? 0),
+    queryFn: () => api.get(`/purchase/requisitions/${id}`),
+    enabled: !!id,
+    staleTime: 15_000,
+  });
+}
+
+function invalidateSourceToPay(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ["purchase", "source-to-pay"] });
+  qc.invalidateQueries({ queryKey: ["purchase", "requisitions"] });
+  qc.invalidateQueries({ queryKey: ["purchase", "rfqs"] });
+  qc.invalidateQueries({ queryKey: ["purchase", "orders"] });
+  qc.invalidateQueries({ queryKey: ["purchase", "invoices"] });
+  qc.invalidateQueries({ queryKey: ["purchase", "payments"] });
+  qc.invalidateQueries({ queryKey: QK.summary });
+}
+
+export function useCreatePurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PurchaseRequisitionFormValues) => api.post<ApiResponse<PurchaseRequisition>>("/purchase/requisitions", data),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useUpdatePurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<PurchaseRequisitionFormValues> }) => api.put<ApiResponse<PurchaseRequisition>>(`/purchase/requisitions/${id}`, data),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useDeletePurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete<ApiResponse<{ id: number }>>(`/purchase/requisitions/${id}`),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useApprovePurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<ApiResponse<PurchaseRequisition>>(`/purchase/requisitions/${id}/approve`, {}),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useRejectPurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) => api.post<ApiResponse<PurchaseRequisition>>(`/purchase/requisitions/${id}/reject`, { reason }),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useConvertPurchaseRequisition() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, vendorId }: { id: number; vendorId: number }) => api.post<ApiResponse<{ requisition: PurchaseRequisition; purchaseOrder: PurchaseOrder }>>(`/purchase/requisitions/${id}/convert`, { vendorId }),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+
+// RFQ supplier comparison
+export function usePurchaseRfqInvites(rfqId: number | null) {
+  return useQuery<ApiResponse<PurchaseRfqInvite[]>>({
+    queryKey: QK.invites(rfqId ?? 0),
+    queryFn: () => api.get(`/purchase/rfqs/${rfqId}/invites`),
+    enabled: !!rfqId,
+    staleTime: 15_000,
+  });
+}
+export function useInviteRfqVendors() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rfqId, vendorIds }: { rfqId: number; vendorIds: number[] }) => api.post<ApiResponse<PurchaseRfqInvite[]>>(`/purchase/rfqs/${rfqId}/invites`, { vendorIds }),
+    onSuccess: (_, variables) => { qc.invalidateQueries({ queryKey: QK.invites(variables.rfqId) }); },
+  });
+}
+export function usePurchaseRfqQuotes(rfqId: number | null) {
+  return useQuery<ApiResponse<PurchaseQuote[]>>({
+    queryKey: QK.quotes(rfqId ?? 0),
+    queryFn: () => api.get(`/purchase/rfqs/${rfqId}/quotes`),
+    enabled: !!rfqId,
+    staleTime: 15_000,
+  });
+}
+export function useCreatePurchaseQuote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PurchaseQuoteFormValues) => api.post<ApiResponse<PurchaseQuote>>(`/purchase/rfqs/${data.rfqId}/quotes`, data),
+    onSuccess: (_, variables) => { qc.invalidateQueries({ queryKey: QK.quotes(variables.rfqId) }); qc.invalidateQueries({ queryKey: ["purchase", "rfqs"] }); qc.invalidateQueries({ queryKey: QK.sourceSummary }); },
+  });
+}
+export function useUpdatePurchaseQuote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<PurchaseQuoteFormValues> }) => api.put<ApiResponse<PurchaseQuote>>(`/purchase/quotes/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["purchase", "quotes"] }); qc.invalidateQueries({ queryKey: QK.sourceSummary }); },
+  });
+}
+export function useAwardPurchaseQuote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rfqId, quoteId, awardReason }: { rfqId: number; quoteId: number; awardReason: string }) => api.post<ApiResponse<PurchaseOrder>>(`/purchase/rfqs/${rfqId}/award`, { quoteId, awardReason }),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+
+// Supplier invoices
+export interface PurchaseInvoiceParams { search?: string; status?: string; }
+export function usePurchaseInvoices(params: PurchaseInvoiceParams = {}) {
+  const qs = new URLSearchParams();
+  if (params.search) qs.set("search", params.search);
+  if (params.status) qs.set("status", params.status);
+  return useQuery<ListResponse<PurchaseInvoice>>({
+    queryKey: QK.invoices(params),
+    queryFn: () => api.get(`/purchase/invoices?${qs}`),
+    staleTime: 15_000,
+  });
+}
+export function usePurchaseInvoice(id: number | null) {
+  return useQuery<ApiResponse<PurchaseInvoice>>({
+    queryKey: QK.invoice(id ?? 0),
+    queryFn: () => api.get(`/purchase/invoices/${id}`),
+    enabled: !!id,
+  });
+}
+export function useCreatePurchaseInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PurchaseInvoiceFormValues) => api.post<ApiResponse<PurchaseInvoice>>("/purchase/invoices", data),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useUpdatePurchaseInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { dueDate?: string | null; notes?: string | null; status?: PurchaseInvoiceStatus } }) => api.put<ApiResponse<PurchaseInvoice>>(`/purchase/invoices/${id}`, data),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useDeletePurchaseInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete<ApiResponse<{ id: number }>>(`/purchase/invoices/${id}`),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useMatchPurchaseInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<ApiResponse<unknown>>(`/purchase/invoices/${id}/match`, {}),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useApprovePurchaseInvoice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<ApiResponse<PurchaseInvoice>>(`/purchase/invoices/${id}/approve`, {}),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+
+// Vendor payments
+export function usePurchasePayments(params: { status?: string } = {}) {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set("status", params.status);
+  return useQuery<ListResponse<PurchasePayment>>({
+    queryKey: QK.payments(params),
+    queryFn: () => api.get(`/purchase/payments?${qs}`),
+    staleTime: 15_000,
+  });
+}
+export function useCreatePurchasePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PurchasePaymentFormValues) => api.post<ApiResponse<PurchasePayment>>("/purchase/payments", data),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useCreateRazorpayOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.post<ApiResponse<{ payment: PurchasePayment; razorpayOrderId: string; keyId: string }>>(`/purchase/payments/${id}/razorpay-order`, {}),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useMarkPurchasePaymentPaid() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, providerPaymentId }: { id: number; providerPaymentId?: string }) => api.post<ApiResponse<PurchasePayment>>(`/purchase/payments/${id}/mark-paid`, { providerPaymentId }),
+    onSuccess: () => invalidateSourceToPay(qc),
+  });
+}
+export function useFailPurchasePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => api.post<ApiResponse<PurchasePayment>>(`/purchase/payments/${id}/fail`, { reason }),
+    onSuccess: () => invalidateSourceToPay(qc),
   });
 }
