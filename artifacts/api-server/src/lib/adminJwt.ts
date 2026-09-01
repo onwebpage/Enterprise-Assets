@@ -1,7 +1,11 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
 
-const ADMIN_JWT_SECRET =
-  (process.env.SESSION_SECRET ?? "dev-secret-change-in-production") + "-admin-v1";
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET is required to sign admin sessions.");
+}
+
+const ADMIN_JWT_SECRET = `${sessionSecret}-admin-v1`;
 const ADMIN_JWT_EXPIRES_IN = "8h";
 
 export interface AdminJwtPayload {

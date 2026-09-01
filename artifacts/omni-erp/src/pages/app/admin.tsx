@@ -32,14 +32,14 @@ import {
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface Tenant { id: number; name: string; legal_name: string | null; status: string; country: string | null; industry: string | null; gstin: string | null; user_count: number; plan_name: string | null; sub_status: string | null; created_at: string; }
-interface AdminUser { id: number; first_name: string; last_name: string; email: string; status: string; org_name: string | null; role_name: string | null; mfa_enabled: boolean; last_login_at: string | null; created_at: string; }
-interface Role { id: number; name: string; description: string | null; is_system: boolean; org_name: string | null; user_count: number; created_at: string; }
+interface AdminUser { id: number; first_name: string; last_name: string; email: string; status: string; org_id: number | null; role_id: number | null; org_name: string | null; role_name: string | null; mfa_enabled: boolean; last_login_at: string | null; created_at: string; }
+interface Role { id: number; name: string; description: string | null; is_system: boolean; org_id: number | null; org_name: string | null; user_count: number; created_at: string; permissions?: Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>; }
 interface Plan { id: number; name: string; slug: string; price_monthly: string; price_yearly: string; max_users: number | null; max_modules: number | null; max_storage_gb: number | null; is_active: boolean; sub_count: number; created_at: string; }
 interface Subscription { id: number; org_name: string; plan_name: string; status: string; billing_cycle: string; mrr: string; started_at: string; expires_at: string | null; current_users: number; }
 interface Invoice { id: number; invoice_number: string; org_name: string; status: string; total: string; currency: string; created_at: string; paid_at: string | null; }
 interface License { id: number; license_key: string; org_id: number | null; org_name: string | null; plan_name: string; max_users: number; max_modules: number; issued_to: string | null; expires_at: string | null; status: string; notes: string | null; created_at: string; }
 interface Feature { id: number; key: string; name: string; description: string | null; is_enabled: boolean; rollout_pct: number; category: string; updated_at: string; }
-interface Whitelabel { id: number; org_id: number; org_name: string; is_enabled: boolean; product_name: string; primary_color: string; accent_color: string; custom_domain: string | null; support_email: string | null; hide_powered_by: boolean; logo_url: string | null; }
+interface Whitelabel { id: number | null; org_id: number; org_name: string; is_configured: boolean; is_enabled: boolean; product_name: string | null; primary_color: string | null; accent_color: string | null; custom_domain: string | null; support_email: string | null; hide_powered_by: boolean; logo_url: string | null; }
 interface Agency { id: number; name: string; slug: string; contact_name: string | null; contact_email: string | null; country: string | null; commission_rate: number; status: string; client_count: number; total_commission: string | null; }
 interface Integration { id: number; name: string; category: string; is_enabled: boolean; status: string; config: Record<string, string>; last_tested_at: string | null; }
 interface Ticket { id: number; ticket_number: string; subject: string; description: string | null; org_id: number | null; org_name: string | null; reporter_name: string | null; reporter_email: string | null; priority: string; category: string; status: string; assigned_to: string | null; resolution: string | null; created_at: string; }
@@ -334,10 +334,50 @@ function UsersRolesTab() {
   const { toast } = useToast();
   const [userSearch, setUserSearch] = useState('');
   const [sub, setSub] = useState<'users' | 'roles'>('users');
+  const [userDialog, setUserDialog] = useState<'create' | 'edit' | null>(null);
+  const [roleDialog, setRoleDialog] = useState<'create' | 'edit' | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [userSaving, setUserSaving] = useState(false);
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [permissionDialog, setPermissionDialog] = useState<Role | null>(null);
+  const [permissionSaving, setPermissionSaving] = useState(false);
+  const [permissionRows, setPermissionRows] = useState<Array<{ module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>>([]);
+  const [userForm, setUserForm] = useState({ email: '', password: '', firstName: '', lastName: '', orgId: 'none', roleId: 'none', status: 'active', mfaEnabled: false });
+  const [roleForm, setRoleForm] = useState({ name: '', description: '', orgId: 'none' });
 
   const usersQ = `?${userSearch ? `search=${encodeURIComponent(userSearch)}` : ''}`;
   const { data: users = [], isLoading: uLoading } = useAdminQuery<AdminUser[]>(['admin-users', userSearch], `/users${usersQ}`);
   const { data: roles = [], isLoading: rLoading } = useAdminQuery<Role[]>(['admin-roles'], '/roles');
+  const { data: tenants = [] } = useAdminQuery<Tenant[]>(['admin-user-tenants'], '/tenants');
+  const { data: permissionModules = [] } = useAdminQuery<string[]>(['admin-permission-modules'], '/permission-modules');
+
+  const openCreateUser = () => {
+    setSelectedUser(null);
+    setUserForm({ email: '', password: '', firstName: '', lastName: '', orgId: 'none', roleId: 'none', status: 'active', mfaEnabled: false });
+    setUserDialog('create');
+  };
+  const openEditUser = (u: AdminUser) => {
+    setSelectedUser(u);
+    setUserForm({ email: u.email, password: '', firstName: u.first_name, lastName: u.last_name, orgId: u.org_id ? String(u.org_id) : 'none', roleId: u.role_id ? String(u.role_id) : 'none', status: u.status, mfaEnabled: u.mfa_enabled });
+    setUserDialog('edit');
+  };
+  const saveUser = async () => {
+    if (!userForm.email || !userForm.firstName || !userForm.lastName || (userDialog === 'create' && userForm.password.length < 12) || (userDialog === 'edit' && userForm.password && userForm.password.length < 12)) {
+      toast({ title: userDialog === 'create' ? 'Email, names, and a 12-character password are required' : 'Email and names are required; a reset password must be 12+ characters', variant: 'destructive' });
+      return;
+    }
+    setUserSaving(true);
+    try {
+      const body = { email: userForm.email, password: userForm.password || undefined, firstName: userForm.firstName, lastName: userForm.lastName, orgId: userForm.orgId === 'none' ? null : Number(userForm.orgId), roleId: userForm.roleId === 'none' ? null : Number(userForm.roleId), status: userForm.status, mfaEnabled: userForm.mfaEnabled };
+      if (userDialog === 'create') await adminCall('/users', 'POST', body);
+      else await adminCall(`/users/${selectedUser!.id}`, 'PUT', body);
+      qc.invalidateQueries({ queryKey: ['admin-users'] });
+      setUserDialog(null);
+      toast({ title: userDialog === 'create' ? 'User created' : 'User updated' });
+    } catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
+    setUserSaving(false);
+  };
 
   const setUserStatus = async (u: AdminUser, status: string) => {
     try { await adminCall(`/users/${u.id}/status`, 'PATCH', { status }); qc.invalidateQueries({ queryKey: ['admin-users'] }); toast({ title: 'User status updated' }); }
@@ -350,6 +390,47 @@ function UsersRolesTab() {
     catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
   };
 
+  const openCreateRole = () => { setSelectedRole(null); setRoleForm({ name: '', description: '', orgId: 'none' }); setRoleDialog('create'); };
+  const openEditRole = (r: Role) => { setSelectedRole(r); setRoleForm({ name: r.name, description: r.description ?? '', orgId: r.org_id ? String(r.org_id) : 'none' }); setRoleDialog('edit'); };
+  const saveRole = async () => {
+    if (!roleForm.name.trim()) { toast({ title: 'Role name is required', variant: 'destructive' }); return; }
+    setRoleSaving(true);
+    try {
+      const body = { name: roleForm.name.trim(), description: roleForm.description.trim() || null, ...(roleDialog === 'create' ? { orgId: roleForm.orgId === 'none' ? null : Number(roleForm.orgId) } : {}) };
+      if (roleDialog === 'create') await adminCall('/roles', 'POST', body);
+      else await adminCall(`/roles/${selectedRole!.id}`, 'PUT', body);
+      qc.invalidateQueries({ queryKey: ['admin-roles'] });
+      setRoleDialog(null);
+      toast({ title: roleDialog === 'create' ? 'Role created' : 'Role updated' });
+    } catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
+    setRoleSaving(false);
+  };
+  const deleteRole = async (r: Role) => {
+    if (!confirm(`Delete role "${r.name}"?`)) return;
+    try { await adminCall(`/roles/${r.id}`, 'DELETE'); qc.invalidateQueries({ queryKey: ['admin-roles'] }); toast({ title: 'Role deleted' }); }
+    catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
+  };
+  const openPermissions = (r: Role) => {
+    const existing = new Map((r.permissions ?? []).map(permission => [permission.module, permission]));
+    const modules = Array.from(new Set([...permissionModules, ...existing.keys()])).sort();
+    setPermissionRows(modules.map(module => {
+      const current = existing.get(module);
+      return { module, canView: current?.canView ?? false, canCreate: current?.canCreate ?? false, canEdit: current?.canEdit ?? false, canDelete: current?.canDelete ?? false };
+    }));
+    setPermissionDialog(r);
+  };
+  const savePermissions = async () => {
+    if (!permissionDialog) return;
+    setPermissionSaving(true);
+    try {
+      await adminCall(`/roles/${permissionDialog.id}/permissions`, 'PUT', { permissions: permissionRows });
+      qc.invalidateQueries({ queryKey: ['admin-roles'] });
+      setPermissionDialog(null);
+      toast({ title: 'Role permissions updated' });
+    } catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
+    setPermissionSaving(false);
+  };
+
   return (
     <div>
       <div className="flex gap-2 mb-5">
@@ -360,7 +441,9 @@ function UsersRolesTab() {
 
       {sub === 'users' && (
         <>
-          <SectionHeader title="All Users" desc="View and manage all users across tenants" />
+          <SectionHeader title="All Users" desc="View and manage all users across tenants" action={
+            <Button size="sm" onClick={openCreateUser} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white"><Plus className="w-4 h-4 mr-1" />Add User</Button>
+          } />
           <div className="relative max-w-xs mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
             <Input value={userSearch} onChange={e => setUserSearch(e.target.value)} placeholder="Search by name or email…" className="pl-9 bg-white/[0.03] border-white/[0.08] text-white" />
@@ -375,6 +458,7 @@ function UsersRolesTab() {
               <StatusBadge s={u.status} />,
               fmtDateTime(u.last_login_at),
               <div className="flex gap-1">
+                 <Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openEditUser(u)}><Pencil className="w-3.5 h-3.5" /></Button>
                 <Select value={u.status} onValueChange={v => setUserStatus(u, v)}>
                   <SelectTrigger className="h-7 px-2 bg-transparent border-white/[0.06] text-white/50 text-xs w-28"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem><SelectItem value="suspended">Suspended</SelectItem></SelectContent>
@@ -383,22 +467,69 @@ function UsersRolesTab() {
               </div>
             ])}
           />
+          <Dialog open={!!userDialog} onOpenChange={() => setUserDialog(null)}>
+            <DialogContent className="bg-[#0a0f1e] border-white/[0.1] text-white">
+              <DialogHeader><DialogTitle>{userDialog === 'create' ? 'Add User' : 'Edit User'}</DialogTitle><DialogDescription className="text-white/40">Changes are written to the tenant user directory.</DialogDescription></DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-white/60 text-xs">First Name *</Label><Input value={userForm.firstName} onChange={e => setUserForm(f => ({ ...f, firstName: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                  <div><Label className="text-white/60 text-xs">Last Name *</Label><Input value={userForm.lastName} onChange={e => setUserForm(f => ({ ...f, lastName: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                </div>
+                <div><Label className="text-white/60 text-xs">Email *</Label><Input type="email" value={userForm.email} onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))} disabled={userDialog === 'edit'} className="bg-white/[0.04] border-white/[0.08] text-white mt-1 disabled:opacity-50" /></div>
+                <div><Label className="text-white/60 text-xs">{userDialog === 'create' ? 'Temporary Password * (12+ characters)' : 'Reset Password (optional, 12+ characters)'}</Label><Input type="password" value={userForm.password} onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))} autoComplete="new-password" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-white/60 text-xs">Organisation</Label><Select value={userForm.orgId} onValueChange={v => setUserForm(f => ({ ...f, orgId: v, roleId: 'none' }))}><SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Unassigned</SelectItem>{tenants.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent></Select></div>
+                  <div><Label className="text-white/60 text-xs">Role</Label><Select value={userForm.roleId} onValueChange={v => setUserForm(f => ({ ...f, roleId: v }))}><SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Unassigned</SelectItem>{roles.filter(r => !userForm.orgId || userForm.orgId === 'none' || !r.org_id || String(r.org_id) === userForm.orgId).map(r => <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>)}</SelectContent></Select></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label className="text-white/60 text-xs">Status</Label><Select value={userForm.status} onValueChange={v => setUserForm(f => ({ ...f, status: v }))}><SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem><SelectItem value="suspended">Suspended</SelectItem></SelectContent></Select></div>
+                  <div className="flex items-center gap-3 pt-6"><Switch checked={userForm.mfaEnabled} onCheckedChange={v => setUserForm(f => ({ ...f, mfaEnabled: v }))} /><Label className="text-white/60 text-sm">MFA enabled</Label></div>
+                </div>
+              </div>
+              <DialogFooter><Button variant="ghost" onClick={() => setUserDialog(null)} className="text-white/50">Cancel</Button><Button onClick={saveUser} disabled={userSaving} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white">{userSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save User'}</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
 
       {sub === 'roles' && (
         <>
-          <SectionHeader title="Roles & Permissions" desc="All roles across tenant organisations" />
+           <SectionHeader title="Roles & Permissions" desc="All roles across tenant organisations" action={<Button size="sm" onClick={openCreateRole} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white"><Plus className="w-4 h-4 mr-1" />Add Role</Button>} />
           <DataTable loading={rLoading}
-            cols={['#', 'Role Name', 'Organisation', 'Users', 'System Role', 'Created']}
+             cols={['#', 'Role Name', 'Organisation', 'Users', 'Permissions', 'System Role', 'Created', 'Actions']}
             rows={roles.map(r => [
               r.id, <span className="font-medium text-white/80">{r.name}</span>,
               r.org_name ?? <span className="text-white/30 italic">Global</span>,
               r.user_count,
+               r.permissions?.length ?? 0,
               r.is_system ? <CheckCircle2 className="w-4 h-4 text-blue-400" /> : '—',
               fmtDate(r.created_at),
+               <div className="flex gap-1"><Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openPermissions(r)} title="Edit permissions"><Shield className="w-3.5 h-3.5" /></Button><Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openEditRole(r)}><Pencil className="w-3.5 h-3.5" /></Button>{!r.is_system && <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400/60 hover:text-red-400" onClick={() => deleteRole(r)}><Trash2 className="w-3.5 h-3.5" /></Button>}</div>,
             ])}
           />
+           <Dialog open={!!roleDialog} onOpenChange={() => setRoleDialog(null)}>
+             <DialogContent className="bg-[#0a0f1e] border-white/[0.1] text-white">
+               <DialogHeader><DialogTitle>{roleDialog === 'create' ? 'Add Role' : 'Edit Role'}</DialogTitle><DialogDescription className="text-white/40">System roles are protected from deletion.</DialogDescription></DialogHeader>
+               <div className="space-y-3">
+                 <div><Label className="text-white/60 text-xs">Role Name *</Label><Input value={roleForm.name} onChange={e => setRoleForm(f => ({ ...f, name: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+                 <div><Label className="text-white/60 text-xs">Description</Label><Textarea value={roleForm.description} onChange={e => setRoleForm(f => ({ ...f, description: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1 resize-none" rows={3} /></div>
+                 {roleDialog === 'create' && <div><Label className="text-white/60 text-xs">Organisation</Label><Select value={roleForm.orgId} onValueChange={v => setRoleForm(f => ({ ...f, orgId: v }))}><SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Global role</SelectItem>{tenants.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent></Select></div>}
+               </div>
+               <DialogFooter><Button variant="ghost" onClick={() => setRoleDialog(null)} className="text-white/50">Cancel</Button><Button onClick={saveRole} disabled={roleSaving || !roleForm.name.trim()} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white">{roleSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Role'}</Button></DialogFooter>
+             </DialogContent>
+           </Dialog>
+           <Dialog open={!!permissionDialog} onOpenChange={() => setPermissionDialog(null)}>
+             <DialogContent className="bg-[#0a0f1e] border-white/[0.1] text-white max-w-3xl">
+               <DialogHeader><DialogTitle>Edit Permissions · {permissionDialog?.name}</DialogTitle><DialogDescription className="text-white/40">Choose the actions this role can perform in each module.</DialogDescription></DialogHeader>
+               <ScrollArea className="max-h-[55vh] pr-3">
+                 <div className="rounded-lg border border-white/[0.08] overflow-hidden">
+                   <div className="grid grid-cols-[1fr_repeat(4,72px)] gap-2 px-3 py-2 bg-white/[0.04] text-[10px] uppercase tracking-wider text-white/40"><span>Module</span><span className="text-center">View</span><span className="text-center">Create</span><span className="text-center">Edit</span><span className="text-center">Delete</span></div>
+                   {permissionRows.map((permission, index) => <div key={permission.module} className="grid grid-cols-[1fr_repeat(4,72px)] gap-2 items-center px-3 py-2 border-t border-white/[0.06] text-xs"><span className="text-white/70">{permission.module}</span>{(['canView', 'canCreate', 'canEdit', 'canDelete'] as const).map(field => <label key={field} className="flex justify-center"><input type="checkbox" checked={permission[field]} onChange={e => setPermissionRows(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, [field]: e.target.checked } : row))} className="h-4 w-4 accent-[#2563EB]" /></label>)}</div>)}
+                 </div>
+               </ScrollArea>
+               <DialogFooter><Button variant="ghost" onClick={() => setPermissionDialog(null)} className="text-white/50">Cancel</Button><Button onClick={savePermissions} disabled={permissionSaving} className="bg-[#2563EB] hover:bg-[#1d4ed8] text-white">{permissionSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Permissions'}</Button></DialogFooter>
+             </DialogContent>
+           </Dialog>
         </>
       )}
     </div>
@@ -566,7 +697,7 @@ function LicensesTab() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [dialog, setDialog] = useState(false);
-  const [form, setForm] = useState({ issuedTo: '', planName: 'Professional', maxUsers: '50', maxModules: '10', expiresAt: '', notes: '' });
+  const [form, setForm] = useState({ issuedTo: '', planName: '', maxUsers: '', maxModules: '', expiresAt: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
 
@@ -575,7 +706,12 @@ function LicensesTab() {
   const save = async () => {
     setSaving(true);
     try {
-      await adminCall('/licenses', 'POST', { ...form, maxUsers: parseInt(form.maxUsers), maxModules: parseInt(form.maxModules), expiresAt: form.expiresAt || null });
+      if (!form.planName.trim() || !Number.isInteger(Number(form.maxUsers)) || Number(form.maxUsers) < 1 || !Number.isInteger(Number(form.maxModules)) || Number(form.maxModules) < 1) {
+        toast({ title: 'Plan name, max users, and max modules are required', variant: 'destructive' });
+        setSaving(false);
+        return;
+      }
+      await adminCall('/licenses', 'POST', { ...form, planName: form.planName.trim(), maxUsers: Number(form.maxUsers), maxModules: Number(form.maxModules), expiresAt: form.expiresAt || null });
       qc.invalidateQueries({ queryKey: ['admin-licenses'] });
       setDialog(false);
       toast({ title: 'License created' });
@@ -628,17 +764,12 @@ function LicensesTab() {
           <div className="space-y-3">
             <div><Label className="text-white/60 text-xs">Issued To</Label><Input value={form.issuedTo} onChange={e => setForm(f => ({ ...f, issuedTo: e.target.value }))} placeholder="Company or person name" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-white/60 text-xs">Plan Name</Label>
-                <Select value={form.planName} onValueChange={v => setForm(f => ({ ...f, planName: v }))}>
-                  <SelectTrigger className="bg-white/[0.04] border-white/[0.08] text-white mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Starter">Starter</SelectItem><SelectItem value="Professional">Professional</SelectItem><SelectItem value="Enterprise">Enterprise</SelectItem></SelectContent>
-                </Select>
-              </div>
+              <div><Label className="text-white/60 text-xs">Plan Name *</Label><Input value={form.planName} onChange={e => setForm(f => ({ ...f, planName: e.target.value }))} placeholder="Name of the licensed plan" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
               <div><Label className="text-white/60 text-xs">Expires At</Label><Input type="date" value={form.expiresAt} onChange={e => setForm(f => ({ ...f, expiresAt: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-white/60 text-xs">Max Users</Label><Input type="number" value={form.maxUsers} onChange={e => setForm(f => ({ ...f, maxUsers: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
-              <div><Label className="text-white/60 text-xs">Max Modules</Label><Input type="number" value={form.maxModules} onChange={e => setForm(f => ({ ...f, maxModules: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              <div><Label className="text-white/60 text-xs">Max Users *</Label><Input type="number" min={1} value={form.maxUsers} onChange={e => setForm(f => ({ ...f, maxUsers: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              <div><Label className="text-white/60 text-xs">Max Modules *</Label><Input type="number" min={1} value={form.maxModules} onChange={e => setForm(f => ({ ...f, maxModules: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             </div>
             <div><Label className="text-white/60 text-xs">Notes</Label><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1 resize-none" rows={2} /></div>
           </div>
@@ -794,7 +925,7 @@ function WhiteLabelTab() {
 
   const openEdit = (w: Whitelabel) => {
     setEditing(w);
-    setForm({ isEnabled: w.is_enabled, productName: w.product_name, primaryColor: w.primary_color, accentColor: w.accent_color, customDomain: w.custom_domain ?? '', supportEmail: w.support_email ?? '', hidePoweredBy: w.hide_powered_by, logoUrl: w.logo_url ?? '' });
+    setForm({ isEnabled: w.is_enabled, productName: w.product_name ?? '', primaryColor: w.primary_color ?? '#2563EB', accentColor: w.accent_color ?? '#06B6D4', customDomain: w.custom_domain ?? '', supportEmail: w.support_email ?? '', hidePoweredBy: w.hide_powered_by, logoUrl: w.logo_url ?? '' });
   };
 
   const save = async () => {
@@ -816,12 +947,12 @@ function WhiteLabelTab() {
         cols={['Organisation', 'Product Name', 'Domain', 'Colors', 'Status', 'Actions']}
         rows={wl.map(w => [
           w.org_name,
-          w.product_name,
+           w.product_name ?? <span className="text-white/30">Not configured</span>,
           w.custom_domain ?? <span className="text-white/30">—</span>,
-          <div className="flex gap-1.5">
-            <div className="w-4 h-4 rounded" style={{ background: w.primary_color }} title={w.primary_color} />
-            <div className="w-4 h-4 rounded" style={{ background: w.accent_color }} title={w.accent_color} />
-          </div>,
+           w.is_configured ? <div className="flex gap-1.5">
+             {w.primary_color && <div className="w-4 h-4 rounded" style={{ background: w.primary_color }} title={w.primary_color} />}
+             {w.accent_color && <div className="w-4 h-4 rounded" style={{ background: w.accent_color }} title={w.accent_color} />}
+           </div> : <span className="text-white/30">—</span>,
           <StatusBadge s={w.is_enabled ? 'enabled' : 'disabled'} />,
           <Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openEdit(w)}><Pencil className="w-3.5 h-3.5" /></Button>
         ])}

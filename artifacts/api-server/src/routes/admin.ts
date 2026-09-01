@@ -6,11 +6,28 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { pool } from "@workspace/db";
 import { requireAdminAuth, type AdminRequest } from "../middlewares/adminAuth";
+import { hashPassword } from "../lib/password";
 
 const router = Router();
 router.use(requireAdminAuth);
 const execFileAsync = promisify(execFile);
 const backupDirectory = process.env.ADMIN_BACKUP_DIR ?? "/tmp/omnierp-backups";
+const tenantStatuses = new Set(["active", "suspended", "inactive"]);
+const userStatuses = new Set(["active", "inactive", "suspended"]);
+const subscriptionStatuses = new Set(["active", "trial", "suspended", "cancelled"]);
+const licenseStatuses = new Set(["active", "revoked", "expired"]);
+
+function positiveId(value: unknown): number | null {
+  const id = Number(value);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function textField(value: unknown, maxLength: number): string | null {
+  if (value == null) return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && trimmed.length <= maxLength ? trimmed : null;
+}
 
 async function runDatabaseBackup(id: number, name: string, type: string, initiatedBy: string) {
   const outputPath = path.join(backupDirectory, `${name}.dump`);
@@ -130,14 +147,16 @@ router.get("/tenants", async (req, res) => {
 router.post("/tenants", async (req: AdminRequest, res) => {
   try {
     const { name, legalName, country, industry, gstin, status } = req.body;
-    if (!name) { res.status(400).json({ success: false, error: "Name is required" }); return; }
+    const normalizedName = textField(name, 200);
+    if (!normalizedName) { res.status(400).json({ success: false, error: "Name is required and must be 200 characters or fewer" }); return; }
+    if (status != null && !tenantStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid tenant status" }); return; }
     const result = await pool.query<{ id: number }>(
       `INSERT INTO organizations (name, legal_name, country, industry, gstin, status)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [name, legalName ?? null, country ?? null, industry ?? null, gstin ?? null, status ?? "active"]
+      [normalizedName, textField(legalName, 200), textField(country, 100), textField(industry, 150), textField(gstin, 50), status ?? "active"]
     );
     const id = result.rows[0]?.id;
-    await audit(req, "CREATE", "tenant", id, { name });
+    await audit(req, "CREATE", "tenant", id, { name: normalizedName });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -147,13 +166,18 @@ router.post("/tenants", async (req: AdminRequest, res) => {
 
 router.put("/tenants/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { name, legalName, country, industry, gstin, status } = req.body;
+    const normalizedName = textField(name, 200);
+    if (!id || !normalizedName) { res.status(400).json({ success: false, error: "A valid id and name are required" }); return; }
+    if (status != null && !tenantStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid tenant status" }); return; }
+    const existing = await pool.query("SELECT 1 FROM organizations WHERE id=$1", [id]);
+    if (!existing.rowCount) { res.status(404).json({ success: false, error: "Tenant not found" }); return; }
     await pool.query(
       `UPDATE organizations SET name=$1, legal_name=$2, country=$3, industry=$4, gstin=$5, status=$6, updated_at=NOW() WHERE id=$7`,
-      [name, legalName ?? null, country ?? null, industry ?? null, gstin ?? null, status ?? "active", id]
+      [normalizedName, textField(legalName, 200), textField(country, 100), textField(industry, 150), textField(gstin, 50), status ?? "active", id]
     );
-    await audit(req, "UPDATE", "tenant", id, { name });
+    await audit(req, "UPDATE", "tenant", id, { name: normalizedName });
     res.json({ success: true, data: null });
   } catch (e) {
     console.error(e);
@@ -163,8 +187,11 @@ router.put("/tenants/:id", async (req: AdminRequest, res) => {
 
 router.patch("/tenants/:id/status", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { status } = req.body;
+    if (!id || !tenantStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid tenant id or status" }); return; }
+    const existing = await pool.query("SELECT 1 FROM organizations WHERE id=$1", [id]);
+    if (!existing.rowCount) { res.status(404).json({ success: false, error: "Tenant not found" }); return; }
     await pool.query(`UPDATE organizations SET status=$1, updated_at=NOW() WHERE id=$2`, [status, id]);
     await audit(req, "STATUS_CHANGE", "tenant", id, { status });
     res.json({ success: true, data: null });
@@ -176,7 +203,20 @@ router.patch("/tenants/:id/status", async (req: AdminRequest, res) => {
 
 router.delete("/tenants/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid tenant id" }); return; }
+    const dependencies = await pool.query<{ users: number; subscriptions: number }>(
+      `SELECT
+         (SELECT COUNT(*)::int FROM users WHERE org_id=$1) AS users,
+         (SELECT COUNT(*)::int FROM saas_subscriptions WHERE org_id=$1) AS subscriptions`,
+      [id],
+    );
+    const dependencyRow = dependencies.rows[0];
+    if (!dependencyRow) { res.status(404).json({ success: false, error: "Tenant not found" }); return; }
+    if (dependencyRow.users > 0 || dependencyRow.subscriptions > 0) {
+      res.status(409).json({ success: false, error: "Tenant cannot be deleted while users or subscriptions are attached" });
+      return;
+    }
     await pool.query(`DELETE FROM organizations WHERE id=$1`, [id]);
     await audit(req, "DELETE", "tenant", id);
     res.json({ success: true, data: null });
@@ -193,7 +233,7 @@ router.get("/users", async (req, res) => {
   try {
     const search = req.query.search as string | undefined;
     let query = `
-      SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.mfa_enabled,
+       SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.org_id, u.role_id, u.mfa_enabled,
              u.last_login_at, u.created_at, o.name AS org_name, r.name AS role_name
       FROM users u
       LEFT JOIN organizations o ON o.id = u.org_id
@@ -214,10 +254,114 @@ router.get("/users", async (req, res) => {
   }
 });
 
+router.post("/users", async (req: AdminRequest, res) => {
+  try {
+    const { email, password, firstName, lastName, orgId, roleId, status, mfaEnabled } = req.body;
+    const normalizedEmail = textField(email, 320)?.toLowerCase();
+    const normalizedFirstName = textField(firstName, 100);
+    const normalizedLastName = textField(lastName, 100);
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) ||
+      !normalizedFirstName || !normalizedLastName || typeof password !== "string" || password.length < 12 || password.length > 200) {
+      res.status(400).json({ success: false, error: "Valid email, first and last name, and a 12–200 character password are required" });
+      return;
+    }
+    if (status != null && !userStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid user status" }); return; }
+    const organizationId = orgId == null || orgId === "" ? null : positiveId(orgId);
+    const role = roleId == null || roleId === "" ? null : positiveId(roleId);
+    if (orgId != null && orgId !== "" && !organizationId) { res.status(400).json({ success: false, error: "Invalid organization id" }); return; }
+    if (roleId != null && roleId !== "" && !role) { res.status(400).json({ success: false, error: "Invalid role id" }); return; }
+    if (organizationId && !(await pool.query("SELECT 1 FROM organizations WHERE id=$1", [organizationId])).rowCount) {
+      res.status(400).json({ success: false, error: "Organization not found" }); return;
+    }
+    if (role && !(await pool.query("SELECT 1 FROM roles WHERE id=$1", [role])).rowCount) {
+      res.status(400).json({ success: false, error: "Role not found" }); return;
+    }
+    if (role) {
+      const roleResult = await pool.query<{ org_id: number | null }>("SELECT org_id FROM roles WHERE id=$1", [role]);
+      const roleOrgId = roleResult.rows[0]?.org_id;
+      if (roleOrgId != null && roleOrgId !== organizationId) {
+        res.status(400).json({ success: false, error: "Role belongs to a different organization" }); return;
+      }
+    }
+    const passwordHash = await hashPassword(password);
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash, first_name, last_name, org_id, role_id, status, mfa_enabled)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       RETURNING id, email, first_name, last_name, org_id, role_id, status, mfa_enabled, created_at`,
+      [normalizedEmail, passwordHash, normalizedFirstName, normalizedLastName, organizationId, role, status ?? "active", mfaEnabled === true],
+    );
+    await audit(req, "CREATE", "user", result.rows[0]?.id, { email: normalizedEmail });
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (e) {
+    if ((e as { code?: string }).code === "23505") {
+      res.status(409).json({ success: false, error: "Email already exists" }); return;
+    }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to create user" });
+  }
+});
+
+router.put("/users/:id", async (req: AdminRequest, res) => {
+  try {
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid user id" }); return; }
+    const { email, password, firstName, lastName, orgId, roleId, status, mfaEnabled } = req.body;
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    const add = (sql: string, value: unknown) => { values.push(value); updates.push(`${sql}=$${values.length}`); };
+    if (email !== undefined) {
+      const normalizedEmail = textField(email, 320)?.toLowerCase();
+      if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) { res.status(400).json({ success: false, error: "Invalid email" }); return; }
+      add("email", normalizedEmail);
+    }
+    if (firstName !== undefined) { const value = textField(firstName, 100); if (!value) { res.status(400).json({ success: false, error: "First name is required" }); return; } add("first_name", value); }
+    if (lastName !== undefined) { const value = textField(lastName, 100); if (!value) { res.status(400).json({ success: false, error: "Last name is required" }); return; } add("last_name", value); }
+    if (password !== undefined) {
+      if (typeof password !== "string" || password.length < 12 || password.length > 200) { res.status(400).json({ success: false, error: "Password must be 12–200 characters" }); return; }
+      add("password_hash", await hashPassword(password));
+    }
+    if (status !== undefined) { if (!userStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid user status" }); return; } add("status", status); }
+    if (mfaEnabled !== undefined) { if (typeof mfaEnabled !== "boolean") { res.status(400).json({ success: false, error: "MFA status must be boolean" }); return; } add("mfa_enabled", mfaEnabled); }
+    if (orgId !== undefined) { const value = orgId === null || orgId === "" ? null : positiveId(orgId); if (orgId !== null && orgId !== "" && !value) { res.status(400).json({ success: false, error: "Invalid organization id" }); return; } add("org_id", value); }
+    if (roleId !== undefined) {
+      const value = roleId === null || roleId === "" ? null : positiveId(roleId);
+      if (roleId !== null && roleId !== "" && !value) { res.status(400).json({ success: false, error: "Invalid role id" }); return; }
+      if (value) {
+        const roleResult = await pool.query<{ org_id: number | null }>("SELECT org_id FROM roles WHERE id=$1", [value]);
+        if (!roleResult.rowCount) { res.status(400).json({ success: false, error: "Role not found" }); return; }
+        if (roleResult.rows[0]?.org_id != null && orgId !== undefined) {
+          const organizationId = orgId === null || orgId === "" ? null : positiveId(orgId);
+          if (organizationId !== roleResult.rows[0].org_id) {
+            res.status(400).json({ success: false, error: "Role belongs to a different organization" }); return;
+          }
+        }
+      }
+      add("role_id", value);
+    }
+    if (!updates.length) { res.status(400).json({ success: false, error: "No changes supplied" }); return; }
+    values.push(id);
+    const result = await pool.query(
+      `UPDATE users SET ${updates.join(", ")}, updated_at=NOW() WHERE id=$${values.length}
+       RETURNING id, email, first_name, last_name, org_id, role_id, status, mfa_enabled, updated_at`,
+      values,
+    );
+    if (!result.rowCount) { res.status(404).json({ success: false, error: "User not found" }); return; }
+    await audit(req, "UPDATE", "user", id, { fields: updates.map(field => field.split("=")[0]) });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (e) {
+    if ((e as { code?: string }).code === "23505") { res.status(409).json({ success: false, error: "Email already exists" }); return; }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update user" });
+  }
+});
+
 router.patch("/users/:id/status", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { status } = req.body;
+    if (!id || !userStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid user id or status" }); return; }
+    const existing = await pool.query("SELECT 1 FROM users WHERE id=$1", [id]);
+    if (!existing.rowCount) { res.status(404).json({ success: false, error: "User not found" }); return; }
     await pool.query(`UPDATE users SET status=$1, updated_at=NOW() WHERE id=$2`, [status, id]);
     await audit(req, "USER_STATUS_CHANGE", "user", id, { status });
     res.json({ success: true, data: null });
@@ -229,8 +373,10 @@ router.patch("/users/:id/status", async (req: AdminRequest, res) => {
 
 router.delete("/users/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
-    await pool.query(`DELETE FROM users WHERE id=$1`, [id]);
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid user id" }); return; }
+    const result = await pool.query(`DELETE FROM users WHERE id=$1`, [id]);
+    if (!result.rowCount) { res.status(404).json({ success: false, error: "User not found" }); return; }
     await audit(req, "DELETE", "user", id);
     res.json({ success: true, data: null });
   } catch (e) {
@@ -242,18 +388,143 @@ router.delete("/users/:id", async (req: AdminRequest, res) => {
 router.get("/roles", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT r.id, r.name, r.description, r.is_system, r.created_at,
+      SELECT r.id, r.name, r.description, r.is_system, r.org_id, r.created_at,
              o.name AS org_name,
-             COUNT(DISTINCT u.id)::int AS user_count
+             COUNT(DISTINCT u.id)::int AS user_count,
+             COALESCE(jsonb_agg(DISTINCT jsonb_build_object(
+               'module', p.module, 'canView', p.can_view, 'canCreate', p.can_create,
+               'canEdit', p.can_edit, 'canDelete', p.can_delete
+             )) FILTER (WHERE p.id IS NOT NULL), '[]') AS permissions
       FROM roles r
       LEFT JOIN organizations o ON o.id = r.org_id
       LEFT JOIN users u ON u.role_id = r.id
+      LEFT JOIN permissions p ON p.role_id = r.id
       GROUP BY r.id, o.name ORDER BY r.created_at DESC
     `);
     res.json({ success: true, data: result.rows });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to fetch roles" });
+  }
+});
+
+router.get("/permission-modules", async (_req, res) => {
+  try {
+    const result = await pool.query<{ module: string }>("SELECT DISTINCT module FROM permissions WHERE module IS NOT NULL ORDER BY module");
+    res.json({ success: true, data: result.rows.map(row => row.module) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to fetch permission modules" });
+  }
+});
+
+router.put("/roles/:id/permissions", async (req: AdminRequest, res) => {
+  try {
+    const id = positiveId(req.params["id"]);
+    const input = req.body?.permissions;
+    if (!id || !Array.isArray(input) || input.length > 200) {
+      res.status(400).json({ success: false, error: "A valid role and permission list are required" }); return;
+    }
+    const normalized = input.map((permission: unknown) => {
+      const item = permission as Record<string, unknown>;
+      return {
+        module: textField(item.module, 100),
+        canView: item.canView === true,
+        canCreate: item.canCreate === true,
+        canEdit: item.canEdit === true,
+        canDelete: item.canDelete === true,
+      };
+    });
+    if (normalized.some(permission => !permission.module)) {
+      res.status(400).json({ success: false, error: "Every permission needs a module name" }); return;
+    }
+    const role = await pool.query("SELECT id FROM roles WHERE id=$1", [id]);
+    if (!role.rowCount) { res.status(404).json({ success: false, error: "Role not found" }); return; }
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM permissions WHERE role_id=$1", [id]);
+      for (const permission of normalized) {
+        await client.query(
+          `INSERT INTO permissions (role_id, module, can_view, can_create, can_edit, can_delete)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [id, permission.module, permission.canView, permission.canCreate, permission.canEdit, permission.canDelete],
+        );
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+    await audit(req, "UPDATE_PERMISSIONS", "role", id, { permissionCount: normalized.length });
+    res.json({ success: true, data: normalized });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update role permissions" });
+  }
+});
+
+router.post("/roles", async (req: AdminRequest, res) => {
+  try {
+    const name = textField(req.body.name, 100);
+    const description = textField(req.body.description, 500);
+    const orgId = req.body.orgId == null || req.body.orgId === "" ? null : positiveId(req.body.orgId);
+    if (!name) { res.status(400).json({ success: false, error: "Role name is required" }); return; }
+    if (req.body.orgId != null && req.body.orgId !== "" && !orgId) { res.status(400).json({ success: false, error: "Invalid organization id" }); return; }
+    const result = await pool.query(
+      `INSERT INTO roles (name, description, org_id, is_system) VALUES ($1,$2,$3,false) RETURNING id,name,description,org_id,is_system,created_at`,
+      [name, description, orgId],
+    );
+    await audit(req, "CREATE", "role", result.rows[0]?.id, { name });
+    res.status(201).json({ success: true, data: { ...result.rows[0], permissions: [] } });
+  } catch (e) {
+    if ((e as { code?: string }).code === "23505") { res.status(409).json({ success: false, error: "Role already exists" }); return; }
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to create role" });
+  }
+});
+
+router.put("/roles/:id", async (req: AdminRequest, res) => {
+  try {
+    const id = positiveId(req.params["id"]);
+    const name = req.body.name === undefined ? undefined : textField(req.body.name, 100);
+    const description = req.body.description === undefined ? undefined : textField(req.body.description, 500);
+    if (!id || (req.body.name !== undefined && !name)) { res.status(400).json({ success: false, error: "Invalid role id or name" }); return; }
+    const updates: string[] = [];
+    const values: unknown[] = [];
+    if (name !== undefined) { values.push(name); updates.push(`name=$${values.length}`); }
+    if (description !== undefined) { values.push(description); updates.push(`description=$${values.length}`); }
+    if (!updates.length) { res.status(400).json({ success: false, error: "No changes supplied" }); return; }
+    values.push(id);
+    const result = await pool.query(`UPDATE roles SET ${updates.join(", ")} WHERE id=$${values.length} RETURNING id,name,description,org_id,is_system,created_at`, values);
+    if (!result.rowCount) { res.status(404).json({ success: false, error: "Role not found" }); return; }
+    await audit(req, "UPDATE", "role", id, { fields: updates.map(field => field.split("=")[0]) });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update role" });
+  }
+});
+
+router.delete("/roles/:id", async (req: AdminRequest, res) => {
+  try {
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid role id" }); return; }
+    const role = await pool.query<{ is_system: boolean; user_count: number }>(
+      `SELECT r.is_system, COUNT(u.id)::int AS user_count FROM roles r LEFT JOIN users u ON u.role_id=r.id WHERE r.id=$1 GROUP BY r.id`,
+      [id],
+    );
+    if (!role.rowCount) { res.status(404).json({ success: false, error: "Role not found" }); return; }
+    if (role.rows[0]?.is_system) { res.status(409).json({ success: false, error: "System roles cannot be deleted" }); return; }
+    if ((role.rows[0]?.user_count ?? 0) > 0) { res.status(409).json({ success: false, error: "Role cannot be deleted while users are assigned" }); return; }
+    await pool.query("DELETE FROM roles WHERE id=$1", [id]);
+    await audit(req, "DELETE", "role", id);
+    res.json({ success: true, data: null });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to delete role" });
   }
 });
 
@@ -310,13 +581,19 @@ router.post("/plans", async (req: AdminRequest, res) => {
 
 router.put("/plans/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { name, priceMonthly, priceYearly, maxUsers, maxModules, maxStorageGb, isActive } = req.body;
+    const normalizedName = textField(name, 120);
+    const monthly = Number(priceMonthly);
+    const yearly = Number(priceYearly);
+    if (!id || !normalizedName || !Number.isFinite(monthly) || monthly < 0 || !Number.isFinite(yearly) || yearly < 0) {
+      res.status(400).json({ success: false, error: "Valid plan id, name, and non-negative prices are required" }); return;
+    }
     await pool.query(
       `UPDATE saas_plans SET name=$1, price_monthly=$2, price_yearly=$3, max_users=$4, max_modules=$5, max_storage_gb=$6, is_active=$7, updated_at=NOW() WHERE id=$8`,
-      [name, priceMonthly, priceYearly, maxUsers ?? null, maxModules ?? null, maxStorageGb ?? null, isActive ?? true, id]
+      [normalizedName, monthly, yearly, maxUsers ?? null, maxModules ?? null, maxStorageGb ?? null, isActive ?? true, id]
     );
-    await audit(req, "UPDATE", "plan", id, { name });
+    await audit(req, "UPDATE", "plan", id, { name: normalizedName });
     res.json({ success: true, data: null });
   } catch (e) {
     console.error(e);
@@ -326,8 +603,12 @@ router.put("/plans/:id", async (req: AdminRequest, res) => {
 
 router.delete("/plans/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
-    await pool.query(`DELETE FROM saas_plans WHERE id=$1`, [id]);
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid plan id" }); return; }
+    const active = await pool.query("SELECT 1 FROM saas_subscriptions WHERE plan_id=$1 LIMIT 1", [id]);
+    if (active.rowCount) { res.status(409).json({ success: false, error: "Plan cannot be deleted while subscriptions reference it" }); return; }
+    const result = await pool.query(`UPDATE saas_plans SET is_active=false, updated_at=NOW() WHERE id=$1`, [id]);
+    if (!result.rowCount) { res.status(404).json({ success: false, error: "Plan not found" }); return; }
     await audit(req, "DELETE", "plan", id);
     res.json({ success: true, data: null });
   } catch (e) {
@@ -360,8 +641,11 @@ router.get("/subscriptions", async (req, res) => {
 
 router.patch("/subscriptions/:id/status", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { status } = req.body;
+    if (!id || !subscriptionStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid subscription id or status" }); return; }
+    const existing = await pool.query("SELECT 1 FROM saas_subscriptions WHERE id=$1", [id]);
+    if (!existing.rowCount) { res.status(404).json({ success: false, error: "Subscription not found" }); return; }
     await pool.query(`UPDATE saas_subscriptions SET status=$1, updated_at=NOW() WHERE id=$2`, [status, id]);
     await audit(req, "SUB_STATUS_CHANGE", "subscription", id, { status });
     res.json({ success: true, data: null });
@@ -434,11 +718,22 @@ router.get("/licenses", async (_req, res) => {
 router.post("/licenses", async (req: AdminRequest, res) => {
   try {
     const { orgId, planName, maxUsers, maxModules, issuedTo, expiresAt, notes } = req.body;
+    const normalizedPlan = textField(planName, 120);
+    const users = Number(maxUsers);
+    const modules = Number(maxModules);
+    if (!normalizedPlan || !Number.isInteger(users) || users < 1 || !Number.isInteger(modules) || modules < 1) {
+      res.status(400).json({ success: false, error: "Plan name, max users, and max modules are required" }); return;
+    }
+    const organizationId = orgId == null || orgId === "" ? null : positiveId(orgId);
+    if (orgId != null && orgId !== "" && !organizationId) { res.status(400).json({ success: false, error: "Invalid organization id" }); return; }
+    if (organizationId && !(await pool.query("SELECT 1 FROM organizations WHERE id=$1", [organizationId])).rowCount) {
+      res.status(400).json({ success: false, error: "Organization not found" }); return;
+    }
     const key = `LIC-${randomBytes(8).toString("hex").toUpperCase()}`;
     const result = await pool.query<{ id: number }>(
       `INSERT INTO admin_licenses (license_key, org_id, plan_name, max_users, max_modules, issued_to, expires_at, notes)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [key, orgId ?? null, planName ?? "Professional", maxUsers ?? 50, maxModules ?? 10, issuedTo ?? null, expiresAt ? new Date(expiresAt) : null, notes ?? null]
+      [key, organizationId, normalizedPlan, users, modules, textField(issuedTo, 200), expiresAt ? new Date(expiresAt) : null, textField(notes, 2000)]
     );
     await audit(req, "CREATE", "license", result.rows[0]?.id, { key, planName });
     res.status(201).json({ success: true, data: { id: result.rows[0]?.id, licenseKey: key } });
@@ -450,8 +745,11 @@ router.post("/licenses", async (req: AdminRequest, res) => {
 
 router.patch("/licenses/:id/status", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
+    const id = positiveId(req.params["id"]);
     const { status } = req.body;
+    if (!id || !licenseStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid license id or status" }); return; }
+    const existing = await pool.query("SELECT 1 FROM admin_licenses WHERE id=$1", [id]);
+    if (!existing.rowCount) { res.status(404).json({ success: false, error: "License not found" }); return; }
     await pool.query(`UPDATE admin_licenses SET status=$1, updated_at=NOW() WHERE id=$2`, [status, id]);
     await audit(req, "LICENSE_STATUS_CHANGE", "license", id, { status });
     res.json({ success: true, data: null });
@@ -463,8 +761,10 @@ router.patch("/licenses/:id/status", async (req: AdminRequest, res) => {
 
 router.delete("/licenses/:id", async (req: AdminRequest, res) => {
   try {
-    const id = parseInt(req.params["id"] as string);
-    await pool.query(`DELETE FROM admin_licenses WHERE id=$1`, [id]);
+    const id = positiveId(req.params["id"]);
+    if (!id) { res.status(400).json({ success: false, error: "Invalid license id" }); return; }
+    const result = await pool.query(`DELETE FROM admin_licenses WHERE id=$1`, [id]);
+    if (!result.rowCount) { res.status(404).json({ success: false, error: "License not found" }); return; }
     await audit(req, "DELETE", "license", id);
     res.json({ success: true, data: null });
   } catch (e) {
@@ -621,10 +921,11 @@ router.get("/whitelabel", async (_req, res) => {
         w.id,
         o.id AS org_id,
         o.name AS org_name,
-        COALESCE(w.is_enabled, false) AS is_enabled,
-        COALESCE(w.product_name, 'OmniERP') AS product_name,
-        COALESCE(w.primary_color, '#2563EB') AS primary_color,
-        COALESCE(w.accent_color, '#06B6D4') AS accent_color,
+         w.id IS NOT NULL AS is_configured,
+         COALESCE(w.is_enabled, false) AS is_enabled,
+         w.product_name,
+         w.primary_color,
+         w.accent_color,
         w.custom_domain,
         w.support_email,
         COALESCE(w.hide_powered_by, false) AS hide_powered_by,
