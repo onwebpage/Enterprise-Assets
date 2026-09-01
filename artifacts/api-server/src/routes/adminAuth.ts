@@ -39,7 +39,15 @@ router.post("/login", async (req, res) => {
       ?? req.socket.remoteAddress ?? "unknown";
     const rlKey = `admin-login:${ip}`;
 
-    const rateCheck = checkRateLimit(rlKey);
+    const policy = await pool.query<{ key: string; value: string }>(
+      "SELECT key, value FROM admin_system_settings WHERE key IN ('max_login_attempts', 'lockout_minutes')",
+    );
+    const policyValues = Object.fromEntries(policy.rows.map(row => [row.key, Number(row.value)]));
+    const rateCheck = checkRateLimit(
+      rlKey,
+      policyValues.max_login_attempts,
+      policyValues.lockout_minutes,
+    );
     if (!rateCheck.allowed) {
       const retryMins = Math.ceil((rateCheck.retryAfterMs ?? 900000) / 60000);
       res.status(429).json({
@@ -177,18 +185,19 @@ router.patch("/credentials", requireAdminAuth, async (req: AdminRequest, res) =>
       return;
     }
 
+    await client.query("BEGIN");
     const current = await client.query<{ username: string; password_hash: string }>(
       "SELECT username, password_hash FROM super_admins WHERE id = $1 AND is_active = true FOR UPDATE",
       [req.admin!.adminId],
     );
     const row = current.rows[0];
     if (!row || row.username !== normalizedCurrentUsername || !(await verifyPassword(currentPassword, row.password_hash))) {
+      await client.query("ROLLBACK");
       res.status(401).json({ success: false, error: "Current credentials are incorrect" });
       return;
     }
 
     const newHash = await hashPassword(newPassword);
-    await client.query("BEGIN");
     const updated = await client.query<{ id: number; username: string; session_version: number }>(
       `UPDATE super_admins
        SET username = $1, password_hash = $2, session_version = session_version + 1, updated_at = NOW()

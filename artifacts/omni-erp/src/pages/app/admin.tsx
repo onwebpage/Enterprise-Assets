@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/app/AdminLayout';
-import { useAdminAuth, adminFetch } from '@/contexts/adminAuth';
+import { useAdminAuth, adminFetch, adminDownload } from '@/contexts/adminAuth';
 import { useToast } from '@/hooks/use-toast';
 import {
   LayoutDashboard, Building2, Users, Shield, CreditCard, Key, Zap,
@@ -812,7 +812,7 @@ function WhiteLabelTab() {
   return (
     <div>
       <SectionHeader title="White Label Configuration" desc="Customize branding for each tenant" />
-      <DataTable loading={isLoading}
+       <DataTable loading={isLoading}
         cols={['Organisation', 'Product Name', 'Domain', 'Colors', 'Status', 'Actions']}
         rows={wl.map(w => [
           w.org_name,
@@ -825,7 +825,7 @@ function WhiteLabelTab() {
           <StatusBadge s={w.is_enabled ? 'enabled' : 'disabled'} />,
           <Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openEdit(w)}><Pencil className="w-3.5 h-3.5" /></Button>
         ])}
-        empty="No white label configurations. Add tenants first."
+         empty="No tenants available for white-label configuration."
       />
 
       <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
@@ -1305,6 +1305,26 @@ function BackupTab() {
     catch (e: unknown) { toast({ title: 'Error', description: (e as Error).message, variant: 'destructive' }); }
   };
 
+  const download = async (b: Backup) => {
+    if (b.status !== 'completed') {
+      toast({ title: 'Backup is not ready', description: 'Only completed backups can be downloaded.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const blob = await adminDownload(`/backups/${b.id}/download`);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${b.backup_name}.dump`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e: unknown) {
+      toast({ title: 'Download failed', description: (e as Error).message, variant: 'destructive' });
+    }
+  };
+
   function fmtSize(bytes: number | null) {
     if (!bytes) return '—';
     if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
@@ -1346,7 +1366,10 @@ function BackupTab() {
           b.initiated_by,
           fmtDateTime(b.started_at),
           fmtDateTime(b.completed_at),
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400/60 hover:text-red-400" onClick={() => del(b)}><Trash2 className="w-3.5 h-3.5" /></Button>
+           <div className="flex items-center gap-1">
+             {b.status === 'completed' && <Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => download(b)} title="Download backup"><Download className="w-3.5 h-3.5" /></Button>}
+             <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400/60 hover:text-red-400" onClick={() => del(b)} title="Delete backup record"><Trash2 className="w-3.5 h-3.5" /></Button>
+           </div>
         ])}
         empty="No backup records yet."
       />
@@ -1633,6 +1656,15 @@ function GlobalSettingsTab() {
     confirmPassword: '',
   });
   const [credentialSaving, setCredentialSaving] = useState(false);
+
+  useEffect(() => {
+    if (!admin) return;
+    setCredentialForm(form => ({
+      ...form,
+      currentUsername: admin.username,
+      newUsername: admin.username,
+    }));
+  }, [admin]);
 
   const cats = [...new Set(settings.map(s => s.category))];
 

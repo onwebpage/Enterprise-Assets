@@ -6,8 +6,16 @@ const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000; // 15 min
 const LOCKOUT_MS = 15 * 60 * 1000; // 15 min
 
-export function checkRateLimit(key: string): { allowed: boolean; remaining: number; retryAfterMs?: number } {
+export function checkRateLimit(
+  key: string,
+  maxAttempts = MAX_ATTEMPTS,
+  lockoutMinutes = LOCKOUT_MS / 60000,
+): { allowed: boolean; remaining: number; retryAfterMs?: number } {
   const now = Date.now();
+  const normalizedMaxAttempts = Number.isInteger(maxAttempts) && maxAttempts >= 1 ? maxAttempts : MAX_ATTEMPTS;
+  const normalizedLockoutMs = Number.isInteger(lockoutMinutes) && lockoutMinutes >= 1
+    ? lockoutMinutes * 60 * 1000
+    : LOCKOUT_MS;
   const entry = store.get(key);
 
   if (entry) {
@@ -24,14 +32,14 @@ export function checkRateLimit(key: string): { allowed: boolean; remaining: numb
   const current = store.get(key) ?? { count: 0, firstAt: now };
   current.count += 1;
 
-  if (current.count > MAX_ATTEMPTS) {
-    current.lockedUntil = now + LOCKOUT_MS;
+  if (current.count > normalizedMaxAttempts) {
+    current.lockedUntil = now + normalizedLockoutMs;
     store.set(key, current);
-    return { allowed: false, remaining: 0, retryAfterMs: LOCKOUT_MS };
+    return { allowed: false, remaining: 0, retryAfterMs: normalizedLockoutMs };
   }
 
   store.set(key, current);
-  return { allowed: true, remaining: MAX_ATTEMPTS - current.count };
+  return { allowed: true, remaining: normalizedMaxAttempts - current.count };
 }
 
 export function recordSuccess(key: string): void {

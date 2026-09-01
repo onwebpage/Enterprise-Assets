@@ -600,9 +600,21 @@ router.delete("/features/:id", async (req: AdminRequest, res) => {
 router.get("/whitelabel", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT w.*, o.name AS org_name FROM saas_whitelabel w
-      JOIN organizations o ON o.id = w.org_id
-      ORDER BY w.created_at DESC
+      SELECT
+        w.id,
+        o.id AS org_id,
+        o.name AS org_name,
+        COALESCE(w.is_enabled, false) AS is_enabled,
+        COALESCE(w.product_name, 'OmniERP') AS product_name,
+        COALESCE(w.primary_color, '#2563EB') AS primary_color,
+        COALESCE(w.accent_color, '#06B6D4') AS accent_color,
+        w.custom_domain,
+        w.support_email,
+        COALESCE(w.hide_powered_by, false) AS hide_powered_by,
+        w.logo_url
+      FROM organizations o
+      LEFT JOIN saas_whitelabel w ON w.org_id = o.id
+      ORDER BY o.name
     `);
     res.json({ success: true, data: result.rows });
   } catch (e) {
@@ -614,14 +626,39 @@ router.get("/whitelabel", async (_req, res) => {
 router.put("/whitelabel/:orgId", async (req: AdminRequest, res) => {
   try {
     const orgId = parseInt(req.params["orgId"] as string);
+    if (!Number.isInteger(orgId) || orgId < 1) {
+      res.status(400).json({ success: false, error: "A valid organization is required" });
+      return;
+    }
     const { isEnabled, productName, primaryColor, accentColor, customDomain, supportEmail, hidePoweredBy, logoUrl } = req.body;
+    if (typeof productName !== "string" || productName.trim().length < 1 || productName.trim().length > 120) {
+      res.status(400).json({ success: false, error: "Product name must be 1–120 characters" });
+      return;
+    }
+    if (![primaryColor, accentColor].every((value) => typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value))) {
+      res.status(400).json({ success: false, error: "Colors must be valid six-digit hex values" });
+      return;
+    }
+    if (customDomain != null && customDomain !== "" && (typeof customDomain !== "string" || customDomain.length > 253)) {
+      res.status(400).json({ success: false, error: "Custom domain is invalid" });
+      return;
+    }
+    if (supportEmail != null && supportEmail !== "" && (typeof supportEmail !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail))) {
+      res.status(400).json({ success: false, error: "Support email is invalid" });
+      return;
+    }
+    const organization = await pool.query("SELECT 1 FROM organizations WHERE id = $1", [orgId]);
+    if (organization.rowCount !== 1) {
+      res.status(404).json({ success: false, error: "Organization not found" });
+      return;
+    }
     await pool.query(
       `INSERT INTO saas_whitelabel (org_id, is_enabled, product_name, primary_color, accent_color, custom_domain, support_email, hide_powered_by, logo_url)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (org_id) DO UPDATE SET
          is_enabled=$2, product_name=$3, primary_color=$4, accent_color=$5,
          custom_domain=$6, support_email=$7, hide_powered_by=$8, logo_url=$9, updated_at=NOW()`,
-      [orgId, isEnabled ?? true, productName ?? "OmniERP", primaryColor ?? "#2563EB", accentColor ?? "#06B6D4",
+       [orgId, isEnabled ?? true, productName.trim(), primaryColor, accentColor,
        customDomain ?? null, supportEmail ?? null, hidePoweredBy ?? false, logoUrl ?? null]
     );
     await audit(req, "UPDATE", "whitelabel", orgId, { productName });
@@ -962,7 +999,7 @@ router.delete("/backups/:id", async (req: AdminRequest, res) => {
 router.get("/notifications", async (_req, res) => {
   try {
     const result = await pool.query(`
-      SELECT n.*, u.email AS target_email FROM notifications n
+      SELECT n.*, n.read AS is_read, u.email AS target_email FROM notifications n
       LEFT JOIN users u ON u.id = n.user_id
       ORDER BY n.created_at DESC LIMIT 100
     `);
@@ -1064,8 +1101,8 @@ router.get("/health", async (_req, res) => {
     const start = Date.now();
     const [dbCheck, tableStats] = await Promise.all([
       pool.query<{ now: Date }>(`SELECT NOW() AS now`),
-      pool.query<{ relname: string; n_live_tup: number }>(
-        `SELECT relname, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 15`
+      pool.query<{ tablename: string; n_live_tup: number }>(
+        `SELECT relname AS tablename, n_live_tup FROM pg_stat_user_tables ORDER BY n_live_tup DESC LIMIT 15`
       ),
     ]);
     const dbLatency = Date.now() - start;

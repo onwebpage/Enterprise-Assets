@@ -35,6 +35,18 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return json as T;
 }
 
+export async function adminDownload(path: string): Promise<Blob> {
+  const token = localStorage.getItem(ADMIN_TOKEN_KEY);
+  const res = await fetch(`${BASE}/api/admin${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? `Download failed (${res.status})`);
+  }
+  return res.blob();
+}
+
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
