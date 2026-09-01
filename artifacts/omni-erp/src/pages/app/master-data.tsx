@@ -83,6 +83,35 @@ function cleanOptional(value: string): string | null {
   return value.trim() ? value.trim() : null;
 }
 
+function validateForm(entity: Entity, form: FormState): string | null {
+  const required = entity === "products"
+    ? [["sku", "SKU"], ["name", "product name"]]
+    : entity === "warehouses"
+      ? [["code", "warehouse code"], ["name", "warehouse name"]]
+      : [["name", entity === "customers" ? "customer name" : entity === "vendors" ? "vendor name" : "category name"]];
+  const missing = required.find(([key]) => !form[key]?.trim());
+  if (missing) return `${missing[1]} is required.`;
+
+  if (form.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+    return "Enter a valid email address.";
+  }
+  if (entity === "customers" && (!/^\d+(\.\d{1,4})?$/.test(form.creditLimit || "0"))) {
+    return "Credit limit must be a non-negative number.";
+  }
+  if (entity === "products") {
+    if (!/^\d+(\.\d{1,2})?$/.test(form.costPrice || "0") || !/^\d+(\.\d{1,2})?$/.test(form.sellingPrice || "0")) {
+      return "Product prices must be non-negative numbers with up to two decimals.";
+    }
+    if (!/^\d+$/.test(form.reorderPoint || "0") || !/^\d+$/.test(form.reorderQty || "0")) {
+      return "Reorder levels must be whole, non-negative numbers.";
+    }
+  }
+  if (entity === "warehouses" && !/^\d+$/.test(form.capacity || "0")) {
+    return "Capacity must be a whole, non-negative number.";
+  }
+  return null;
+}
+
 function StatusBadge({ value }: { value?: string }) {
   if (!value) return <span className="text-white/25">—</span>;
   return <Badge className={statusStyle[value] ?? "bg-white/10 text-white/55 border-white/10"}>{value.replace("_", " ")}</Badge>;
@@ -99,14 +128,15 @@ export default function MasterData() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [form, setForm] = useState<FormState>(blankFor("customers"));
+  const [formError, setFormError] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: permissionsData } = useQuery({
+  const permissionsQuery = useQuery({
     queryKey: ["master-data", "permissions"],
     queryFn: () => api.get<ApiResponse<{ canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }>>("/master-data/my-permissions"),
   });
-  const permissions = permissionsData?.data ?? { canView: false, canCreate: false, canEdit: false, canDelete: false };
+  const permissions = permissionsQuery.data?.data ?? { canView: false, canCreate: false, canEdit: false, canDelete: false };
 
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
     queryKey: ["master-data", "summary"],
@@ -128,6 +158,12 @@ export default function MasterData() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      const validationMessage = validateForm(entity, form);
+      if (validationMessage) {
+        setFormError(validationMessage);
+        throw new Error(validationMessage);
+      }
+      setFormError("");
       let payload: Record<string, unknown>;
       if (entity === "customers") {
         payload = { name: form.name.trim(), email: cleanOptional(form.email), phone: cleanOptional(form.phone), taxId: cleanOptional(form.taxId), currency: form.currency.trim().toUpperCase() || "USD", creditLimit: form.creditLimit || "0", status: form.status, city: cleanOptional(form.city), country: cleanOptional(form.country), address: cleanOptional(form.address), notes: cleanOptional(form.notes) };
@@ -163,8 +199,8 @@ export default function MasterData() {
   });
 
   const filteredRows = useMemo(() => rows, [rows]);
-  const openNew = () => { setEditing(null); setForm(blankFor(entity)); setDialogOpen(true); };
-  const openEdit = (row: Row) => { setEditing(row); setForm(rowToForm(entity, row)); setDialogOpen(true); };
+  const openNew = () => { setEditing(null); setFormError(""); setForm(blankFor(entity)); setDialogOpen(true); };
+  const openEdit = (row: Row) => { setEditing(row); setFormError(""); setForm(rowToForm(entity, row)); setDialogOpen(true); };
   const removeRow = (row: Row) => {
     const values = row as unknown as Record<string, unknown>;
     const name = String(values.name ?? values.sku ?? values.code ?? row.id);
@@ -193,12 +229,15 @@ export default function MasterData() {
             <p className="mt-1 text-sm text-white/40">One trusted source for customers, vendors, products, and operating locations.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => currentQuery.refetch()} disabled={currentQuery.isFetching} className="border-white/[0.1] bg-transparent text-white/60 hover:bg-white/[0.05] hover:text-white"><RefreshCw className={`h-3.5 w-3.5 ${currentQuery.isFetching ? "animate-spin" : ""}`} />Refresh</Button>
             <Button variant="outline" size="sm" onClick={exportCsv} disabled={!filteredRows.length} className="border-white/[0.1] bg-transparent text-white/60 hover:bg-white/[0.05] hover:text-white">Export CSV</Button>
             {permissions.canCreate && <Button size="sm" onClick={openNew} className="bg-[#2563EB] hover:bg-[#1d4ed8]"><Plus className="h-3.5 w-3.5" />Add {meta.singular}</Button>}
           </div>
         </div>
 
-        {!permissions.canView ? (
+        {permissionsQuery.isLoading ? (
+          <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4"><LoadingRows /></div>
+        ) : !permissions.canView ? (
           <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-8 text-center">
             <Archive className="mx-auto mb-3 h-8 w-8 text-amber-400" />
             <h2 className="font-semibold text-white">Master data access is restricted</h2>
@@ -241,8 +280,9 @@ export default function MasterData() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="border-white/[0.1] bg-[#0b1020] text-white sm:max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? `Edit ${meta.singular}` : `Add ${meta.singular}`}</DialogTitle><DialogDescription className="text-white/40">Changes are saved to the canonical master record used by connected modules.</DialogDescription></DialogHeader>
-          <MasterForm entity={entity} form={form} setField={setField} categories={(listQueries.categories.data?.data ?? []) as Category[]} />
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)} className="border-white/[0.1] bg-transparent text-white/70">Cancel</Button><Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || (entity === "products" ? !form.sku?.trim() || !form.name?.trim() : entity === "warehouses" ? !form.code?.trim() || !form.name?.trim() : !form.name?.trim())} className="bg-[#2563EB] hover:bg-[#1d4ed8]">{saveMutation.isPending ? "Saving..." : editing ? "Save changes" : "Create record"}</Button></DialogFooter>
+           <MasterForm entity={entity} form={form} setField={(key, value) => { setFormError(""); setField(key, value); }} categories={(listQueries.categories.data?.data ?? []) as Category[]} />
+           {formError && <p className="text-sm text-red-300">{formError}</p>}
+           <DialogFooter><Button variant="outline" onClick={() => { setFormError(""); setDialogOpen(false); }} className="border-white/[0.1] bg-transparent text-white/70">Cancel</Button><Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="bg-[#2563EB] hover:bg-[#1d4ed8]">{saveMutation.isPending ? "Saving..." : editing ? "Save changes" : "Create record"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

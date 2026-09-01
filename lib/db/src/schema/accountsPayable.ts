@@ -101,17 +101,17 @@ const amountStr = z
 
 // Vendors
 export const insertAPVendorSchema = z.object({
-  name:         z.string().min(1).max(200),
-  email:        z.string().max(200).nullable().optional(),
-  phone:        z.string().max(50).nullable().optional(),
-  address:      z.string().max(500).nullable().optional(),
-  city:         z.string().max(100).nullable().optional(),
-  country:      z.string().max(100).nullable().optional(),
-  taxId:        z.string().max(100).nullable().optional(),
-  currency:     z.string().max(10).optional().default("USD"),
-  paymentTerms: z.string().max(50).nullable().optional(),
+  name:         z.string().trim().min(1).max(200),
+  email:        z.string().trim().email().max(200).nullable().optional(),
+  phone:        z.string().trim().max(50).nullable().optional(),
+  address:      z.string().trim().max(500).nullable().optional(),
+  city:         z.string().trim().max(100).nullable().optional(),
+  country:      z.string().trim().max(100).nullable().optional(),
+  taxId:        z.string().trim().max(100).nullable().optional(),
+  currency:     z.string().trim().min(3).max(10).optional().default("USD"),
+  paymentTerms: z.string().trim().max(50).nullable().optional(),
   status:       z.enum(AP_VENDOR_STATUSES).optional().default("active"),
-  notes:        z.string().max(1000).nullable().optional(),
+  notes:        z.string().trim().max(1000).nullable().optional(),
 });
 
 export const updateAPVendorSchema = insertAPVendorSchema.partial();

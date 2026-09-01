@@ -26,7 +26,8 @@ The mockup sandbox remains available for design-canvas previews when needed.
 
 ## Database Setup
 
-Uses Replit's managed PostgreSQL (`DATABASE_URL` secret is set automatically).
+Uses the configured PostgreSQL connection. This imported project prefers
+`SUPABASE_DB_URL` and falls back to Replit's managed `DATABASE_URL`.
 
 ```bash
 # Push schema to DB
@@ -50,6 +51,7 @@ cd lib/db && pnpm run seed:ar
 ## Environment Secrets
 
 - `DATABASE_URL` — managed by Replit PostgreSQL integration
+- `SUPABASE_DB_URL` — PostgreSQL connection used by the imported project when configured
 - `SESSION_SECRET` — used for JWT signing
 
 ## Tech Stack
@@ -69,6 +71,16 @@ cd lib/db && pnpm run seed:ar
 - Advanced Treasury Management (cash accounts, daily positions, 30-day liquidity forecasts, payment/collection workflows, and authorized inter-account transfers)
 - Organizations, Branches, Departments
 - Users, Roles, Permissions (RBAC)
+- Master Data Management (customers, vendors, categories, products, and warehouses)
+
+## Master Data Management
+
+Master Data Management is available under **Administration → Master Data Management**.
+It uses the canonical AR, AP, and Inventory tables so records created there are
+immediately available to connected modules. Access is controlled by the
+`Master Data Management` permission with separate view, create, edit, and delete
+actions. Records referenced by transactions or inventory activity are protected
+from deletion and should be deactivated instead.
 
 ## User Preferences
 

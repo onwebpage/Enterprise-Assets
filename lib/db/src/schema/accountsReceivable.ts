@@ -101,17 +101,17 @@ const amountStr = z
 
 // Customers
 export const insertARCustomerSchema = z.object({
-  name:        z.string().min(1).max(200),
-  email:       z.string().max(200).nullable().optional(),
-  phone:       z.string().max(50).nullable().optional(),
-  address:     z.string().max(500).nullable().optional(),
-  city:        z.string().max(100).nullable().optional(),
-  country:     z.string().max(100).nullable().optional(),
-  taxId:       z.string().max(100).nullable().optional(),
+  name:        z.string().trim().min(1).max(200),
+  email:       z.string().trim().email().max(200).nullable().optional(),
+  phone:       z.string().trim().max(50).nullable().optional(),
+  address:     z.string().trim().max(500).nullable().optional(),
+  city:        z.string().trim().max(100).nullable().optional(),
+  country:     z.string().trim().max(100).nullable().optional(),
+  taxId:       z.string().trim().max(100).nullable().optional(),
   creditLimit: amountStr.optional().default("0"),
-  currency:    z.string().max(10).optional().default("USD"),
+  currency:    z.string().trim().min(3).max(10).optional().default("USD"),
   status:      z.enum(AR_CUSTOMER_STATUSES).optional().default("active"),
-  notes:       z.string().max(1000).nullable().optional(),
+  notes:       z.string().trim().max(1000).nullable().optional(),
 });
 
 export const updateARCustomerSchema = insertARCustomerSchema.partial();

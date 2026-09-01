@@ -23,3 +23,4 @@
 - [Admin bootstrap](admin-bootstrap.md) — imported workspaces should use the idempotent setup SQL path to restore super-admin tables, defaults, and feature catalog.
 - [Imported project setup](imported-project-setup.md) — artifact metadata may exist before managed workflows are registered; check live workflows and configure ports explicitly.
 - [Financial Controls](financial-controls.md) — control runs require final results and independent review; execution data is retained as an audit trail.
+- [Master Data Management](master-data-management.md) — canonical AR/AP/Inventory records, tenant-scoped uniqueness, protected deletes, and mutation audits.

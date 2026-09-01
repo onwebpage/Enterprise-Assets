@@ -133,34 +133,34 @@ export const invTransferLines = pgTable("inv_transfer_lines", {
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 export const insertInvCategorySchema = z.object({
-  name:        z.string().min(1).max(200),
-  description: z.string().max(500).nullable().optional(),
+  name:        z.string().trim().min(1).max(200),
+  description: z.string().trim().max(500).nullable().optional(),
 });
 export const updateInvCategorySchema = insertInvCategorySchema.partial();
 
 export const insertInvWarehouseSchema = z.object({
-  code:     z.string().min(1).max(20),
-  name:     z.string().min(1).max(200),
-  location: z.string().max(500).nullable().optional(),
-  manager:  z.string().max(200).nullable().optional(),
+  code:     z.string().trim().min(1).max(20),
+  name:     z.string().trim().min(1).max(200),
+  location: z.string().trim().max(500).nullable().optional(),
+  manager:  z.string().trim().max(200).nullable().optional(),
   capacity: z.number().int().min(0).optional().default(0),
   status:   z.enum(INV_WAREHOUSE_STATUSES).optional().default("active"),
-  notes:    z.string().max(1000).nullable().optional(),
+  notes:    z.string().trim().max(1000).nullable().optional(),
 });
 export const updateInvWarehouseSchema = insertInvWarehouseSchema.partial();
 
 export const insertInvProductSchema = z.object({
-  sku:          z.string().min(1).max(50),
-  name:         z.string().min(1).max(300),
-  description:  z.string().max(1000).nullable().optional(),
+  sku:          z.string().trim().min(1).max(50),
+  name:         z.string().trim().min(1).max(300),
+  description:  z.string().trim().max(1000).nullable().optional(),
   categoryId:   z.number().int().positive().nullable().optional(),
-  unit:         z.string().max(20).optional().default("each"),
+  unit:         z.string().trim().min(1).max(20).optional().default("each"),
   costPrice:    z.string().regex(/^\d+(\.\d{1,2})?$/).optional().default("0"),
   sellingPrice: z.string().regex(/^\d+(\.\d{1,2})?$/).optional().default("0"),
   reorderPoint: z.number().int().min(0).optional().default(0),
   reorderQty:   z.number().int().min(0).optional().default(0),
   status:       z.enum(INV_PRODUCT_STATUSES).optional().default("active"),
-  notes:        z.string().max(1000).nullable().optional(),
+  notes:        z.string().trim().max(1000).nullable().optional(),
 });
 export const updateInvProductSchema = insertInvProductSchema.partial();
 
