@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { pool } from "@workspace/db";
@@ -278,15 +278,32 @@ router.get("/plans", async (_req, res) => {
 router.post("/plans", async (req: AdminRequest, res) => {
   try {
     const { name, slug, priceMonthly, priceYearly, maxUsers, maxModules, maxStorageGb, features } = req.body;
+    const normalizedName = typeof name === "string" ? name.trim() : "";
+    const normalizedSlug = (typeof slug === "string" ? slug.trim().toLowerCase() : normalizedName.toLowerCase())
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const monthly = Number(priceMonthly ?? 0);
+    const yearly = Number(priceYearly ?? 0);
+    if (!normalizedName || normalizedName.length > 120 || !normalizedSlug || normalizedSlug.length > 120) {
+      res.status(400).json({ success: false, error: "Plan name and slug are required and must be 120 characters or fewer" });
+      return;
+    }
+    if (![monthly, yearly].every(value => Number.isFinite(value) && value >= 0)) {
+      res.status(400).json({ success: false, error: "Plan prices must be non-negative numbers" });
+      return;
+    }
     const result = await pool.query<{ id: number }>(
       `INSERT INTO saas_plans (name, slug, price_monthly, price_yearly, max_users, max_modules, max_storage_gb, features)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [name, slug, priceMonthly ?? 0, priceYearly ?? 0, maxUsers ?? null, maxModules ?? null, maxStorageGb ?? null, JSON.stringify(features ?? [])]
+      [normalizedName, normalizedSlug, monthly, yearly, maxUsers ?? null, maxModules ?? null, maxStorageGb ?? null, JSON.stringify(features ?? [])]
     );
-    await audit(req, "CREATE", "plan", result.rows[0]?.id, { name });
+    await audit(req, "CREATE", "plan", result.rows[0]?.id, { name: normalizedName });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (e) {
     console.error(e);
+    if ((e as { code?: string }).code === "23505") {
+      res.status(409).json({ success: false, error: "A plan with this slug already exists" });
+      return;
+    }
     res.status(500).json({ success: false, error: "Failed to create plan" });
   }
 });
@@ -984,6 +1001,24 @@ router.get("/backups/:id/download", async (req, res) => {
 router.delete("/backups/:id", async (req: AdminRequest, res) => {
   try {
     const id = parseInt(req.params["id"] as string);
+    if (!Number.isInteger(id) || id < 1) {
+      res.status(400).json({ success: false, error: "Invalid backup id" });
+      return;
+    }
+    const backupResult = await pool.query<{ backup_name: string; status: string }>(
+      `SELECT backup_name, status FROM admin_backup_logs WHERE id=$1`,
+      [id],
+    );
+    const backup = backupResult.rows[0];
+    if (!backup) {
+      res.status(404).json({ success: false, error: "Backup not found" });
+      return;
+    }
+    if (backup.status === "running") {
+      res.status(409).json({ success: false, error: "A running backup cannot be deleted" });
+      return;
+    }
+    await unlink(path.join(backupDirectory, `${path.basename(backup.backup_name)}.dump`)).catch(() => undefined);
     await pool.query(`DELETE FROM admin_backup_logs WHERE id=$1`, [id]);
     await audit(req, "DELETE_BACKUP", "backup", id);
     res.json({ success: true, data: null });
@@ -1013,18 +1048,33 @@ router.get("/notifications", async (_req, res) => {
 router.post("/notifications/broadcast", async (req: AdminRequest, res) => {
   try {
     const { title, body, type, orgId } = req.body;
-    if (!title) { res.status(400).json({ success: false, error: "Title is required" }); return; }
+    if (typeof title !== "string" || !title.trim() || title.trim().length > 200) {
+      res.status(400).json({ success: false, error: "Title is required and must be 200 characters or fewer" });
+      return;
+    }
+    if (body != null && (typeof body !== "string" || body.length > 5000)) {
+      res.status(400).json({ success: false, error: "Notification body must be 5000 characters or fewer" });
+      return;
+    }
 
-    let targetQuery = `SELECT id FROM users WHERE status='active'`;
+    let targetQuery = `SELECT id, org_id FROM users WHERE status='active'`;
     const params: unknown[] = [];
-    if (orgId) { params.push(orgId); targetQuery += ` AND org_id = $${params.length}`; }
+    if (orgId != null) {
+      const normalizedOrgId = Number(orgId);
+      if (!Number.isInteger(normalizedOrgId) || normalizedOrgId < 1) {
+        res.status(400).json({ success: false, error: "Organization id must be a positive integer" });
+        return;
+      }
+      params.push(normalizedOrgId);
+      targetQuery += ` AND org_id = $${params.length}`;
+    }
 
-    const targets = await pool.query<{ id: number }>(targetQuery, params);
+    const targets = await pool.query<{ id: number; org_id: number }>(targetQuery, params);
     let inserted = 0;
     for (const u of targets.rows) {
       await pool.query(
-        `INSERT INTO notifications (user_id, type, title, body, created_at) VALUES ($1, $2, $3, $4, NOW())`,
-        [u.id, type ?? "system", title, body ?? null]
+        `INSERT INTO notifications (org_id, user_id, type, category, title, body, created_at) VALUES ($1, $2, $3, 'system', $4, $5, NOW())`,
+        [u.org_id, u.id, typeof type === "string" && type.trim() ? type.trim() : "system", title.trim(), body?.trim() || null]
       );
       inserted++;
     }

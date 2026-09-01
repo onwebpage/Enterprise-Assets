@@ -31,7 +31,13 @@ async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
+  if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem(ADMIN_TOKEN_KEY);
+      window.dispatchEvent(new Event('admin-session-revoked'));
+    }
+    throw new Error(json.error ?? `Request failed (${res.status})`);
+  }
   return json as T;
 }
 
@@ -58,6 +64,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       .then(r => setAdmin({ id: r.data.id, username: r.data.username, displayName: r.data.display_name, email: r.data.email }))
       .catch(() => localStorage.removeItem(ADMIN_TOKEN_KEY))
       .finally(() => setIsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const handleRevokedSession = () => setAdmin(null);
+    window.addEventListener('admin-session-revoked', handleRevokedSession);
+    return () => window.removeEventListener('admin-session-revoked', handleRevokedSession);
   }, []);
 
   async function login(username: string, password: string) {
