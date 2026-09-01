@@ -29,6 +29,12 @@ export type HrLeaveRequestStatus = (typeof HR_LEAVE_REQUEST_STATUSES)[number];
 export const HR_JOB_STATUSES = ["open", "on_hold", "closed", "filled"] as const;
 export type HrJobStatus = (typeof HR_JOB_STATUSES)[number];
 
+export const HR_STATUTORY_CODES = ["PF", "ESI", "PT", "TDS"] as const;
+export type HrStatutoryCode = (typeof HR_STATUTORY_CODES)[number];
+
+export const HR_STATUTORY_FILINGS_STATUSES = ["draft", "ready", "filed", "paid", "overdue"] as const;
+export type HrStatutoryFilingStatus = (typeof HR_STATUTORY_FILINGS_STATUSES)[number];
+
 // ── Tables ────────────────────────────────────────────────────────────────────
 
 /**
@@ -166,6 +172,70 @@ export const hrJobPostings = pgTable("hr_job_postings", {
   updatedAt:       timestamp("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * hr_statutory_configs — organization-owned statutory calculation rules.
+ * Rates are stored as percentages, e.g. 12.00 means 12%.
+ */
+export const hrStatutoryConfigs = pgTable("hr_statutory_configs", {
+  id:                 serial("id").primaryKey(),
+  orgId:              integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  code:               text("code").notNull(),
+  name:               text("name").notNull(),
+  enabled:            boolean("enabled").notNull().default(true),
+  employeeRate:      numeric("employee_rate", { precision: 7, scale: 4 }).notNull().default("0"),
+  employerRate:      numeric("employer_rate", { precision: 7, scale: 4 }).notNull().default("0"),
+  wageCeiling:       numeric("wage_ceiling", { precision: 15, scale: 2 }),
+  threshold:         numeric("threshold", { precision: 15, scale: 2 }),
+  fixedAmount:       numeric("fixed_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  jurisdiction:      text("jurisdiction"),
+  registrationNumber:text("registration_number"),
+  effectiveFrom:     text("effective_from").notNull(),
+  createdBy:         integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+  updatedAt:         timestamp("updated_at").notNull().defaultNow(),
+});
+
+/**
+ * hr_payroll_statutory_lines — immutable calculation snapshot per run,
+ * employee, and statutory code.
+ */
+export const hrPayrollStatutoryLines = pgTable("hr_payroll_statutory_lines", {
+  id:                 serial("id").primaryKey(),
+  orgId:              integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  runId:              integer("run_id").notNull().references(() => hrPayrollRuns.id, { onDelete: "cascade" }),
+  employeeId:         integer("employee_id").notNull().references(() => hrEmployees.id, { onDelete: "restrict" }),
+  code:               text("code").notNull(),
+  baseAmount:         numeric("base_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  employeeAmount:     numeric("employee_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  employerAmount:     numeric("employer_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  isApplicable:       boolean("is_applicable").notNull().default(true),
+  calculationNote:    text("calculation_note"),
+  createdAt:          timestamp("created_at").notNull().defaultNow(),
+});
+
+/**
+ * hr_statutory_filings — controlled filing lifecycle for each return period.
+ */
+export const hrStatutoryFilings = pgTable("hr_statutory_filings", {
+  id:                 serial("id").primaryKey(),
+  orgId:              integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  code:               text("code").notNull(),
+  period:             text("period").notNull(),
+  dueDate:            text("due_date").notNull(),
+  status:             text("status").notNull().default("draft"),
+  employeeCount:      integer("employee_count").notNull().default(0),
+  employeeAmount:     numeric("employee_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  employerAmount:     numeric("employer_amount", { precision: 15, scale: 2 }).notNull().default("0"),
+  totalLiability:     numeric("total_liability", { precision: 15, scale: 2 }).notNull().default("0"),
+  referenceNumber:    text("reference_number"),
+  filedAt:            timestamp("filed_at"),
+  paidAt:             timestamp("paid_at"),
+  notes:              text("notes"),
+  createdBy:          integer("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt:          timestamp("created_at").notNull().defaultNow(),
+  updatedAt:          timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
 export const insertHrEmployeeSchema = z.object({
@@ -250,6 +320,33 @@ export const insertHrJobPostingSchema = z.object({
 });
 export const updateHrJobPostingSchema = insertHrJobPostingSchema.partial();
 
+export const insertHrStatutoryConfigSchema = z.object({
+  code:                z.enum(HR_STATUTORY_CODES),
+  name:                z.string().trim().min(2).max(100),
+  enabled:             z.boolean().optional().default(true),
+  employeeRate:       z.string().regex(/^\d+(\.\d{1,4})?$/).default("0"),
+  employerRate:       z.string().regex(/^\d+(\.\d{1,4})?$/).default("0"),
+  wageCeiling:        z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional(),
+  threshold:          z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional(),
+  fixedAmount:        z.string().regex(/^\d+(\.\d{1,2})?$/).optional().default("0"),
+  jurisdiction:       z.string().trim().max(100).nullable().optional(),
+  registrationNumber: z.string().trim().max(100).nullable().optional(),
+  effectiveFrom:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+export const updateHrStatutoryConfigSchema = insertHrStatutoryConfigSchema.partial().omit({ code: true });
+
+export const insertHrStatutoryFilingSchema = z.object({
+  code:             z.enum(HR_STATUTORY_CODES),
+  period:           z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  dueDate:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes:            z.string().trim().max(1000).nullable().optional(),
+});
+export const updateHrStatutoryFilingSchema = z.object({
+  status:           z.enum(HR_STATUTORY_FILINGS_STATUSES),
+  referenceNumber:  z.string().trim().max(100).nullable().optional(),
+  notes:            z.string().trim().max(1000).nullable().optional(),
+});
+
 // ── TS types ──────────────────────────────────────────────────────────────────
 
 export type HrEmployee       = typeof hrEmployees.$inferSelect;
@@ -258,6 +355,9 @@ export type HrLeaveRequest   = typeof hrLeaveRequests.$inferSelect;
 export type HrPayrollRun     = typeof hrPayrollRuns.$inferSelect;
 export type HrPayrollLine    = typeof hrPayrollLines.$inferSelect;
 export type HrJobPosting     = typeof hrJobPostings.$inferSelect;
+export type HrStatutoryConfig = typeof hrStatutoryConfigs.$inferSelect;
+export type HrPayrollStatutoryLine = typeof hrPayrollStatutoryLines.$inferSelect;
+export type HrStatutoryFiling = typeof hrStatutoryFilings.$inferSelect;
 
 export type InsertHrEmployee     = z.infer<typeof insertHrEmployeeSchema>;
 export type InsertHrLeaveRequest = z.infer<typeof insertHrLeaveRequestSchema>;

@@ -24,6 +24,12 @@ export type HrLeaveRequestStatus = (typeof HR_LEAVE_REQUEST_STATUSES)[number];
 export const HR_JOB_STATUSES = ["open", "on_hold", "closed", "filled"] as const;
 export type HrJobStatus = (typeof HR_JOB_STATUSES)[number];
 
+export const HR_STATUTORY_CODES = ["PF", "ESI", "PT", "TDS"] as const;
+export type HrStatutoryCode = (typeof HR_STATUTORY_CODES)[number];
+
+export const HR_STATUTORY_FILINGS_STATUSES = ["draft", "ready", "filed", "paid", "overdue"] as const;
+export type HrStatutoryFilingStatus = (typeof HR_STATUTORY_FILINGS_STATUSES)[number];
+
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface HrPermissions {
@@ -47,6 +53,65 @@ export interface HrAnalytics {
   hiringPipeline: { status: HrJobStatus; openings: number; postings: number }[];
   salaryByDepartment: { department: string; employees: number; monthlyCost: number }[];
   recentActivity: { happenedAt: string; type: string; label: string; reference: string }[];
+}
+
+export interface HrStatutoryConfig {
+  id: number;
+  orgId: number;
+  code: HrStatutoryCode;
+  name: string;
+  enabled: boolean;
+  employeeRate: string;
+  employerRate: string;
+  wageCeiling: string | null;
+  threshold: string | null;
+  fixedAmount: string;
+  jurisdiction: string | null;
+  registrationNumber: string | null;
+  effectiveFrom: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HrPayrollStatutoryLine {
+  id: number;
+  orgId: number;
+  runId: number;
+  employeeId: number;
+  code: HrStatutoryCode;
+  baseAmount: string;
+  employeeAmount: string;
+  employerAmount: string;
+  isApplicable: boolean;
+  calculationNote: string | null;
+  createdAt: string;
+}
+
+export interface HrStatutoryFiling {
+  id: number;
+  orgId: number;
+  code: HrStatutoryCode;
+  period: string;
+  dueDate: string;
+  status: HrStatutoryFilingStatus;
+  employeeCount: number;
+  employeeAmount: string;
+  employerAmount: string;
+  totalLiability: string;
+  referenceNumber: string | null;
+  filedAt: string | null;
+  paidAt: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HrStatutorySummary {
+  configured: number;
+  totalConfigured: number;
+  filingSummary: { status: HrStatutoryFilingStatus; count: number; liability: number }[];
+  recentPeriods: { period: string; employees: number; employeeAmount: number; employerAmount: number; liability: number }[];
+  latestByCode: { code: HrStatutoryCode; employees: number; employeeAmount: number; employerAmount: number; liability: number }[];
 }
 
 export interface HrEmployee {
@@ -396,6 +461,51 @@ export function useUpsertPayrollLine() {
   });
 }
 
+// ── Statutory compliance ──────────────────────────────────────────────────────
+
+export function useHrStatutorySummary() {
+  return useQuery<ApiResponse<HrStatutorySummary>>({
+    queryKey: ["hr", "statutory-summary"],
+    queryFn: () => api.get("/hr/payroll/statutory/summary"),
+    staleTime: 30_000,
+  });
+}
+
+export function useHrStatutoryConfigs() {
+  return useQuery<ApiResponse<HrStatutoryConfig[]>>({
+    queryKey: ["hr", "statutory-config"],
+    queryFn: () => api.get("/hr/payroll/statutory/config"),
+  });
+}
+
+export type InsertHrStatutoryConfig = Omit<HrStatutoryConfig, "id" | "orgId" | "createdAt" | "updatedAt">;
+
+export function useCreateStatutoryConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<InsertHrStatutoryConfig> & { code: HrStatutoryCode; name: string; effectiveFrom: string }) =>
+      api.post("/hr/payroll/statutory/config", data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useUpdateStatutoryConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<InsertHrStatutoryConfig> }) =>
+      api.put(`/hr/payroll/statutory/config/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useDeleteStatutoryConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/hr/payroll/statutory/config/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
 // ── Job Postings ──────────────────────────────────────────────────────────────
 
 export function useHrJobPostings(params?: { search?: string; status?: string; page?: number }) {
@@ -430,6 +540,58 @@ export function useDeleteJobPosting() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => api.delete(`/hr/jobs/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useHrStatutoryFilings(params?: { status?: HrStatutoryFilingStatus; period?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.period) qs.set("period", params.period);
+  return useQuery<ApiResponse<HrStatutoryFiling[]>>({
+    queryKey: ["hr", "statutory-filings", params],
+    queryFn: () => api.get(`/hr/payroll/statutory/filings?${qs}`),
+  });
+}
+
+export function useCreateStatutoryFiling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { code: HrStatutoryCode; period: string; dueDate: string; notes?: string | null }) =>
+      api.post("/hr/payroll/statutory/filings", data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useUpdateStatutoryFiling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { status: HrStatutoryFilingStatus; referenceNumber?: string | null; notes?: string | null } }) =>
+      api.put(`/hr/payroll/statutory/filings/${id}`, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useDeleteStatutoryFiling() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/hr/payroll/statutory/filings/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
+  });
+}
+
+export function useHrPayrollRunStatutoryLines(runId: number | null) {
+  return useQuery<ApiResponse<HrPayrollStatutoryLine[]>>({
+    queryKey: ["hr", "payroll-statutory-lines", runId],
+    queryFn: () => api.get(`/hr/payroll/runs/${runId}/statutory`),
+    enabled: runId !== null,
+  });
+}
+
+export function useCalculatePayrollStatutory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: number) => api.post(`/hr/payroll/runs/${runId}/calculate-statutory`, {}),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["hr"] }); },
   });
 }

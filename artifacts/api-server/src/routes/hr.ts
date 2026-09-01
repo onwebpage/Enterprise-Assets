@@ -10,6 +10,7 @@ import {
   db, pool, permissions, roles, departments,
   hrEmployees, hrLeaveTypes, hrLeaveRequests,
   hrPayrollRuns, hrPayrollLines, hrJobPostings,
+  hrStatutoryConfigs, hrPayrollStatutoryLines, hrStatutoryFilings,
 } from "@workspace/db";
 import {
   insertHrEmployeeSchema, updateHrEmployeeSchema,
@@ -18,6 +19,9 @@ import {
   insertHrPayrollRunSchema, updateHrPayrollRunSchema,
   insertHrPayrollLineSchema,
   insertHrJobPostingSchema, updateHrJobPostingSchema,
+  insertHrStatutoryConfigSchema, updateHrStatutoryConfigSchema,
+  insertHrStatutoryFilingSchema, updateHrStatutoryFilingSchema,
+  HR_STATUTORY_CODES, HR_STATUTORY_FILINGS_STATUSES,
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
@@ -33,6 +37,136 @@ const PAYROLL_TRANSITIONS: Record<string, string[]> = {
   approved: ["approved", "paid"],
   paid: ["paid"],
 };
+
+const FILING_TRANSITIONS: Record<string, string[]> = {
+  draft: ["draft", "ready", "overdue"],
+  ready: ["ready", "filed", "overdue"],
+  overdue: ["overdue", "ready", "filed"],
+  filed: ["filed", "paid"],
+  paid: ["paid"],
+};
+
+const DEFAULT_STATUTORY_CONFIGS = [
+  { code: "PF", name: "Provident Fund", employeeRate: "12.0000", employerRate: "12.0000", wageCeiling: "15000", threshold: null, fixedAmount: "0", jurisdiction: "India", registrationNumber: null },
+  { code: "ESI", name: "Employees' State Insurance", employeeRate: "0.7500", employerRate: "3.2500", wageCeiling: null, threshold: "21000", fixedAmount: "0", jurisdiction: "India", registrationNumber: null },
+  { code: "PT", name: "Professional Tax", employeeRate: "0.0000", employerRate: "0.0000", wageCeiling: null, threshold: "15000", fixedAmount: "200", jurisdiction: "Maharashtra", registrationNumber: null },
+  { code: "TDS", name: "Tax Deducted at Source", employeeRate: "5.0000", employerRate: "0.0000", wageCeiling: null, threshold: "0", fixedAmount: "0", jurisdiction: "India", registrationNumber: null },
+] as const;
+
+function money(value: number) {
+  return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
+async function ensureStatutoryConfigs(orgId: number, userId: number) {
+  const existing = await db.select({ code: hrStatutoryConfigs.code })
+    .from(hrStatutoryConfigs)
+    .where(eq(hrStatutoryConfigs.orgId, orgId));
+  const existingCodes = new Set(existing.map((row) => row.code));
+  const missing = DEFAULT_STATUTORY_CONFIGS
+    .filter((config) => !existingCodes.has(config.code))
+    .map((config) => ({ ...config, orgId, createdBy: userId, effectiveFrom: new Date().toISOString().slice(0, 10) }));
+  if (missing.length > 0) await db.insert(hrStatutoryConfigs).values(missing);
+}
+
+async function calculateStatutoryForRun(runId: number, orgId: number) {
+  const [run] = await db.select({ id: hrPayrollRuns.id, status: hrPayrollRuns.status })
+    .from(hrPayrollRuns)
+    .where(and(eq(hrPayrollRuns.id, runId), eq(hrPayrollRuns.orgId, orgId)))
+    .limit(1);
+  if (!run) throw new Error("Payroll run not found");
+  if (run.status === "approved" || run.status === "paid") {
+    throw new Error("Approved and paid payroll runs cannot be recalculated");
+  }
+
+  const [configs, lines] = await Promise.all([
+    db.select().from(hrStatutoryConfigs).where(and(eq(hrStatutoryConfigs.orgId, orgId), eq(hrStatutoryConfigs.enabled, true))),
+    db.select().from(hrPayrollLines).where(eq(hrPayrollLines.runId, runId)),
+  ]);
+  const previousPtRows = await db.select({
+    employeeId: hrPayrollStatutoryLines.employeeId,
+    amount: hrPayrollStatutoryLines.employeeAmount,
+  }).from(hrPayrollStatutoryLines).where(and(
+    eq(hrPayrollStatutoryLines.runId, runId),
+    eq(hrPayrollStatutoryLines.orgId, orgId),
+    eq(hrPayrollStatutoryLines.code, "PT"),
+  ));
+  const previousPt = new Map(previousPtRows.map((row) => [row.employeeId, Number(row.amount)]));
+  await db.delete(hrPayrollStatutoryLines).where(and(eq(hrPayrollStatutoryLines.runId, runId), eq(hrPayrollStatutoryLines.orgId, orgId)));
+
+  const statutoryLines: typeof hrPayrollStatutoryLines.$inferInsert[] = [];
+  for (const line of lines) {
+    const basic = Number(line.basicPay);
+    const gross = Number(line.grossPay);
+    let pf = 0;
+    let esi = 0;
+    let tds = 0;
+    let pt = 0;
+    let pfEmployer = 0;
+    let esiEmployer = 0;
+    for (const config of configs) {
+      const employeeRate = Number(config.employeeRate);
+      const employerRate = Number(config.employerRate);
+      const ceiling = config.wageCeiling ? Number(config.wageCeiling) : null;
+      const threshold = config.threshold ? Number(config.threshold) : 0;
+      let base = 0;
+      let employeeAmount = 0;
+      let employerAmount = 0;
+      let applicable = true;
+      let note = "";
+      if (config.code === "PF") {
+        base = ceiling ? Math.min(basic, ceiling) : basic;
+        employeeAmount = money(base * employeeRate / 100);
+        employerAmount = money(base * employerRate / 100);
+        pf += employeeAmount;
+        pfEmployer += employerAmount;
+        note = `Capped PF wage base at ₹${ceiling ?? base}`;
+      } else if (config.code === "ESI") {
+        applicable = threshold <= 0 || gross <= threshold;
+        base = gross;
+        employeeAmount = applicable ? money(base * employeeRate / 100) : 0;
+        employerAmount = applicable ? money(base * employerRate / 100) : 0;
+        esi += employeeAmount;
+        esiEmployer += employerAmount;
+        note = applicable ? `ESI applies below ₹${threshold} gross` : `Exempt above ₹${threshold} gross`;
+      } else if (config.code === "PT") {
+        applicable = gross > threshold;
+        base = gross;
+        employeeAmount = applicable ? Number(config.fixedAmount) : 0;
+        pt += employeeAmount;
+        note = applicable ? `Fixed professional tax for ${config.jurisdiction ?? "jurisdiction"}` : `Not applicable below ₹${threshold}`;
+      } else if (config.code === "TDS") {
+        applicable = gross > threshold;
+        base = gross;
+        employeeAmount = applicable ? money(base * employeeRate / 100) : 0;
+        tds += employeeAmount;
+        note = `Configured withholding rate ${employeeRate}%`;
+      }
+      statutoryLines.push({
+        orgId, runId, employeeId: line.employeeId, code: config.code,
+        baseAmount: money(base).toFixed(2),
+        employeeAmount: money(employeeAmount).toFixed(2),
+        employerAmount: money(employerAmount).toFixed(2),
+        isApplicable: applicable,
+        calculationNote: note,
+      });
+    }
+    const otherDeductions = Math.max(0, Number(line.otherDeductions) - (previousPt.get(line.employeeId) ?? 0));
+    const newOtherDeductions = money(Math.max(0, otherDeductions) + pt);
+    const totalDeductions = money(pf + esi + tds + newOtherDeductions);
+    const netPay = money(gross - totalDeductions);
+    await db.update(hrPayrollLines).set({
+      pf: money(pf).toFixed(2),
+      esi: money(esi).toFixed(2),
+      tds: money(tds).toFixed(2),
+      otherDeductions: newOtherDeductions.toFixed(2),
+      totalDeductions: totalDeductions.toFixed(2),
+      netPay: netPay.toFixed(2),
+    }).where(eq(hrPayrollLines.id, line.id));
+  }
+  if (statutoryLines.length > 0) await db.insert(hrPayrollStatutoryLines).values(statutoryLines);
+  await recomputeRunTotals(runId);
+  return statutoryLines.length;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -289,6 +423,262 @@ router.get("/analytics", requirePermission(MODULE, "view"), async (req: AuthRequ
   } catch (err) {
     console.error("HR analytics query failed", err);
     res.status(500).json({ success: false, error: "Failed to fetch HR analytics" });
+  }
+});
+
+// ── Statutory compliance ──────────────────────────────────────────────────────
+
+router.get("/payroll/statutory/summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const orgId = req.user!.orgId!;
+  try {
+    const [configs, filings, latest, byCode] = await Promise.all([
+      db.select({ code: hrStatutoryConfigs.code, enabled: hrStatutoryConfigs.enabled })
+        .from(hrStatutoryConfigs).where(eq(hrStatutoryConfigs.orgId, orgId)),
+      db.select({
+        status: hrStatutoryFilings.status,
+        count: sql<number>`count(*)::int`,
+        liability: sql<string>`coalesce(sum(${hrStatutoryFilings.totalLiability}), 0)`,
+      }).from(hrStatutoryFilings)
+        .where(eq(hrStatutoryFilings.orgId, orgId))
+        .groupBy(hrStatutoryFilings.status),
+      pool.query(
+        `select r.period,
+                count(distinct l.employee_id)::int as employees,
+                coalesce(sum(l.employee_amount), 0)::numeric as employee_amount,
+                coalesce(sum(l.employer_amount), 0)::numeric as employer_amount,
+                coalesce(sum(l.employee_amount + l.employer_amount), 0)::numeric as liability
+           from hr_payroll_statutory_lines l
+           join hr_payroll_runs r on r.id=l.run_id and r.org_id=$1
+          where l.org_id=$1
+          group by r.period
+          order by r.period desc
+          limit 6`,
+        [orgId],
+      ),
+      pool.query(
+        `select l.code,
+                count(distinct l.employee_id)::int as employees,
+                coalesce(sum(l.employee_amount), 0)::numeric as employee_amount,
+                coalesce(sum(l.employer_amount), 0)::numeric as employer_amount,
+                coalesce(sum(l.employee_amount + l.employer_amount), 0)::numeric as liability
+           from hr_payroll_statutory_lines l
+           join hr_payroll_runs r on r.id=l.run_id and r.org_id=$1
+          where l.org_id=$1
+            and r.period=(select max(period) from hr_payroll_runs where org_id=$1)
+          group by l.code
+          order by l.code`,
+        [orgId],
+      ),
+    ]);
+    res.json({
+      success: true,
+      data: {
+        configured: configs.filter((row) => row.enabled).length,
+        totalConfigured: configs.length,
+        filingSummary: filings.map((row) => ({
+          status: row.status, count: Number(row.count), liability: Number(row.liability),
+        })),
+        recentPeriods: latest.rows.map((row) => ({
+          period: row.period, employees: Number(row.employees),
+          employeeAmount: Number(row.employee_amount), employerAmount: Number(row.employer_amount),
+          liability: Number(row.liability),
+        })),
+        latestByCode: byCode.rows.map((row) => ({
+          code: row.code, employees: Number(row.employees),
+          employeeAmount: Number(row.employee_amount), employerAmount: Number(row.employer_amount),
+          liability: Number(row.liability),
+        })),
+      },
+    });
+  } catch (err) {
+    console.error("HR statutory summary query failed", err);
+    res.status(500).json({ success: false, error: "Failed to fetch statutory summary" });
+  }
+});
+
+router.get("/payroll/statutory/config", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    await ensureStatutoryConfigs(req.user!.orgId!, req.user!.userId);
+    const rows = await db.select().from(hrStatutoryConfigs)
+      .where(eq(hrStatutoryConfigs.orgId, req.user!.orgId!))
+      .orderBy(hrStatutoryConfigs.code);
+    res.json({ success: true, data: rows });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch statutory configuration" });
+  }
+});
+
+router.post("/payroll/statutory/config", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
+  const parsed = insertHrStatutoryConfigSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  try {
+    const orgId = req.user!.orgId!;
+    const [duplicate] = await db.select({ id: hrStatutoryConfigs.id }).from(hrStatutoryConfigs)
+      .where(and(eq(hrStatutoryConfigs.orgId, orgId), eq(hrStatutoryConfigs.code, parsed.data.code))).limit(1);
+    if (duplicate) { res.status(409).json({ success: false, error: `${parsed.data.code} configuration already exists` }); return; }
+    const [created] = await db.insert(hrStatutoryConfigs).values({
+      ...parsed.data, orgId, createdBy: req.user!.userId,
+      wageCeiling: parsed.data.wageCeiling ?? null,
+      threshold: parsed.data.threshold ?? null,
+      jurisdiction: parsed.data.jurisdiction ?? null,
+      registrationNumber: parsed.data.registrationNumber ?? null,
+    }).returning();
+    res.status(201).json({ success: true, data: created });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to create statutory configuration" });
+  }
+});
+
+router.put("/payroll/statutory/config/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  const parsed = updateHrStatutoryConfigSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  try {
+    const [existing] = await db.select({ id: hrStatutoryConfigs.id }).from(hrStatutoryConfigs)
+      .where(and(eq(hrStatutoryConfigs.id, id), eq(hrStatutoryConfigs.orgId, req.user!.orgId!))).limit(1);
+    if (!existing) { res.status(404).json({ success: false, error: "Statutory configuration not found" }); return; }
+    const [updated] = await db.update(hrStatutoryConfigs).set({
+      ...parsed.data,
+      wageCeiling: parsed.data.wageCeiling ?? null,
+      threshold: parsed.data.threshold ?? null,
+      jurisdiction: parsed.data.jurisdiction ?? null,
+      registrationNumber: parsed.data.registrationNumber ?? null,
+      updatedAt: new Date(),
+    }).where(eq(hrStatutoryConfigs.id, id)).returning();
+    res.json({ success: true, data: updated });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to update statutory configuration" });
+  }
+});
+
+router.delete("/payroll/statutory/config/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    const [existing] = await db.select({ id: hrStatutoryConfigs.id }).from(hrStatutoryConfigs)
+      .where(and(eq(hrStatutoryConfigs.id, id), eq(hrStatutoryConfigs.orgId, req.user!.orgId!))).limit(1);
+    if (!existing) { res.status(404).json({ success: false, error: "Statutory configuration not found" }); return; }
+    await db.delete(hrStatutoryConfigs).where(eq(hrStatutoryConfigs.id, id));
+    res.json({ success: true, data: { id } });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to delete statutory configuration" });
+  }
+});
+
+router.get("/payroll/statutory/filings", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const filters = [eq(hrStatutoryFilings.orgId, req.user!.orgId!)];
+    if (typeof req.query.status === "string" && HR_STATUTORY_FILINGS_STATUSES.includes(req.query.status as typeof HR_STATUTORY_FILINGS_STATUSES[number])) {
+      filters.push(eq(hrStatutoryFilings.status, req.query.status));
+    }
+    if (typeof req.query.period === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(req.query.period)) {
+      filters.push(eq(hrStatutoryFilings.period, req.query.period));
+    }
+    const rows = await db.select().from(hrStatutoryFilings)
+      .where(and(...filters)).orderBy(desc(hrStatutoryFilings.period), hrStatutoryFilings.code);
+    res.json({ success: true, data: rows });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch statutory filings" });
+  }
+});
+
+router.post("/payroll/statutory/filings", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
+  const parsed = insertHrStatutoryFilingSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  try {
+    const orgId = req.user!.orgId!;
+    const [duplicate] = await db.select({ id: hrStatutoryFilings.id }).from(hrStatutoryFilings)
+      .where(and(eq(hrStatutoryFilings.orgId, orgId), eq(hrStatutoryFilings.code, parsed.data.code), eq(hrStatutoryFilings.period, parsed.data.period))).limit(1);
+    if (duplicate) { res.status(409).json({ success: false, error: `${parsed.data.code} filing for ${parsed.data.period} already exists` }); return; }
+    const [totals] = await db.select({
+      employeeCount: sql<number>`count(distinct ${hrPayrollStatutoryLines.employeeId})::int`,
+      employeeAmount: sql<string>`coalesce(sum(${hrPayrollStatutoryLines.employeeAmount}), 0)`,
+      employerAmount: sql<string>`coalesce(sum(${hrPayrollStatutoryLines.employerAmount}), 0)`,
+    }).from(hrPayrollStatutoryLines)
+      .innerJoin(hrPayrollRuns, and(eq(hrPayrollStatutoryLines.runId, hrPayrollRuns.id), eq(hrPayrollRuns.orgId, orgId)))
+      .where(and(eq(hrPayrollStatutoryLines.orgId, orgId), eq(hrPayrollStatutoryLines.code, parsed.data.code), eq(hrPayrollRuns.period, parsed.data.period)));
+    const [created] = await db.insert(hrStatutoryFilings).values({
+      ...parsed.data, orgId, status: "draft", createdBy: req.user!.userId,
+      employeeCount: totals?.employeeCount ?? 0,
+      employeeAmount: totals?.employeeAmount ?? "0",
+      employerAmount: totals?.employerAmount ?? "0",
+      totalLiability: (Number(totals?.employeeAmount ?? 0) + Number(totals?.employerAmount ?? 0)).toFixed(2),
+      notes: parsed.data.notes ?? null,
+    }).returning();
+    res.status(201).json({ success: true, data: created });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to create statutory filing" });
+  }
+});
+
+router.put("/payroll/statutory/filings/:id", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  const parsed = updateHrStatutoryFilingSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
+  try {
+    const [existing] = await db.select().from(hrStatutoryFilings)
+      .where(and(eq(hrStatutoryFilings.id, id), eq(hrStatutoryFilings.orgId, req.user!.orgId!))).limit(1);
+    if (!existing) { res.status(404).json({ success: false, error: "Statutory filing not found" }); return; }
+    if (!FILING_TRANSITIONS[existing.status]?.includes(parsed.data.status)) {
+      res.status(409).json({ success: false, error: `Invalid filing transition from ${existing.status} to ${parsed.data.status}` });
+      return;
+    }
+    const updateData: any = { ...parsed.data, updatedAt: new Date() };
+    if (parsed.data.status === "filed") updateData.filedAt = new Date();
+    if (parsed.data.status === "paid") {
+      updateData.paidAt = new Date();
+      if (!existing.filedAt) updateData.filedAt = new Date();
+    }
+    const [updated] = await db.update(hrStatutoryFilings).set(updateData).where(eq(hrStatutoryFilings.id, id)).returning();
+    res.json({ success: true, data: updated });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to update statutory filing" });
+  }
+});
+
+router.delete("/payroll/statutory/filings/:id", requirePermission(MODULE, "delete"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    const [existing] = await db.select({ id: hrStatutoryFilings.id, status: hrStatutoryFilings.status }).from(hrStatutoryFilings)
+      .where(and(eq(hrStatutoryFilings.id, id), eq(hrStatutoryFilings.orgId, req.user!.orgId!))).limit(1);
+    if (!existing) { res.status(404).json({ success: false, error: "Statutory filing not found" }); return; }
+    if (existing.status !== "draft") { res.status(409).json({ success: false, error: "Only draft filings can be deleted" }); return; }
+    await db.delete(hrStatutoryFilings).where(eq(hrStatutoryFilings.id, id));
+    res.json({ success: true, data: { id } });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to delete statutory filing" });
+  }
+});
+
+router.get("/payroll/runs/:id/statutory", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    const [run] = await db.select({ id: hrPayrollRuns.id }).from(hrPayrollRuns)
+      .where(and(eq(hrPayrollRuns.id, id), eq(hrPayrollRuns.orgId, req.user!.orgId!))).limit(1);
+    if (!run) { res.status(404).json({ success: false, error: "Payroll run not found" }); return; }
+    const rows = await db.select().from(hrPayrollStatutoryLines)
+      .where(and(eq(hrPayrollStatutoryLines.runId, id), eq(hrPayrollStatutoryLines.orgId, req.user!.orgId!)))
+      .orderBy(hrPayrollStatutoryLines.employeeId, hrPayrollStatutoryLines.code);
+    res.json({ success: true, data: rows });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch payroll statutory lines" });
+  }
+});
+
+router.post("/payroll/runs/:id/calculate-statutory", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    await ensureStatutoryConfigs(req.user!.orgId!, req.user!.userId);
+    const count = await calculateStatutoryForRun(id, req.user!.orgId!);
+    res.json({ success: true, data: { runId: id, calculatedLines: count } });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to calculate statutory deductions";
+    res.status(message.includes("not found") ? 404 : 409).json({ success: false, error: message });
   }
 });
 
@@ -748,6 +1138,7 @@ router.post("/payroll/runs", requirePermission(MODULE, "create"), async (req: Au
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   try {
     const orgId = req.user!.orgId!;
+    await ensureStatutoryConfigs(orgId, req.user!.userId);
     // Check for duplicate period
     const [dup] = await db.select({ id: hrPayrollRuns.id }).from(hrPayrollRuns)
       .where(and(eq(hrPayrollRuns.orgId, orgId), eq(hrPayrollRuns.period, parsed.data.period))).limit(1);
@@ -794,6 +1185,7 @@ router.post("/payroll/runs", requirePermission(MODULE, "create"), async (req: Au
     });
 
     await recomputeRunTotals(run.id);
+    await calculateStatutoryForRun(run.id, orgId);
     const [finalRun] = await db.select().from(hrPayrollRuns).where(eq(hrPayrollRuns.id, run.id)).limit(1);
     res.status(201).json({ success: true, data: finalRun });
   } catch {

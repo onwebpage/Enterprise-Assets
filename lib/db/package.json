@@ -23,6 +23,7 @@
     "seed:cash-treasury": "tsx src/seed-cash-treasury.ts",
     "seed:financial-controls": "tsx src/seed-financial-controls.ts",
     "seed:hr": "tsx src/seed-hr.ts",
+    "schema:hr-payroll": "tsx src/apply-hr-payroll-schema.ts",
     "schema:wms": "tsx src/apply-wms-schema.ts",
     "schema:budget-cost": "tsx src/apply-budget-cost-schema.ts",
     "schema:quality": "tsx src/apply-quality-schema.ts",
