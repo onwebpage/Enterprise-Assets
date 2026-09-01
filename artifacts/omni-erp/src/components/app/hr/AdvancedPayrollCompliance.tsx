@@ -50,6 +50,7 @@ import {
   useDeleteStatutoryFiling,
   useHrStatutoryConfigs,
   useHrStatutoryFilings,
+  useHrPayrollRunStatutoryLines,
   useHrStatutorySummary,
   useUpdateStatutoryConfig,
   useUpdateStatutoryFiling,
@@ -57,12 +58,15 @@ import {
   type HrStatutoryConfig,
   type HrStatutoryFiling,
   type HrStatutoryFilingStatus,
+  type HrPayrollRun,
 } from "@/hooks/useHR";
 import { cn } from "@/lib/utils";
 
 type Props = {
+  payrollRuns: HrPayrollRun[];
   payrollRunId?: number | null;
   payrollRunPeriod?: string;
+  onPayrollRunChange: (runId: number | null) => void;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -508,8 +512,10 @@ function LoadingRows({ count = 4 }: { count?: number }) {
 }
 
 export default function AdvancedPayrollCompliance({
+  payrollRuns,
   payrollRunId = null,
   payrollRunPeriod,
+  onPayrollRunChange,
   canCreate,
   canEdit,
   canDelete,
@@ -519,6 +525,7 @@ export default function AdvancedPayrollCompliance({
   const configs = useHrStatutoryConfigs();
   const [periodFilter, setPeriodFilter] = useState(payrollRunPeriod ?? "");
   const filings = useHrStatutoryFilings({ period: periodFilter || undefined });
+  const statutoryLines = useHrPayrollRunStatutoryLines(payrollRunId);
   const calculate = useCalculatePayrollStatutory();
   const deleteConfig = useDeleteStatutoryConfig();
   const deleteFiling = useDeleteStatutoryFiling();
@@ -532,6 +539,20 @@ export default function AdvancedPayrollCompliance({
   const summaryData = summary.data?.data;
   const configRows = configs.data?.data ?? [];
   const filingRows = filings.data?.data ?? [];
+  const statutoryLineRows = statutoryLines.data?.data ?? [];
+  const selectedRun = payrollRuns.find((run) => run.id === payrollRunId) ?? null;
+  const selectedRunByCode = useMemo(() => {
+    const grouped = new Map<HrStatutoryCode, { employees: number; employeeAmount: number; employerAmount: number; liability: number }>();
+    for (const line of statutoryLineRows) {
+      const current = grouped.get(line.code) ?? { employees: 0, employeeAmount: 0, employerAmount: 0, liability: 0 };
+      current.employees += 1;
+      current.employeeAmount += Number(line.employeeAmount || 0);
+      current.employerAmount += Number(line.employerAmount || 0);
+      current.liability += Number(line.employeeAmount || 0) + Number(line.employerAmount || 0);
+      grouped.set(line.code, current);
+    }
+    return [...grouped.entries()].map(([code, values]) => ({ code, ...values }));
+  }, [statutoryLineRows]);
   const liability = useMemo(
     () => summaryData?.filingSummary?.reduce((total, item) => total + Number(item.liability || 0), 0) ?? 0,
     [summaryData?.filingSummary],
@@ -588,7 +609,15 @@ export default function AdvancedPayrollCompliance({
               <p className="mt-1 max-w-xl text-sm leading-6 text-white/42">Keep every contribution, filing and rule defensible before payroll moves to payment.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {payrollRunId ? (
+               {payrollRuns.length > 0 ? (
+                 <Select value={payrollRunId ? String(payrollRunId) : ""} onValueChange={(value) => onPayrollRunChange(Number(value))}>
+                   <SelectTrigger className="h-9 w-[190px] border-white/[0.1] bg-white/[0.04] text-xs text-white" data-testid="select-compliance-payroll-run"><SelectValue placeholder="Select payroll run" /></SelectTrigger>
+                   <SelectContent className="border-white/[0.1] bg-[#101a2b] text-white">
+                     {payrollRuns.map((run) => <SelectItem key={run.id} value={String(run.id)}>{run.period} · {run.runNumber}</SelectItem>)}
+                   </SelectContent>
+                 </Select>
+               ) : null}
+               {payrollRunId ? (
                 <Button type="button" onClick={calculateRun} disabled={calculate.isPending} data-testid="button-calculate-statutory" className="bg-[#e7a23b] text-[#171108] hover:bg-[#f0b252]">
                   {calculate.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                   {calculate.isPending ? "Calculating…" : "Calculate statutory"}
@@ -613,7 +642,7 @@ export default function AdvancedPayrollCompliance({
                 <p className="mt-0.5 text-[11px] text-white/35">{payrollRunId ? `Run #${payrollRunId}${payrollRunPeriod ? ` · ${payrollRunPeriod}` : ""}` : "Select a payroll run in Payroll to calculate statutory lines."}</p>
               </div>
             </div>
-            {payrollRunId ? <Badge className="w-fit border border-[#64c7b0]/20 bg-[#64c7b0]/[0.08] text-[10px] text-[#7ed8c0]" data-testid="status-calculation-ready"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Run available</Badge> : null}
+             {payrollRunId ? <Badge className="w-fit border border-[#64c7b0]/20 bg-[#64c7b0]/[0.08] text-[10px] text-[#7ed8c0]" data-testid="status-calculation-ready"><CheckCircle2 className="mr-1 h-3.5 w-3.5" /> {selectedRun?.status ?? "Run"} available</Badge> : null}
           </div>
         </header>
 
@@ -634,6 +663,25 @@ export default function AdvancedPayrollCompliance({
 
           <div className="grid gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
             <div className="min-w-0 space-y-7">
+              <section className="rounded-xl border border-white/[0.075] bg-[#0d1423]/80" data-testid="section-selected-run-breakdown">
+                <div className="border-b border-white/[0.07] px-4 py-4">
+                  <div className="flex items-center gap-2"><ClipboardCheck className="h-4 w-4 text-[#87aefb]" /><h2 className="text-sm font-semibold text-white/85">Selected run breakdown</h2></div>
+                  <p className="mt-1 text-xs text-white/35">{selectedRun ? `${selectedRun.runNumber} · ${selectedRun.period} · ${selectedRun.employeeCount} employees` : "Choose a payroll run to inspect its statutory snapshot."}</p>
+                </div>
+                {!payrollRunId ? <div className="p-4"><EmptyState icon={CircleDollarSign} title="No payroll run selected" description="Select a run above or open one from the Payroll tab." /></div>
+                  : statutoryLines.isLoading ? <div className="px-4 py-3"><LoadingRows count={4} /></div>
+                  : statutoryLines.isError ? <div className="p-4"><ErrorState retry={() => statutoryLines.refetch()} /></div>
+                  : selectedRunByCode.length === 0 ? <div className="p-4"><EmptyState icon={ClipboardCheck} title="Awaiting calculation" description="Calculate statutory deductions for this run to create an auditable contribution snapshot." action={canEdit && selectedRun?.status !== "approved" && selectedRun?.status !== "paid" ? <Button type="button" size="sm" onClick={calculateRun} disabled={calculate.isPending} className="bg-[#e7a23b] text-[#171108] hover:bg-[#f0b252]"><RefreshCw className="h-3.5 w-3.5" /> Calculate now</Button> : null} /></div>
+                  : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[620px] text-left">
+                        <thead><tr className="border-b border-white/[0.055] text-[10px] uppercase tracking-[0.13em] text-white/28"><th className="px-4 py-3 font-medium">Code</th><th className="px-3 py-3 font-medium">Employees</th><th className="px-3 py-3 text-right font-medium">Employee share</th><th className="px-3 py-3 text-right font-medium">Employer share</th><th className="px-4 py-3 text-right font-medium">Liability</th></tr></thead>
+                        <tbody>{selectedRunByCode.map((item) => <tr key={item.code} className="border-b border-white/[0.045] last:border-0"><td className="px-4 py-3"><span className={cn("rounded-md px-2 py-1 font-mono text-[10px] font-semibold", codeStyles[item.code].bg, codeStyles[item.code].text)}>{item.code}</span></td><td className="px-3 py-3 text-xs text-white/55">{item.employees}</td><td className="px-3 py-3 text-right font-mono text-xs text-[#9fc2ff]">{money(item.employeeAmount)}</td><td className="px-3 py-3 text-right font-mono text-xs text-[#79d9c0]">{money(item.employerAmount)}</td><td className="px-4 py-3 text-right font-mono text-xs font-semibold text-white/80">{money(item.liability)}</td></tr>)}</tbody>
+                      </table>
+                    </div>
+                  )}
+              </section>
+
               <section className="rounded-xl border border-white/[0.075] bg-[#0d1423]/80" data-testid="section-filing-register">
                 <div className="flex flex-col gap-3 border-b border-white/[0.07] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>

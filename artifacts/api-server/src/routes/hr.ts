@@ -65,7 +65,13 @@ async function ensureStatutoryConfigs(orgId: number, userId: number) {
   const missing = DEFAULT_STATUTORY_CONFIGS
     .filter((config) => !existingCodes.has(config.code))
     .map((config) => ({ ...config, orgId, createdBy: userId, effectiveFrom: new Date().toISOString().slice(0, 10) }));
-  if (missing.length > 0) await db.insert(hrStatutoryConfigs).values(missing);
+  if (missing.length > 0) {
+    await db.insert(hrStatutoryConfigs)
+      .values(missing)
+      .onConflictDoNothing({
+        target: [hrStatutoryConfigs.orgId, hrStatutoryConfigs.code],
+      });
+  }
 }
 
 async function calculateStatutoryForRun(runId: number, orgId: number) {
@@ -131,7 +137,7 @@ async function calculateStatutoryForRun(runId: number, orgId: number) {
       } else if (config.code === "PT") {
         applicable = gross > threshold;
         base = gross;
-        employeeAmount = applicable ? Number(config.fixedAmount) : 0;
+        employeeAmount = applicable ? money(Number(config.fixedAmount)) : 0;
         pt += employeeAmount;
         note = applicable ? `Fixed professional tax for ${config.jurisdiction ?? "jurisdiction"}` : `Not applicable below ₹${threshold}`;
       } else if (config.code === "TDS") {
@@ -431,6 +437,7 @@ router.get("/analytics", requirePermission(MODULE, "view"), async (req: AuthRequ
 router.get("/payroll/statutory/summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   const orgId = req.user!.orgId!;
   try {
+    await ensureStatutoryConfigs(orgId, req.user!.userId);
     const [configs, filings, latest, byCode] = await Promise.all([
       db.select({ code: hrStatutoryConfigs.code, enabled: hrStatutoryConfigs.enabled })
         .from(hrStatutoryConfigs).where(eq(hrStatutoryConfigs.orgId, orgId)),
@@ -623,6 +630,14 @@ router.put("/payroll/statutory/filings/:id", requirePermission(MODULE, "edit"), 
     if (!existing) { res.status(404).json({ success: false, error: "Statutory filing not found" }); return; }
     if (!FILING_TRANSITIONS[existing.status]?.includes(parsed.data.status)) {
       res.status(409).json({ success: false, error: `Invalid filing transition from ${existing.status} to ${parsed.data.status}` });
+      return;
+    }
+    if (existing.status === "paid") {
+      res.status(409).json({ success: false, error: "Paid filings are immutable." });
+      return;
+    }
+    if (existing.status === "filed" && parsed.data.status !== "paid") {
+      res.status(409).json({ success: false, error: "Filed filings are immutable except for recording payment." });
       return;
     }
     const updateData: any = { ...parsed.data, updatedAt: new Date() };
@@ -1209,6 +1224,10 @@ router.put("/payroll/runs/:id", requirePermission(MODULE, "edit"), async (req: A
       });
       return;
     }
+    if (existing.status === "paid") {
+      res.status(409).json({ success: false, error: "Paid payroll runs are immutable." });
+      return;
+    }
     const updateData: any = { status: parsed.data.status, updatedAt: new Date() };
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
     if (parsed.data.status === "approved") {
@@ -1236,6 +1255,9 @@ router.post("/payroll/runs/:id/lines", requirePermission(MODULE, "edit"), async 
     if (run.status !== "draft") { res.status(409).json({ success: false, error: "Can only edit lines in a draft run." }); return; }
 
     const d = parsed.data;
+    const [employee] = await db.select({ id: hrEmployees.id }).from(hrEmployees)
+      .where(and(eq(hrEmployees.id, d.employeeId), eq(hrEmployees.orgId, req.user!.orgId!))).limit(1);
+    if (!employee) { res.status(404).json({ success: false, error: "Employee not found in your organization" }); return; }
     const grossPay       = (parseFloat(d.basicPay ?? "0") + parseFloat(d.hra ?? "0") + parseFloat(d.otherAllowances ?? "0")).toFixed(2);
     const totalDeductions = (parseFloat(d.pf ?? "0") + parseFloat(d.esi ?? "0") + parseFloat(d.tds ?? "0") + parseFloat(d.otherDeductions ?? "0")).toFixed(2);
     const netPay          = (parseFloat(grossPay) - parseFloat(totalDeductions)).toFixed(2);
@@ -1264,6 +1286,7 @@ router.post("/payroll/runs/:id/lines", requirePermission(MODULE, "edit"), async 
     }
 
     await recomputeRunTotals(runId);
+    await calculateStatutoryForRun(runId, req.user!.orgId!);
     res.status(201).json({ success: true, data: line });
   } catch {
     res.status(500).json({ success: false, error: "Failed to upsert payroll line" });

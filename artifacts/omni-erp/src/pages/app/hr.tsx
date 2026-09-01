@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users, DollarSign, UserPlus, TrendingUp, Plus, Download, Search,
@@ -22,6 +22,7 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import HRCommandCenter from '@/components/app/hr/HRCommandCenter';
+import AdvancedPayrollCompliance from '@/components/app/hr/AdvancedPayrollCompliance';
 import {
   useHrPermissions, useHrSummary, useHrAnalytics,
   useHrEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee,
@@ -470,6 +471,7 @@ export default function HR() {
   const [jobForm,      setJobForm]      = useState<{ open: boolean; item?: HrJobPosting | null }>({ open: false });
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'emp' | 'leave' | 'job'; id: number; label: string } | null>(null);
   const [newPayroll,   setNewPayroll]   = useState(false);
+  const [complianceRunId, setComplianceRunId] = useState<number | null>(null);
   const [payPeriod,    setPayPeriod]    = useState(() => {
     const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
@@ -499,6 +501,12 @@ export default function HR() {
   const delJob   = useDeleteJobPosting();
   const appLeave = useUpdateLeaveRequest();
   const createPay = useCreatePayrollRun();
+
+  useEffect(() => {
+    if (complianceRunId === null && payrollRuns.length > 0) {
+      setComplianceRunId(payrollRuns[0].id);
+    }
+  }, [complianceRunId, payrollRuns]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -532,6 +540,13 @@ export default function HR() {
       toast({ title: 'Error', description: err?.message, variant: 'destructive' });
     }
   }
+
+  function openPayrollRun(run: HrPayrollRun) {
+    setComplianceRunId(run.id);
+    setPayDetail({ open: true, run });
+  }
+
+  const complianceRun = payrollRuns.find(run => run.id === complianceRunId) ?? null;
 
   // Dept breakdown for chart
   const deptBreakdown = s?.deptBreakdown ?? [];
@@ -625,15 +640,15 @@ export default function HR() {
         <Tabs value={tab} onValueChange={t => { setTab(t); setSearch(''); }}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <TabsList className="bg-white/[0.04] border border-white/[0.07]">
-              {[['overview','Overview'],['employees','Employees'],['payroll','Payroll'],['leaves','Leaves'],['recruitment','Recruitment']].map(([v, l]) => (
+              {[['overview','Overview'],['employees','Employees'],['payroll','Payroll'],['leaves','Leaves'],['recruitment','Recruitment'],['compliance','Compliance']].map(([v, l]) => (
                 <TabsTrigger key={v} value={v} className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50">{l}</TabsTrigger>
               ))}
             </TabsList>
             <div className="flex items-center gap-2">
-              <div className="relative">
+              {tab !== 'compliance' && <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
                 <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." className="pl-9 bg-white/[0.04] border-white/[0.07] text-white placeholder:text-white/30 h-8 text-sm w-44" />
-              </div>
+              </div>}
               {tab === 'employees' && (
                 <Select value={empStatus} onValueChange={setEmpStatus}>
                   <SelectTrigger className="bg-white/[0.04] border-white/[0.07] text-white/60 h-8 text-xs w-32"><SelectValue placeholder="All status" /></SelectTrigger>
@@ -741,7 +756,7 @@ export default function HR() {
                       </tr></thead>
                       <tbody>
                         {payrollRuns.map(run => (
-                          <tr key={run.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setPayDetail({ open: true, run })}>
+                            <tr key={run.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => openPayrollRun(run)}>
                             <td className="px-4 py-3 text-sm font-medium text-[#2563EB]">{run.runNumber}</td>
                             <td className="px-4 py-3 text-sm text-white/80">{run.period}</td>
                             <td className="px-4 py-3 text-sm text-white/60">{run.employeeCount}</td>
@@ -756,6 +771,20 @@ export default function HR() {
                     </table>
                   </div>
                 )}
+          </TabsContent>
+
+          {/* ── Advanced Payroll & Statutory Compliance ── */}
+          <TabsContent value="compliance" className="mt-4">
+            <AdvancedPayrollCompliance
+              payrollRuns={payrollRuns}
+              payrollRunId={complianceRunId}
+              payrollRunPeriod={complianceRun?.period}
+              onPayrollRunChange={setComplianceRunId}
+              canCreate={p.canCreate}
+              canEdit={p.canEdit}
+              canDelete={p.canDelete}
+              onToast={(title, description, destructive) => toast({ title, description, variant: destructive ? 'destructive' : 'default' })}
+            />
           </TabsContent>
 
           {/* ── Leaves ── */}
