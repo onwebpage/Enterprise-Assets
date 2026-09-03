@@ -17,6 +17,12 @@ export type BankTransactionStatus = (typeof BANK_TRANSACTION_STATUSES)[number];
 
 export const RECONCILIATION_STATUSES = ["draft", "completed"] as const;
 export type ReconciliationStatus = (typeof RECONCILIATION_STATUSES)[number];
+export const CHEQUE_BOOK_STATUSES = ["active", "closed"] as const;
+export type ChequeBookStatus = (typeof CHEQUE_BOOK_STATUSES)[number];
+export const CHEQUE_DIRECTIONS = ["issued", "received"] as const;
+export type ChequeDirection = (typeof CHEQUE_DIRECTIONS)[number];
+export const CHEQUE_STATUSES = ["pending", "cleared", "bounced", "cancelled"] as const;
+export type ChequeStatus = (typeof CHEQUE_STATUSES)[number];
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +58,10 @@ export interface BankTransaction {
   createdBy: number | null;
   createdAt: string;
   updatedAt: string;
+  source?: 'manual' | 'statement_import';
+  importId?: number | null;
+  matchedJournalEntryId?: number | null;
+  matchConfidence?: string | null;
 }
 
 export interface BankReconciliation {
@@ -128,6 +138,19 @@ export interface BankingListResponse<T> {
   limit: number;
   totalPages: number;
 }
+
+export interface ReconciliationReport {
+  total: number;
+  matched: number;
+  unreconciled: number;
+  credits: string;
+  debits: string;
+}
+
+export interface ChequeBook { id: number; orgId: number | null; bankAccountId: number; accountName?: string | null; name: string; prefix: string | null; startNumber: number; endNumber: number; nextNumber: number; issueDate: string; status: ChequeBookStatus; notes: string | null; usedCount: number; }
+export interface Cheque { id: number; orgId: number | null; bankAccountId: number; accountName?: string | null; chequeBookId: number | null; bookName?: string | null; chequeNumber: string; direction: ChequeDirection; issueDate: string; chequeDate: string; partyName: string; amount: string; status: ChequeStatus; clearedDate: string | null; bouncedDate: string | null; bounceReason: string | null; reference: string | null; notes: string | null; journalEntryId: number | null; }
+export interface ChequeBookFormValues { bankAccountId: number; name: string; prefix?: string | null; startNumber: number; endNumber: number; issueDate: string; notes?: string | null; }
+export interface ChequeFormValues { bankAccountId: number; chequeBookId?: number | null; chequeNumber?: string; direction: ChequeDirection; issueDate: string; chequeDate: string; partyName: string; amount: string; reference?: string | null; notes?: string | null; journalEntryId?: number | null; }
 
 // ── Query keys ────────────────────────────────────────────────────────────────
 
@@ -265,6 +288,49 @@ export function useDeleteBankTransaction() {
     },
   });
 }
+
+export function useImportBankStatement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { bankAccountId: number; fileName: string; rows: Array<Record<string, string>> }) =>
+      api.post<ApiResponse<{ batchId: number; imported: number; skipped: number }>>('/banking/statements/import', data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['banking', 'transactions'] });
+      qc.invalidateQueries({ queryKey: ['banking', 'accounts'] });
+      qc.invalidateQueries({ queryKey: QK.summary });
+    },
+  });
+}
+
+export function useAutoMatchBankStatement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bankAccountId: number) => api.post<ApiResponse<{ scanned: number; matched: number; unmatched: number }>>('/banking/statements/auto-match', { bankAccountId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['banking', 'transactions'] });
+      qc.invalidateQueries({ queryKey: QK.summary });
+    },
+  });
+}
+
+export function useBankReconciliationReport(bankAccountId?: number) {
+  const query = bankAccountId ? `?bankAccountId=${bankAccountId}` : '';
+  return useQuery<ApiResponse<ReconciliationReport>>({
+    queryKey: ['banking', 'reports', 'reconciliation', bankAccountId ?? 'all'],
+    queryFn: () => api.get(`/banking/reports/reconciliation${query}`),
+    staleTime: 15_000,
+  });
+}
+
+export function useChequeBooks() { return useQuery<ApiResponse<ChequeBook[]>>({ queryKey: ['banking', 'cheque-books'], queryFn: () => api.get('/banking/cheque-books') }); }
+export function useCheques(params: { status?: string; direction?: string } = {}) {
+  const query = new URLSearchParams(); if (params.status) query.set('status', params.status); if (params.direction) query.set('direction', params.direction);
+  return useQuery<ApiResponse<Cheque[]>>({ queryKey: ['banking', 'cheques', params], queryFn: () => api.get(`/banking/cheques?${query}`) });
+}
+export function useCreateChequeBook() { const qc = useQueryClient(); return useMutation({ mutationFn: (data: ChequeBookFormValues) => api.post<ApiResponse<ChequeBook>>('/banking/cheque-books', data), onSuccess: () => qc.invalidateQueries({ queryKey: ['banking', 'cheque-books'] }) }); }
+export function useCreateCheque() { const qc = useQueryClient(); return useMutation({ mutationFn: (data: ChequeFormValues) => api.post<ApiResponse<Cheque>>('/banking/cheques', data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['banking', 'cheques'] }); qc.invalidateQueries({ queryKey: ['banking', 'cheque-books'] }); } }); }
+export function useUpdateCheque() { const qc = useQueryClient(); return useMutation({ mutationFn: ({ id, data }: { id: number; data: Partial<Cheque> }) => api.put<ApiResponse<Cheque>>(`/banking/cheques/${id}`, data), onSuccess: () => qc.invalidateQueries({ queryKey: ['banking', 'cheques'] }) }); }
+export function useChequeReport() { return useQuery<ApiResponse<Array<{ direction: ChequeDirection; status: ChequeStatus; count: number; amount: string }>>>({ queryKey: ['banking', 'cheques', 'report'], queryFn: () => api.get('/banking/cheques/report') }); }
 
 // ── Reconciliations ───────────────────────────────────────────────────────────
 

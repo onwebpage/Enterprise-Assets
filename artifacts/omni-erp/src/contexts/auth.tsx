@@ -9,6 +9,7 @@ export interface AuthUser {
   displayName: string;
   initials: string;
   status: string;
+  paymentStatus: string;
   mfaEnabled: boolean;
   roleId: number | null;
   roleName: string;
@@ -46,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
+    try { localStorage.removeItem('active_organization_id'); } catch {}
     const res = await api.post<{ success: boolean; data: { token: string; user: AuthUser } }>(
       '/auth/login',
       { email, password },
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
     companyName?: string;
   }) {
+    try { localStorage.removeItem('active_organization_id'); } catch {}
     const res = await api.post<{ success: boolean; data: { token: string; user: AuthUser } }>(
       '/auth/register',
       details,

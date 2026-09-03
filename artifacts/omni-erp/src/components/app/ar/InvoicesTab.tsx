@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   useARPermissions, useCreateARPayment,
   type ARInvoice, type ARInvoiceStatus, type ARInvoiceFormValues,
 } from '@/hooks/useAccountsReceivable';
+import { api, type ApiResponse } from '@/lib/api';
 import InvoiceFormModal from './InvoiceFormModal';
 import PaymentFormModal from './PaymentFormModal';
 import ARDeleteDialog from './ARDeleteDialog';
@@ -27,6 +28,65 @@ const PAGE_LIMIT = 25;
 
 function fmt(v: string) {
   return '$' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function printText(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] ?? character));
+}
+
+function printInvoice(invoice: ARInvoice) {
+  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+  if (!printWindow) return;
+
+  const lines = (invoice.lines ?? []).map((line) => `
+    <tr>
+      <td>${printText(line.description)}</td>
+      <td class="number">${printText(line.quantity)}</td>
+      <td class="number">${fmt(line.unitPrice)}</td>
+      <td class="number">${fmt(line.amount)}</td>
+    </tr>`).join('');
+  const balance = (parseFloat(invoice.totalAmount) - parseFloat(invoice.amountPaid)).toFixed(2);
+
+  printWindow.document.write(`<!doctype html><html><head><title>${printText(invoice.invoiceNumber)}</title>
+    <style>
+      @page { size: A4; margin: 16mm; }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
+      .page { max-width: 780px; margin: 0 auto; }
+      .header { display: flex; justify-content: space-between; gap: 32px; padding-bottom: 26px; border-bottom: 3px solid #2563eb; }
+      .brand { color: #2563eb; font-size: 24px; font-weight: 800; letter-spacing: .02em; }
+      .label { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+      h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: .02em; text-align: right; }
+      .meta { color: #475569; line-height: 1.7; text-align: right; }
+      .summary { display: flex; justify-content: space-between; gap: 32px; padding: 26px 0; }
+      .customer { flex: 1; }
+      .customer-name { margin-top: 7px; font-size: 16px; font-weight: 700; }
+      .dates { min-width: 220px; }
+      .date-row { display: flex; justify-content: space-between; gap: 22px; padding: 4px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      th { padding: 10px 12px; color: #fff; background: #172033; font-size: 10px; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
+      td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+      .number { text-align: right; white-space: nowrap; }
+      .totals { display: flex; justify-content: flex-end; padding-top: 18px; }
+      .totals table { width: 280px; }
+      .totals td { padding: 7px 0 7px 18px; border: 0; }
+      .total td { border-top: 2px solid #172033; color: #172033; font-size: 15px; font-weight: 800; }
+      .balance td { color: #2563eb; font-weight: 700; }
+      .notes { margin-top: 36px; padding: 14px 16px; background: #f8fafc; border-left: 3px solid #cbd5e1; white-space: pre-wrap; }
+      footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 10px; text-align: center; }
+    </style></head><body><main class="page">
+      <header class="header"><div><div class="brand">INVOICE</div><div class="label" style="margin-top:8px">Accounts Receivable</div></div>
+        <div><h1>${printText(invoice.invoiceNumber)}</h1><div class="meta">Status: ${printText(invoice.status.toUpperCase())}<br>Issued: ${printText(invoice.issueDate)}</div></div></header>
+      <section class="summary"><div class="customer"><div class="label">Bill To</div><div class="customer-name">${printText(invoice.customerName || 'Customer')}</div></div>
+        <div class="dates"><div class="date-row"><span class="label">Invoice date</span><strong>${printText(invoice.issueDate)}</strong></div><div class="date-row"><span class="label">Due date</span><strong>${printText(invoice.dueDate)}</strong></div></div></section>
+      <table><thead><tr><th>Description</th><th class="number">Quantity</th><th class="number">Unit price</th><th class="number">Amount</th></tr></thead><tbody>${lines}</tbody></table>
+      <section class="totals"><table><tr><td>Subtotal</td><td class="number">${fmt(invoice.subtotal)}</td></tr><tr><td>Tax</td><td class="number">${fmt(invoice.taxAmount)}</td></tr><tr class="total"><td>Total</td><td class="number">${fmt(invoice.totalAmount)}</td></tr><tr><td>Paid</td><td class="number">${fmt(invoice.amountPaid)}</td></tr><tr class="balance"><td>Balance due</td><td class="number">${fmt(balance)}</td></tr></table></section>
+      ${invoice.notes ? `<div class="notes"><div class="label">Notes</div><div style="margin-top:6px">${printText(invoice.notes)}</div></div>` : ''}
+      <footer>Thank you for your business.</footer>
+    </main></body></html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.setTimeout(() => printWindow.print(), 250);
 }
 
 function TableSkeleton() {
@@ -209,6 +269,13 @@ export default function InvoicesTab() {
                           <CreditCard className="w-3.5 h-3.5" />
                         </button>
                       )}
+                      <button onClick={async () => {
+                        const response = await api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`);
+                        printInvoice(response.data);
+                      }}
+                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors" title="Print Invoice">
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
                       {canEdit && (
                         <button onClick={() => openEdit(inv)}
                           className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors" title="Edit">

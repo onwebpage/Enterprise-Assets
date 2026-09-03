@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, roles, permissions } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { requirePermission } from "../middlewares/requirePermission";
 
 const router = Router();
 router.use(requireAuth);
 
 // GET /api/roles — includes permissions
-router.get("/", async (req: AuthRequest, res) => {
+router.get("/", requirePermission("roles", "view"), async (req: AuthRequest, res) => {
   try {
     const allRoles = await db
       .select()
@@ -28,7 +29,7 @@ router.get("/", async (req: AuthRequest, res) => {
 });
 
 // POST /api/roles
-router.post("/", async (req: AuthRequest, res) => {
+router.post("/", requirePermission("roles", "create"), async (req: AuthRequest, res) => {
   try {
     const { name, description } = req.body as { name?: string; description?: string };
     if (!name) { res.status(400).json({ success: false, error: "name is required" }); return; }
@@ -46,7 +47,7 @@ router.post("/", async (req: AuthRequest, res) => {
 });
 
 // PUT /api/roles/:id — update role + permissions
-router.put("/:id", async (req: AuthRequest, res) => {
+router.put("/:id", requirePermission("roles", "edit"), async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id as string);
     const { name, description, permissions: permsInput } = req.body as {
@@ -57,7 +58,7 @@ router.put("/:id", async (req: AuthRequest, res) => {
     const [role] = await db.update(roles).set({
       ...(name !== undefined && { name }),
       ...(description !== undefined && { description }),
-    }).where(eq(roles.id, id)).returning();
+    }).where(and(eq(roles.id, id), eq(roles.orgId, req.user!.orgId!))).returning();
 
     if (!role) { res.status(404).json({ success: false, error: "Role not found" }); return; }
 
@@ -76,14 +77,14 @@ router.put("/:id", async (req: AuthRequest, res) => {
 });
 
 // DELETE /api/roles/:id
-router.delete("/:id", async (req: AuthRequest, res) => {
+router.delete("/:id", requirePermission("roles", "delete"), async (req: AuthRequest, res) => {
   try {
-    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, parseInt(req.params.id as string))).limit(1);
+    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(and(eq(roles.id, parseInt(req.params.id as string)), eq(roles.orgId, req.user!.orgId!))).limit(1);
     if (role?.isSystem) {
       res.status(400).json({ success: false, error: "Cannot delete system roles" });
       return;
     }
-    await db.delete(roles).where(eq(roles.id, parseInt(req.params.id as string)));
+    await db.delete(roles).where(and(eq(roles.id, parseInt(req.params.id as string)), eq(roles.orgId, req.user!.orgId!)));
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete role" });

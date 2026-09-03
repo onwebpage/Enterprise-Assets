@@ -8,10 +8,11 @@ import { formatINR } from '@/lib/currency';
 import AccountsTab from '@/components/app/banking/AccountsTab';
 import TransactionsTab from '@/components/app/banking/TransactionsTab';
 import ReconciliationsTab from '@/components/app/banking/ReconciliationsTab';
+import ChequesTab from '@/components/app/banking/ChequesTab';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = 'overview' | 'accounts' | 'transactions' | 'reconciliations';
+type Tab = 'overview' | 'accounts' | 'transactions' | 'reconciliations' | 'cheques';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'accounts',        label: 'Accounts'        },
   { id: 'transactions',    label: 'Transactions'    },
   { id: 'reconciliations', label: 'Reconciliations' },
+  { id: 'cheques',         label: 'Cheques'         },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -216,6 +218,7 @@ export default function Banking() {
           {activeTab === 'accounts'        && <AccountsTab />}
           {activeTab === 'transactions'    && <TransactionsTab />}
           {activeTab === 'reconciliations' && <ReconciliationsTab />}
+          {activeTab === 'cheques'         && <ChequesTab />}
         </motion.div>
       </div>
     </AppLayout>

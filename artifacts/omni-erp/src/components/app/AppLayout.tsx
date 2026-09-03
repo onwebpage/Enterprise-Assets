@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/auth';
 import { useNotificationSummary, useNotifications, useMarkRead, useMarkAllRead, TYPE_COLORS, timeAgo } from '@/hooks/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { api, type ApiListResponse } from '@/lib/api';
 
 const navGroups = [
   {
@@ -123,16 +125,31 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { data: organizations = [] } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: () => api.get<ApiListResponse<{ id: number; name: string; currency: string | null }>>('/organizations'),
+    select: response => response.data,
+  });
   const { data: notifSummary } = useNotificationSummary();
   const { data: notifList } = useNotifications({ filter: 'all', limit: 5 });
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   const unreadCount = notifSummary?.unread ?? 0;
   const recentNotifs = notifList?.data ?? [];
-  const currentOrganization = {
+  const currentOrganization = organizations.find(org => org.id === user?.orgId) ?? {
+    id: user?.orgId ?? 0,
     name: user?.orgId ? `Organization ${user.orgId}` : 'Current organization',
+    currency: null,
+  };
+  const organizationPlan = {
     plan: user?.roleName || 'Workspace',
     logo: user?.initials || 'OR',
+  };
+
+  const switchOrganization = async (organizationId: number) => {
+    await api.post('/organizations/switch', { organizationId });
+    localStorage.setItem('active_organization_id', String(organizationId));
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -171,15 +188,30 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
       {/* Company Switcher */}
       {sidebarOpen && (
         <div className="px-3 pt-3 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-white/[0.05]">
             <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-[#2563EB]/40 to-[#06B6D4]/40 text-xs font-bold text-white">
-              {currentOrganization.logo}
+              {organizationPlan.logo}
             </div>
             <div className="min-w-0 flex-1 text-left">
               <p className="truncate text-sm font-medium text-white">{currentOrganization.name}</p>
-              <p className="text-xs text-white/40">{currentOrganization.plan}</p>
+              <p className="text-xs text-white/40">{organizationPlan.plan}</p>
             </div>
-          </div>
+                <ChevronDown className="h-4 w-4 text-white/40" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 border-white/[0.1] bg-[#0a0f1e] text-white">
+              <DropdownMenuLabel className="text-white/40">Your companies</DropdownMenuLabel>
+              {organizations.map(organization => (
+                <DropdownMenuItem key={organization.id} onClick={() => void switchOrganization(organization.id)} className="gap-2 focus:bg-white/[0.08] focus:text-white">
+                  <Building2 className="h-4 w-4 text-[#06B6D4]" />
+                  <span className="truncate">{organization.name}</span>
+                  {organization.id === currentOrganization.id && <Check className="ml-auto h-4 w-4 text-emerald-400" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { pgTable, serial, text, integer, numeric, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations";
+import { users } from "./users";
 
 // ── Plans ─────────────────────────────────────────────────────────────────────
 export const billingPlans = pgTable("billing_plans", {
@@ -80,6 +81,28 @@ export const billingPaymentMethods = pgTable("billing_payment_methods", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const paymentSubmissions = pgTable("payment_submissions", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subscriptionId: integer("subscription_id").references(() => billingSubscriptions.id, { onDelete: "set null" }),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("INR"),
+  paymentMethod: text("payment_method").notNull().default("razorpay_upi"),
+  utr: text("utr").notNull(),
+  paidAt: timestamp("paid_at").notNull(),
+  proofData: text("proof_data"),
+  proofFileName: text("proof_file_name"),
+  notes: text("notes"),
+  status: text("status").notNull().default("pending"),
+  reviewedBy: integer("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  billingInvoiceId: integer("billing_invoice_id").references(() => billingInvoices.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // ── Add-ons ───────────────────────────────────────────────────────────────────
 export const billingAddOns = pgTable("billing_add_ons", {
   id: serial("id").primaryKey(),
@@ -105,5 +128,6 @@ export type BillingPlan = typeof billingPlans.$inferSelect;
 export type BillingSubscription = typeof billingSubscriptions.$inferSelect;
 export type BillingInvoice = typeof billingInvoices.$inferSelect;
 export type BillingPaymentMethod = typeof billingPaymentMethods.$inferSelect;
+export type PaymentSubmission = typeof paymentSubmissions.$inferSelect;
 export type BillingAddOn = typeof billingAddOns.$inferSelect;
 export type BillingSubscriptionAddOn = typeof billingSubscriptionAddOns.$inferSelect;

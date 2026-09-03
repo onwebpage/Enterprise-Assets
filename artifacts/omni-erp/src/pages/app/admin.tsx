@@ -46,6 +46,7 @@ interface Ticket { id: number; ticket_number: string; subject: string; descripti
 interface Backup { id: number; backup_name: string; type: string; status: string; initiated_by: string; size_bytes: number | null; notes: string | null; started_at: string; completed_at: string | null; }
 interface Notification { id: number; user_id: number; type: string; title: string; body: string | null; is_read: boolean; created_at: string; target_email: string | null; }
 interface SystemSetting { id: number; key: string; value: string; category: string; description: string | null; updated_by: string | null; updated_at: string; }
+interface PaymentSubmission { id: number; org_id: number; user_id: number; org_name: string; email: string; first_name: string; last_name: string; amount: string; currency: string; utr: string; paid_at: string; proof_data: string | null; proof_file_name: string | null; notes: string | null; status: string; rejection_reason: string | null; subscription_status: string | null; created_at: string; }
 
 // ── Helper ─────────────────────────────────────────────────────────────────────
 function useAdminQuery<T>(key: string[], path: string) {
@@ -70,6 +71,20 @@ function fmt(n: number, prefix = '') {
 }
 function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString() : '—'; }
 function fmtDateTime(s: string | null) { return s ? new Date(s).toLocaleString() : '—'; }
+
+function PaymentApprovalsTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [status, setStatus] = useState('pending');
+  const { data: payments = [], isLoading } = useAdminQuery<PaymentSubmission[]>(['admin-payment-submissions', status], `/payment-submissions?status=${status}`);
+  const decide = async (payment: PaymentSubmission, decision: 'approved' | 'rejected') => {
+    let reason: string | undefined;
+    if (decision === 'rejected') { reason = window.prompt('Reason for rejection') ?? ''; if (!reason.trim()) return; }
+    try { await adminCall(`/payment-submissions/${payment.id}/decision`, 'POST', { decision, reason }); qc.invalidateQueries({ queryKey: ['admin-payment-submissions'] }); toast({ title: decision === 'approved' ? 'Payment approved' : 'Payment rejected' }); }
+    catch (error) { toast({ title: 'Could not update payment', description: error instanceof Error ? error.message : 'Request failed', variant: 'destructive' }); }
+  };
+  return <div className="space-y-4"><SectionHeader title="QR Payment Approvals" desc="Verify Razorpay and UPI payments submitted by users" /><div className="flex gap-2">{['pending', 'approved', 'rejected'].map(value => <button key={value} onClick={() => setStatus(value)} className={`rounded-lg px-4 py-2 text-sm capitalize ${status === value ? 'bg-red-500/15 text-red-300' : 'text-white/45 hover:bg-white/[0.05]'}`}>{value}</button>)}</div><DataTable loading={isLoading} cols={['User', 'Company', 'Amount', 'Paid', 'UTR / Transaction ID', 'Proof', 'Status', 'Actions']} rows={payments.map(payment => [<div><p className="font-medium text-white">{payment.first_name} {payment.last_name}</p><p className="text-xs text-white/35">{payment.email}</p></div>, payment.org_name, `${payment.currency} ${Number(payment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, fmtDate(payment.paid_at), <span className="font-mono text-xs">{payment.utr}</span>, payment.proof_data ? <button className="text-xs text-cyan-300 underline" onClick={() => { const win = window.open(); if (win) { win.document.write(`<title>Payment proof</title><img src="${payment.proof_data}" style="max-width:100%;max-height:90vh" />`); } }}>View {payment.proof_file_name ?? 'proof'}</button> : <span className="text-xs text-white/30">No proof</span>, <StatusBadge s={payment.status} />, payment.status === 'pending' ? <div className="flex gap-1"><Button size="sm" onClick={() => void decide(payment, 'approved')} className="h-7 bg-emerald-600 px-2 text-xs">Approve</Button><Button size="sm" variant="outline" onClick={() => void decide(payment, 'rejected')} className="h-7 border-red-500/30 px-2 text-xs text-red-300">Reject</Button></div> : <span className="text-xs text-white/30">Reviewed</span>])} /></div>;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-500/15 text-emerald-400',
@@ -1930,6 +1945,7 @@ const TABS = [
   { id: 'users',        label: 'Users & Roles',      icon: Users,             comp: UsersRolesTab },
   { id: 'plans',        label: 'Plans & Subs',       icon: CreditCard,        comp: PlansSubsTab },
   { id: 'billing',      label: 'Billing',            icon: DollarSign,        comp: BillingTab },
+  { id: 'payments',     label: 'QR Payments',        icon: CheckCircle2,      comp: PaymentApprovalsTab },
   { id: 'licenses',     label: 'Licenses',           icon: Key,               comp: LicensesTab },
   { id: 'features',     label: 'Features',           icon: Zap,               comp: FeaturesTab },
   { id: 'whitelabel',   label: 'White Label',        icon: Palette,           comp: WhiteLabelTab },

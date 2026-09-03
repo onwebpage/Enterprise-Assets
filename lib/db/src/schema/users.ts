@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   lastName: text("last_name").notNull(),
   phone: text("phone"),
   status: text("status").notNull().default("active"), // active, inactive, on_leave, pending
+  paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid, overdue
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

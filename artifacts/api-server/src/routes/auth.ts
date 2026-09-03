@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db, users, roles, organizations } from "@workspace/db";
+import { db, users, roles, organizations, tenants, organizationMemberships } from "@workspace/db";
 import { signToken } from "../lib/jwt";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
@@ -17,6 +17,7 @@ function authUser(user: typeof users.$inferSelect, roleName = "User") {
     displayName: `${user.firstName} ${user.lastName}`,
     initials: `${user.firstName[0]}${user.lastName[0]}`.toUpperCase(),
     status: user.status,
+    paymentStatus: user.paymentStatus,
     mfaEnabled: user.mfaEnabled,
     roleId: user.roleId,
     roleName,
@@ -88,9 +89,11 @@ router.post("/register", async (req, res) => {
       normalizedCompanyName || `${normalizedFirstName} ${normalizedLastName}'s Organization`;
 
     const { user } = await db.transaction(async (tx) => {
+      const [tenant] = await tx.insert(tenants).values({ name: displayCompanyName }).returning({ id: tenants.id });
       const [organization] = await tx
         .insert(organizations)
         .values({
+          tenantId: tenant.id,
           name: displayCompanyName,
           legalName: displayCompanyName,
           employeeCount: 1,
@@ -113,6 +116,8 @@ router.post("/register", async (req, res) => {
           mfaEnabled: false,
         })
         .returning();
+
+      await tx.insert(organizationMemberships).values({ userId: createdUser.id, organizationId: organization.id, isDefault: true });
 
       return { user: createdUser };
     });
@@ -221,10 +226,13 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
     }
 
     let roleName = "User";
-    if (user.roleId) {
-      const [role] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, user.roleId)).limit(1);
+    if (req.user!.roleId) {
+      const [role] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
       if (role) roleName = role.name;
     }
+
+    user.orgId = req.user!.orgId;
+    user.roleId = req.user!.roleId;
 
     res.json({
       success: true,

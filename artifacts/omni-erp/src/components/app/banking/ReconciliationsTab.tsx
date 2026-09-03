@@ -8,6 +8,7 @@ import {
   useCreateBankReconciliation, useCompleteBankReconciliation, useDeleteBankReconciliation,
   useBankingPermissions,
   type BankReconciliation, type ReconciliationStatus, type BankReconciliationFormValues,
+  useBankReconciliationReport,
 } from '@/hooks/useBanking';
 import ReconciliationFormModal from './ReconciliationFormModal';
 import BankingDeleteDialog from './BankingDeleteDialog';
@@ -51,6 +52,7 @@ export default function ReconciliationsTab() {
   const { data: list, isLoading, isFetching, refetch } = useBankReconciliations({ status: statusFilter || undefined, page, limit: PAGE_LIMIT });
   const { data: accountsRes } = useBankAccounts({ limit: 200 });
   const { data: permsRes }    = useBankingPermissions();
+  const { data: reportRes }   = useBankReconciliationReport();
   const createMut   = useCreateBankReconciliation();
   const completeMut = useCompleteBankReconciliation();
   const deleteMut   = useDeleteBankReconciliation();
@@ -60,6 +62,7 @@ export default function ReconciliationsTab() {
   const totalPages      = list?.totalPages ?? 1;
   const accounts        = accountsRes?.data ?? [];
   const perms           = permsRes?.data ?? { canView: true, canCreate: false, canEdit: false, canDelete: false };
+  const report           = reportRes?.data;
 
   async function handleCreate(values: BankReconciliationFormValues) {
     setFormError(null);
@@ -87,6 +90,15 @@ export default function ReconciliationsTab() {
   return (
     <>
       <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl overflow-hidden">
+        <div className="grid grid-cols-2 gap-3 border-b border-white/[0.06] p-4 md:grid-cols-5">
+          {[
+            ['Statement transactions', report?.total ?? 0, 'text-white'],
+            ['ERP matched', report?.matched ?? 0, 'text-emerald-400'],
+            ['Unmatched', report?.unreconciled ?? 0, 'text-amber-400'],
+            ['Credits', fmt(report?.credits ?? '0'), 'text-emerald-400'],
+            ['Debits', fmt(report?.debits ?? '0'), 'text-red-400'],
+          ].map(([label, value, color]) => <div key={String(label)}><p className="text-[10px] uppercase tracking-wide text-white/30">{label}</p><p className={cn('mt-1 text-lg font-semibold tabular-nums', color)}>{value}</p></div>)}
+        </div>
         <div className="flex flex-wrap items-center gap-2 p-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-1">
             {STATUSES.map((s) => (

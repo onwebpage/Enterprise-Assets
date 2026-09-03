@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { formatINR } from '@/lib/currency';
+import PaymentRequestPanel from '@/components/app/billing/PaymentRequestPanel';
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
 const apiFetch = (path: string, init?: RequestInit) => {
@@ -653,6 +654,7 @@ export default function Billing() {
               { value: 'add-ons', label: 'Add-ons' },
               { value: 'invoices', label: 'Invoices' },
               { value: 'payment', label: 'Payment' },
+              { value: 'qr-payment', label: 'Pay by QR' },
             ].map(t => (
               <TabsTrigger key={t.value} value={t.value}
                 className="data-[state=active]:bg-[#2563EB] data-[state=active]:text-white text-white/50">
@@ -926,6 +928,9 @@ export default function Billing() {
                   ))}
                 </div>
               )}
+          </TabsContent>
+          <TabsContent value="qr-payment" className="mt-4">
+            <PaymentRequestPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -5,11 +5,38 @@ import {
   billingPlans, billingSubscriptions, billingInvoices,
   billingPaymentMethods, billingAddOns, billingSubscriptionAddOns,
   organizations,
+  paymentSubmissions,
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 
 const router = Router();
 router.use(requireAuth);
+
+const RAZORPAY_PAYMENT_URL = "https://razorpay.me/@debabratabanerjee3358stem";
+
+router.get("/payment-request", async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId!;
+    const [submission] = await db.select({ id: paymentSubmissions.id, status: paymentSubmissions.status, amount: paymentSubmissions.amount, utr: paymentSubmissions.utr, paidAt: paymentSubmissions.paidAt, createdAt: paymentSubmissions.createdAt, rejectionReason: paymentSubmissions.rejectionReason }).from(paymentSubmissions).where(and(eq(paymentSubmissions.orgId, orgId), eq(paymentSubmissions.userId, req.user!.userId))).orderBy(desc(paymentSubmissions.createdAt)).limit(1);
+    res.json({ success: true, data: { paymentUrl: RAZORPAY_PAYMENT_URL, qrImageUrl: "/qr.jpeg", message: "Payment request from DEBABRATA BANERJEE\nUse this link to enter the amount and pay securely via Razorpay: https://razorpay.me/@debabratabanerjee3358stem", submission: submission ?? null } });
+  } catch { res.status(500).json({ success: false, error: "Failed to load payment request" }); }
+});
+
+router.post("/payment-submissions", async (req: AuthRequest, res) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const utr = String(req.body?.utr ?? "").trim();
+    const paidAt = new Date(req.body?.paidAt);
+    const proofData = typeof req.body?.proofData === "string" ? req.body.proofData : null;
+    const proofFileName = req.body?.proofFileName ? String(req.body.proofFileName).slice(0, 200) : null;
+    const notes = req.body?.notes ? String(req.body.notes).slice(0, 1000) : null;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000 || !/^[A-Za-z0-9/_-]{6,100}$/.test(utr) || Number.isNaN(paidAt.getTime()) || !proofData) { res.status(422).json({ success: false, error: "Enter a valid amount, UTR/transaction ID, payment date, and payment proof" }); return; }
+    if (proofData && proofData.length > 8_000_000) { res.status(413).json({ success: false, error: "Payment proof is too large" }); return; }
+    const [subscription] = await db.select({ id: billingSubscriptions.id, currency: billingPlans.slug }).from(billingSubscriptions).leftJoin(billingPlans, eq(billingPlans.id, billingSubscriptions.planId)).where(eq(billingSubscriptions.orgId, req.user!.orgId!)).limit(1);
+    const [created] = await db.insert(paymentSubmissions).values({ orgId: req.user!.orgId!, userId: req.user!.userId, subscriptionId: subscription?.id ?? null, amount: amount.toFixed(2), utr, paidAt, proofData, proofFileName, notes }).returning({ id: paymentSubmissions.id, status: paymentSubmissions.status, amount: paymentSubmissions.amount, utr: paymentSubmissions.utr, createdAt: paymentSubmissions.createdAt });
+    res.status(201).json({ success: true, data: created });
+  } catch (e: any) { res.status(e?.code === "23505" ? 409 : 400).json({ success: false, error: e?.code === "23505" ? "This UTR has already been submitted" : "Failed to submit payment" }); }
+});
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 router.get("/summary", async (req: AuthRequest, res) => {

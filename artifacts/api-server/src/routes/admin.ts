@@ -17,6 +17,46 @@ const userStatuses = new Set(["active", "inactive", "suspended"]);
 const subscriptionStatuses = new Set(["active", "trial", "suspended", "cancelled"]);
 const licenseStatuses = new Set(["active", "revoked", "expired"]);
 
+router.get("/payment-submissions", async (req, res) => {
+  try {
+    const status = String(req.query.status ?? "").trim();
+    const params: unknown[] = [];
+    let filter = "";
+    if (["pending", "approved", "rejected"].includes(status)) { params.push(status); filter = `WHERE p.status=$${params.length}`; }
+    const result = await pool.query(`SELECT p.id,p.org_id,p.user_id,p.subscription_id,p.amount,p.currency,p.payment_method,p.utr,p.paid_at,p.proof_data,p.proof_file_name,p.notes,p.status,p.reviewed_by,p.reviewed_at,p.rejection_reason,p.billing_invoice_id,p.created_at,o.name AS org_name,u.email,u.first_name,u.last_name,bs.status AS subscription_status FROM payment_submissions p JOIN organizations o ON o.id=p.org_id JOIN users u ON u.id=p.user_id LEFT JOIN billing_subscriptions bs ON bs.id=p.subscription_id ${filter} ORDER BY CASE WHEN p.status='pending' THEN 0 ELSE 1 END,p.created_at DESC`, params);
+    res.json({ success: true, data: result.rows });
+  } catch { res.status(500).json({ success: false, error: "Failed to fetch payment submissions" }); }
+});
+
+router.post("/payment-submissions/:id/decision", async (req: AdminRequest, res) => {
+  const id = positiveId(req.params.id);
+  const decision = String(req.body?.decision ?? "");
+  if (!id || !["approved", "rejected"].includes(decision)) { res.status(400).json({ success: false, error: "Valid payment and decision are required" }); return; }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const payment = await client.query(`SELECT * FROM payment_submissions WHERE id=$1 FOR UPDATE`, [id]);
+    const row = payment.rows[0];
+    if (!row) { await client.query("ROLLBACK"); res.status(404).json({ success: false, error: "Payment submission not found" }); return; }
+    if (row.status !== "pending") { await client.query("ROLLBACK"); res.status(409).json({ success: false, error: "Payment has already been reviewed" }); return; }
+    if (decision === "rejected") {
+      const updated = await client.query(`UPDATE payment_submissions SET status='rejected',rejection_reason=$2,reviewed_by=$3,reviewed_at=NOW(),updated_at=NOW() WHERE id=$1 RETURNING *`, [id, String(req.body?.reason ?? "Payment proof could not be verified").slice(0, 1000), req.admin!.adminId]);
+      await client.query("COMMIT"); res.json({ success: true, data: updated.rows[0] }); return;
+    }
+    let billingInvoiceId: number | null = null;
+    if (row.subscription_id) {
+      const invoice = await client.query(`INSERT INTO billing_invoices (org_id,subscription_id,invoice_number,status,total,currency,paid_at,line_items) VALUES ($1,$2,$3,'paid',$4,$5,NOW(),$6) RETURNING id`, [row.org_id, row.subscription_id, `PAY-${row.id}-${row.utr}`, row.amount, row.currency, JSON.stringify([{ description: 'Razorpay / UPI payment', amount: row.amount, utr: row.utr }])]);
+      billingInvoiceId = invoice.rows[0].id;
+      await client.query(`UPDATE billing_subscriptions SET status='active',current_period_start=NOW(),current_period_end=CASE WHEN billing_cycle='yearly' THEN NOW()+INTERVAL '1 year' ELSE NOW()+INTERVAL '1 month' END,cancelled_at=NULL,cancel_at_period_end=false,updated_at=NOW() WHERE id=$1`, [row.subscription_id]);
+      await client.query(`UPDATE saas_subscriptions SET status='active',started_at=NOW(),expires_at=CASE WHEN billing_cycle='yearly' THEN NOW()+INTERVAL '1 year' ELSE NOW()+INTERVAL '1 month' END,cancelled_at=NULL,updated_at=NOW() WHERE org_id=$1`, [row.org_id]);
+    }
+    await client.query(`UPDATE users SET payment_status='paid',status=CASE WHEN status='pending' THEN 'active' ELSE status END,updated_at=NOW() WHERE id=$1`, [row.user_id]);
+    const updated = await client.query(`UPDATE payment_submissions SET status='approved',reviewed_by=$2,reviewed_at=NOW(),billing_invoice_id=$3,updated_at=NOW() WHERE id=$1 RETURNING *`, [id, req.admin!.adminId, billingInvoiceId]);
+    await client.query(`INSERT INTO admin_audit_logs (admin_id,admin_username,action,resource,resource_id,details) VALUES ($1,$2,'APPROVE','payment_submission',$3,$4)`, [req.admin!.adminId, req.admin!.username, id, JSON.stringify({ amount: row.amount, utr: row.utr, orgId: row.org_id })]);
+    await client.query("COMMIT"); res.json({ success: true, data: updated.rows[0] });
+  } catch (e) { await client.query("ROLLBACK").catch(() => undefined); console.error(e); res.status(500).json({ success: false, error: "Failed to approve payment" }); } finally { client.release(); }
+});
+
 function positiveId(value: unknown): number | null {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Trash2, RefreshCw, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Plus, Search, Trash2, RefreshCw, ArrowUpRight, ArrowDownLeft, FileUp, WandSparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -8,9 +8,11 @@ import {
   useBankTransactions, useBankAccounts, useCreateBankTransaction, useDeleteBankTransaction,
   useBankingPermissions,
   type BankTransaction, type BankTransactionStatus, type BankTransactionFormValues,
+  useImportBankStatement, useAutoMatchBankStatement,
 } from '@/hooks/useBanking';
 import TransactionFormModal from './TransactionFormModal';
 import BankingDeleteDialog from './BankingDeleteDialog';
+import StatementImportModal from './StatementImportModal';
 
 const STATUS_COLORS: Record<BankTransactionStatus, string> = {
   unreconciled: 'bg-amber-500/12 text-amber-400 border-amber-500/25',
@@ -44,6 +46,7 @@ export default function TransactionsTab() {
   const [typeFilter, setType]       = useState('');
   const [page, setPage]             = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [deleteTxn, setDeleteTxn]   = useState<BankTransaction | null>(null);
   const [formError, setFormError]   = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -55,6 +58,8 @@ export default function TransactionsTab() {
   const { data: permsRes }    = useBankingPermissions();
   const createMut = useCreateBankTransaction();
   const deleteMut = useDeleteBankTransaction();
+  const importMut = useImportBankStatement();
+  const autoMatchMut = useAutoMatchBankStatement();
 
   const transactions = list?.data ?? [];
   const total        = list?.total ?? 0;
@@ -75,6 +80,18 @@ export default function TransactionsTab() {
     setDeleteError(null);
     try { await deleteMut.mutateAsync(deleteTxn.id); setDeleteTxn(null); }
     catch (e: any) { setDeleteError(e?.message ?? 'Failed to delete transaction'); }
+  }
+
+  async function handleImport(data: { bankAccountId: number; fileName: string; rows: Array<Record<string, string>> }) {
+    setFormError(null);
+    try { await importMut.mutateAsync(data); setImportOpen(false); }
+    catch (e: any) { setFormError(e?.message ?? 'Failed to import statement'); }
+  }
+
+  async function handleAutoMatch() {
+    setFormError(null);
+    try { for (const account of accounts) await autoMatchMut.mutateAsync(account.id); }
+    catch (e: any) { setFormError(e?.message ?? 'Failed to match statement transactions'); }
   }
 
   const STATUSES: BankTransactionStatus[] = ['unreconciled', 'reconciled', 'excluded'];
@@ -118,6 +135,8 @@ export default function TransactionsTab() {
                 <Plus className="w-3.5 h-3.5 mr-1.5" />Add Transaction
               </Button>
             )}
+            {perms.canCreate && accounts.length > 0 && <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="h-8 border-white/[0.1] bg-transparent text-white/60 hover:bg-white/[0.05] hover:text-white"><FileUp className="mr-1.5 h-3.5 w-3.5" />Import Statement</Button>}
+            {perms.canEdit && accounts.length > 0 && <Button variant="outline" size="sm" onClick={() => void handleAutoMatch()} disabled={autoMatchMut.isPending} className="h-8 border-white/[0.1] bg-transparent text-white/60 hover:bg-white/[0.05] hover:text-white"><WandSparkles className="mr-1.5 h-3.5 w-3.5" />Auto-match</Button>}
           </div>
         </div>
 
@@ -144,7 +163,10 @@ export default function TransactionsTab() {
                 className="border-b border-white/[0.04] hover:bg-white/[0.025] transition-colors group last:border-0">
                 <td className="px-4 py-3 text-xs text-white/50 whitespace-nowrap">{txn.transactionDate}</td>
                 <td className="px-4 py-3 text-xs text-white/50">{txn.accountName ?? '—'}</td>
-                <td className="px-4 py-3 text-sm text-white/80 max-w-[200px] truncate">{txn.description}</td>
+                <td className="px-4 py-3 text-sm text-white/80 max-w-[200px]">
+                  <div className="truncate">{txn.description}</div>
+                  {txn.source === 'statement_import' && <div className={cn('mt-0.5 text-[10px]', txn.matchedJournalEntryId ? 'text-emerald-400' : 'text-amber-400')}>{txn.matchedJournalEntryId ? `ERP matched (${txn.matchConfidence ?? '100'}%)` : 'Imported • unmatched'}</div>}
+                </td>
                 <td className="px-4 py-3 text-xs font-mono text-white/40">{txn.reference ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className={cn('inline-flex items-center gap-1 text-xs font-medium', txn.type === 'credit' ? 'text-emerald-400' : 'text-red-400')}>
@@ -201,6 +223,8 @@ export default function TransactionsTab() {
         title="Delete Transaction"
         description={`Delete "${deleteTxn?.description}"? Reconciled transactions cannot be deleted.`}
         error={deleteError} />
+      <StatementImportModal open={importOpen} onClose={() => setImportOpen(false)} onImport={handleImport}
+        accounts={accounts} isSubmitting={importMut.isPending} error={formError} />
     </>
   );
 }

@@ -8,6 +8,41 @@
       "when": 1785795788061,
       "tag": "0000_previous_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788547200000,
+      "tag": "0001_multi_company",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788547201000,
+      "tag": "0002_bank_statement_matching",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788547202000,
+      "tag": "0003_cheque_management",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788547203000,
+      "tag": "0004_payment_submissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788547204000,
+      "tag": "0005_user_payment_status",
+      "breakpoints": true
     }
   ]
 }

@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { eq, like, or, desc, sql } from "drizzle-orm";
-import { db, users, roles, departments, branches } from "@workspace/db";
+import { and, eq, like, or, desc, sql } from "drizzle-orm";
+import { db, users, roles, departments, branches, organizationMemberships } from "@workspace/db";
 import { hashPassword } from "../lib/password";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { requirePermission } from "../middlewares/requirePermission";
 
 const router = Router();
 router.use(requireAuth);
@@ -14,7 +15,7 @@ function safeUser(u: typeof users.$inferSelect & { roleName?: string; deptName?:
 }
 
 // GET /api/users
-router.get("/", async (req: AuthRequest, res) => {
+router.get("/", requirePermission("users", "view"), async (req: AuthRequest, res) => {
   try {
     const { search = "", page = "1", limit = "50" } = req.query as Record<string, string>;
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -41,20 +42,16 @@ router.get("/", async (req: AuthRequest, res) => {
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .leftJoin(departments, eq(users.deptId, departments.id))
-      .where(
-        search
-          ? or(
+      .where(and(eq(users.orgId, req.user!.orgId!), search ? or(
               like(users.firstName, `%${search}%`),
               like(users.lastName, `%${search}%`),
               like(users.email, `%${search}%`),
-            )
-          : undefined,
-      )
+            ) : undefined))
       .orderBy(desc(users.createdAt))
       .limit(parseInt(limit))
       .offset(offset);
 
-    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
+    const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users).where(eq(users.orgId, req.user!.orgId!));
 
     res.json({ success: true, data: rows, total: count });
   } catch {
@@ -63,7 +60,7 @@ router.get("/", async (req: AuthRequest, res) => {
 });
 
 // GET /api/users/:id
-router.get("/:id", async (req: AuthRequest, res) => {
+router.get("/:id", requirePermission("users", "view"), async (req: AuthRequest, res) => {
   try {
     const [row] = await db
       .select({
@@ -78,7 +75,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
       .from(users)
       .leftJoin(roles, eq(users.roleId, roles.id))
       .leftJoin(departments, eq(users.deptId, departments.id))
-      .where(eq(users.id, parseInt(req.params.id as string)))
+      .where(and(eq(users.id, parseInt(req.params.id as string)), eq(users.orgId, req.user!.orgId!)))
       .limit(1);
 
     if (!row) { res.status(404).json({ success: false, error: "User not found" }); return; }
@@ -89,7 +86,7 @@ router.get("/:id", async (req: AuthRequest, res) => {
 });
 
 // POST /api/users
-router.post("/", async (req: AuthRequest, res) => {
+router.post("/", requirePermission("users", "create"), async (req: AuthRequest, res) => {
   try {
     const { email, password, firstName, lastName, roleId, deptId, branchId, phone, status } = req.body;
     if (!email || !password || !firstName || !lastName) {
@@ -107,6 +104,7 @@ router.post("/", async (req: AuthRequest, res) => {
       orgId: req.user?.orgId ?? null,
       status: status ?? "active",
     }).returning();
+    await db.insert(organizationMemberships).values({ userId: user.id, organizationId: req.user!.orgId!, branchId: branchId ?? null, roleId: roleId ?? null, isDefault: false });
     const { passwordHash: _ph, ...safe } = user;
     res.status(201).json({ success: true, data: safe });
   } catch (err: unknown) {
@@ -120,7 +118,7 @@ router.post("/", async (req: AuthRequest, res) => {
 });
 
 // PUT /api/users/:id
-router.put("/:id", async (req: AuthRequest, res) => {
+router.put("/:id", requirePermission("users", "edit"), async (req: AuthRequest, res) => {
   try {
     const { firstName, lastName, phone, roleId, deptId, branchId, status, mfaEnabled } = req.body;
     const [user] = await db.update(users).set({
@@ -133,7 +131,7 @@ router.put("/:id", async (req: AuthRequest, res) => {
       ...(status !== undefined && { status }),
       ...(mfaEnabled !== undefined && { mfaEnabled }),
       updatedAt: new Date(),
-    }).where(eq(users.id, parseInt(req.params.id as string))).returning();
+    }).where(and(eq(users.id, parseInt(req.params.id as string)), eq(users.orgId, req.user!.orgId!))).returning();
     if (!user) { res.status(404).json({ success: false, error: "User not found" }); return; }
     const { passwordHash: _ph, ...safe } = user;
     res.json({ success: true, data: safe });
@@ -143,14 +141,14 @@ router.put("/:id", async (req: AuthRequest, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete("/:id", async (req: AuthRequest, res) => {
+router.delete("/:id", requirePermission("users", "delete"), async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id as string);
     if (id === req.user?.userId) {
       res.status(400).json({ success: false, error: "Cannot delete your own account" });
       return;
     }
-    await db.delete(users).where(eq(users.id, id));
+    await db.delete(users).where(and(eq(users.id, id), eq(users.orgId, req.user!.orgId!)));
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete user" });

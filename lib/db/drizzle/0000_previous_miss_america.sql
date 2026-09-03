@@ -1,5 +1,13 @@
+CREATE TABLE "tenants" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "organizations" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"tenant_id" integer,
 	"name" text NOT NULL,
 	"legal_name" text,
 	"tax_id" text,
@@ -16,6 +24,10 @@ CREATE TABLE "organizations" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
+--> statement-breakpoint
+INSERT INTO "tenants" ("name") SELECT "name" FROM "organizations";
+--> statement-breakpoint
+UPDATE "organizations" SET "tenant_id" = "organizations"."id";
 --> statement-breakpoint
 CREATE TABLE "branches" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -1394,3 +1406,26 @@ ALTER TABLE "vp_tickets" ADD CONSTRAINT "vp_tickets_vendor_id_vp_vendors_id_fk" 
 ALTER TABLE "vp_tickets" ADD CONSTRAINT "vp_tickets_assigned_to_users_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vp_vendors" ADD CONSTRAINT "vp_vendors_org_id_organizations_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vp_vendors" ADD CONSTRAINT "vp_vendors_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
+--> statement-breakpoint
+CREATE TABLE "organization_memberships" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"organization_id" integer NOT NULL,
+	"branch_id" integer,
+	"role_id" integer,
+	"is_default" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "organization_memberships_user_id_organization_id_unique" UNIQUE("user_id","organization_id")
+);
+--> statement-breakpoint
+INSERT INTO "organization_memberships" ("user_id", "organization_id", "branch_id", "role_id", "is_default")
+SELECT "id", "org_id", "branch_id", "role_id", true FROM "users" WHERE "org_id" IS NOT NULL
+ON CONFLICT ("user_id", "organization_id") DO NOTHING;
+--> statement-breakpoint
+ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_organization_id_organizations_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organizations"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_branch_id_branches_id_fk" FOREIGN KEY ("branch_id") REFERENCES "public"."branches"("id") ON DELETE set null ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "organization_memberships" ADD CONSTRAINT "organization_memberships_role_id_roles_id_fk" FOREIGN KEY ("role_id") REFERENCES "public"."roles"("id") ON DELETE set null ON UPDATE no action;

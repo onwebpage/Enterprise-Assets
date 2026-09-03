@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Building2, Users, MapPin, Globe, Plus, Download, Edit, MoreHorizontal, Settings, TrendingUp, DollarSign, Award, ChevronRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,14 @@ interface DeptRow {
 
 export default function Organization() {
   const [tab, setTab] = useState('companies');
+  const queryClient = useQueryClient();
+
+  const addCompany = async () => {
+    const name = window.prompt('Company name');
+    if (!name?.trim()) return;
+    await api.post('/organizations', { name: name.trim(), type: 'Subsidiary', status: 'active' });
+    await queryClient.invalidateQueries({ queryKey: ['organizations'] });
+  };
 
   const { data: orgsData, isLoading: orgsLoading } = useQuery({
     queryKey: ['organizations'],
@@ -64,7 +72,7 @@ export default function Organization() {
             <Button variant="outline" size="sm" className="border-white/[0.1] bg-transparent text-white/60 hover:text-white hover:bg-white/[0.05]">
               <Download className="w-3.5 h-3.5 mr-1.5" />Export
             </Button>
-            <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]">
+            <Button size="sm" onClick={() => void addCompany()} className="bg-[#2563EB] hover:bg-[#1d4ed8]">
               <Plus className="w-3.5 h-3.5 mr-1.5" />Add Company
             </Button>
           </div>

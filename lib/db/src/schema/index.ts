@@ -1,4 +1,6 @@
 export * from "./organizations";
+export * from "./tenants";
+export * from "./organizationMemberships";
 export * from "./branches";
 export * from "./departments";
 export * from "./roles";
