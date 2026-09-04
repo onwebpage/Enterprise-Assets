@@ -207,6 +207,7 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
+    logger.error({ err, email: typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : undefined }, "Login failed");
     res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
