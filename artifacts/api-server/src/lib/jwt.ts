@@ -8,6 +8,7 @@ export interface JwtPayload {
   email: string;
   roleId: number | null;
   orgId: number | null;
+  branchId?: number | null;
   tenantId?: number | null;
 }
 

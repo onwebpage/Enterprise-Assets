@@ -54,6 +54,7 @@ import Crm from '@/pages/app/crm';
 import AiBi from '@/pages/app/ai-bi';
 import CashTreasury from '@/pages/app/cash-treasury';
 import MasterData from '@/pages/app/master-data';
+import MultiEntity from '@/pages/app/multi-entity';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -163,6 +164,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/master-data">
         <ProtectedRoute><MasterData /></ProtectedRoute>
+      </Route>
+      <Route path="/app/multi-entity">
+        <ProtectedRoute><MultiEntity /></ProtectedRoute>
       </Route>
       <Route path="/app/ar">
         <ProtectedRoute><AccountsReceivable /></ProtectedRoute>

@@ -3,6 +3,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { organizations } from "./organizations";
+import { branches } from "./branches";
 import { users } from "./users";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ export const invCategories = pgTable("inv_categories", {
 export const invWarehouses = pgTable("inv_warehouses", {
   id:        serial("id").primaryKey(),
   orgId:     integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  branchId:  integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
   code:      text("code").notNull(),              // e.g. WH-01
   name:      text("name").notNull(),
   location:  text("location"),

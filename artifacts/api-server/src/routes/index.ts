@@ -49,6 +49,7 @@ import intercompanyRouter from "./intercompany";
 import multiCurrencyRouter from "./multiCurrency";
 import financialControlsRouter from "./financialControls";
 import masterDataRouter from "./masterData";
+import multiEntityRouter from "./multiEntity";
 
 const router: IRouter = Router();
 
@@ -100,6 +101,7 @@ router.use("/finance/intercompany", intercompanyRouter);
 router.use("/finance/multi-currency", multiCurrencyRouter);
 router.use("/finance/controls", financialControlsRouter);
 router.use("/master-data", masterDataRouter);
+router.use("/multi-entity", multiEntityRouter);
 
 // ── Super Admin ───────────────────────────────────────────────────
 router.use("/admin/auth", adminAuthRouter);

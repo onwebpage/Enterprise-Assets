@@ -4,7 +4,7 @@
  * All routes require authentication + "Inventory" module permission.
  */
 import { Router } from "express";
-import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
+import { eq, and, ilike, isNull, or, sql, desc } from "drizzle-orm";
 import {
   db, permissions, roles, organizations,
   invCategories, invWarehouses, invProducts, invStockLevels,
@@ -24,6 +24,18 @@ const router = Router();
 router.use(requireAuth);
 
 const MODULE = "Inventory";
+
+function branchWarehouseScope(req: AuthRequest) {
+  return req.user!.branchId
+    ? or(eq(invWarehouses.branchId, req.user!.branchId), isNull(invWarehouses.branchId))
+    : undefined;
+}
+
+function branchTransferScope(req: AuthRequest) {
+  return req.user!.branchId
+    ? sql`(${invTransfers.fromWarehouseId} in (select id from inv_warehouses where branch_id is null or branch_id = ${req.user!.branchId}) and ${invTransfers.toWarehouseId} in (select id from inv_warehouses where branch_id is null or branch_id = ${req.user!.branchId}))`
+    : undefined;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -222,7 +234,7 @@ router.get("/warehouses", requirePermission(MODULE, "view"), async (req: AuthReq
   try {
     const orgId = req.user!.orgId!;
     const rows = await db.select().from(invWarehouses)
-      .where(eq(invWarehouses.orgId, orgId))
+      .where(and(eq(invWarehouses.orgId, orgId), branchWarehouseScope(req)))
       .orderBy(invWarehouses.code);
 
     // Attach SKU counts per warehouse
@@ -259,7 +271,7 @@ router.post("/warehouses", requirePermission(MODULE, "create"), async (req: Auth
     const [dup] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
       .where(and(eq(invWarehouses.orgId, orgId), eq(invWarehouses.code, parsed.data.code))).limit(1);
     if (dup) { res.status(409).json({ success: false, error: `Warehouse code "${parsed.data.code}" already exists` }); return; }
-    const [created] = await db.insert(invWarehouses).values({ ...parsed.data, orgId }).returning();
+    const [created] = await db.insert(invWarehouses).values({ ...parsed.data, orgId, branchId: req.user!.branchId ?? null }).returning();
     res.status(201).json({ success: true, data: created });
   } catch {
     res.status(500).json({ success: false, error: "Failed to create warehouse" });
@@ -273,10 +285,10 @@ router.put("/warehouses/:id", requirePermission(MODULE, "edit"), async (req: Aut
   if (!parsed.success) { res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues }); return; }
   try {
     const [existing] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
-      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, req.user!.orgId!))).limit(1);
+      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, req.user!.orgId!), branchWarehouseScope(req))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Warehouse not found" }); return; }
     const [updated] = await db.update(invWarehouses).set({ ...parsed.data, updatedAt: new Date() })
-      .where(eq(invWarehouses.id, id)).returning();
+      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, req.user!.orgId!), branchWarehouseScope(req))).returning();
     res.json({ success: true, data: updated });
   } catch {
     res.status(500).json({ success: false, error: "Failed to update warehouse" });
@@ -452,7 +464,7 @@ router.get("/stock", requirePermission(MODULE, "view"), async (req: AuthRequest,
     const offset = (page - 1) * limit;
     const { search, warehouseId, status } = req.query as Record<string, string>;
 
-    const filters: any[] = [eq(invStockLevels.orgId, orgId)];
+    const filters: any[] = [eq(invStockLevels.orgId, orgId), branchWarehouseScope(req)];
     if (warehouseId) filters.push(eq(invStockLevels.warehouseId, parseInt(warehouseId)));
     if (search?.trim()) {
       filters.push(or(
@@ -530,7 +542,7 @@ router.post("/stock/adjust", requirePermission(MODULE, "create"), async (req: Au
     if (!product) { res.status(422).json({ success: false, error: "Product not found" }); return; }
 
     const [warehouse] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
-      .where(and(eq(invWarehouses.id, data.warehouseId), eq(invWarehouses.orgId, orgId))).limit(1);
+      .where(and(eq(invWarehouses.id, data.warehouseId), eq(invWarehouses.orgId, orgId), branchWarehouseScope(req))).limit(1);
     if (!warehouse) { res.status(422).json({ success: false, error: "Warehouse not found" }); return; }
 
     const qtyChange = parseFloat(data.qty);
@@ -584,7 +596,7 @@ router.get("/movements", requirePermission(MODULE, "view"), async (req: AuthRequ
     const offset = (page - 1) * limit;
     const { search, movementType, productId, warehouseId } = req.query as Record<string, string>;
 
-    const filters: any[] = [eq(invMovements.orgId, orgId)];
+    const filters: any[] = [eq(invMovements.orgId, orgId), branchWarehouseScope(req)];
     if (movementType) filters.push(eq(invMovements.movementType, movementType));
     if (productId)    filters.push(eq(invMovements.productId,    parseInt(productId)));
     if (warehouseId)  filters.push(eq(invMovements.warehouseId,  parseInt(warehouseId)));
@@ -646,7 +658,7 @@ router.get("/transfers", requirePermission(MODULE, "view"), async (req: AuthRequ
 
     const fromWH = invWarehouses;
     // Need aliases for self-join — we join invWarehouses twice
-    const filters: any[] = [eq(invTransfers.orgId, orgId)];
+    const filters: any[] = [eq(invTransfers.orgId, orgId), branchTransferScope(req)];
     if (status) filters.push(eq(invTransfers.status, status));
     if (search?.trim()) {
       filters.push(ilike(invTransfers.transferNumber, `%${search.trim()}%`));
@@ -724,7 +736,7 @@ router.post("/transfers", requirePermission(MODULE, "create"), async (req: AuthR
     // Validate both warehouses
     for (const whId of [data.fromWarehouseId, data.toWarehouseId]) {
       const [wh] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
-        .where(and(eq(invWarehouses.id, whId), eq(invWarehouses.orgId, orgId))).limit(1);
+        .where(and(eq(invWarehouses.id, whId), eq(invWarehouses.orgId, orgId), branchWarehouseScope(req))).limit(1);
       if (!wh) { res.status(422).json({ success: false, error: `Warehouse ${whId} not found` }); return; }
     }
 
@@ -760,7 +772,7 @@ router.put("/transfers/:id", requirePermission(MODULE, "edit"), async (req: Auth
   try {
     const orgId = req.user!.orgId!;
     const [existing] = await db.select().from(invTransfers)
-      .where(and(eq(invTransfers.id, id), eq(invTransfers.orgId, orgId))).limit(1);
+      .where(and(eq(invTransfers.id, id), eq(invTransfers.orgId, orgId), branchTransferScope(req))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Transfer not found" }); return; }
     if (existing.status === "completed" || existing.status === "cancelled") {
       res.status(409).json({ success: false, error: `Cannot update a ${existing.status} transfer` });

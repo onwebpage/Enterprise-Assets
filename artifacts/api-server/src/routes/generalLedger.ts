@@ -9,7 +9,7 @@
  * Posting validates Σdebit == Σcredit and updates chart_of_accounts.balance.
  */
 import { Router } from "express";
-import { eq, and, ilike, or, sql, gte, lte, desc, asc, inArray } from "drizzle-orm";
+import { eq, and, ilike, isNull, or, sql, gte, lte, desc, asc, inArray } from "drizzle-orm";
 import {
   db,
   journalEntries,
@@ -34,7 +34,9 @@ router.use(requireAuth);
 function orgScope(req: AuthRequest) {
   const { orgId } = req.user!;
   return orgId !== null
-    ? eq(journalEntries.orgId, orgId)
+    ? req.user!.branchId
+      ? and(eq(journalEntries.orgId, orgId), or(eq(journalEntries.branchId, req.user!.branchId), isNull(journalEntries.branchId)))
+      : eq(journalEntries.orgId, orgId)
     : sql`${journalEntries.orgId} is null`;
 }
 
@@ -439,6 +441,7 @@ router.post("/journal-entries", requirePermission("finance", "create"), async (r
       .insert(journalEntries)
       .values({
         orgId,
+        branchId: req.user!.branchId ?? null,
         entryNumber,
         date,
         reference: reference ?? null,

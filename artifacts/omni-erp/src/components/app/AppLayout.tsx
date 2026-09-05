@@ -11,7 +11,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-   Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database
+  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -92,6 +92,7 @@ const navGroups = [
     items: [
       { icon: Bell, label: 'Notifications', path: '/app/notifications' },
       { icon: Building2, label: 'Organization', path: '/app/organization' },
+      { icon: GitBranch, label: 'Multi-Entity Control', path: '/app/multi-entity' },
       { icon: Database, label: 'Master Data Management', path: '/app/master-data' },
       { icon: User, label: 'User Management', path: '/app/users' },
       { icon: Shield, label: 'Roles & Permissions', path: '/app/roles' },

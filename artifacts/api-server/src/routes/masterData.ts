@@ -6,7 +6,7 @@
  */
 import { Router } from "express";
 import type { Response } from "express";
-import { and, eq, ilike, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNull, or, sql } from "drizzle-orm";
 import {
   db, permissions, roles,
   auditLogs,
@@ -47,6 +47,12 @@ function requiredOrgId(req: AuthRequest): number {
   const orgId = req.user?.orgId;
   if (!orgId) throw new Error("Authenticated user is not assigned to an organization");
   return orgId;
+}
+
+function branchWarehouseScope(req: AuthRequest) {
+  return req.user!.branchId
+    ? or(eq(invWarehouses.branchId, req.user!.branchId), isNull(invWarehouses.branchId))
+    : undefined;
 }
 
 async function recordAudit(
@@ -495,7 +501,7 @@ router.get("/warehouses", requirePermission(MODULE, "view"), async (req: AuthReq
       res.status(400).json({ success: false, error: "Invalid warehouse status" });
       return;
     }
-    const filters = [eq(invWarehouses.orgId, requiredOrgId(req))];
+    const filters = [eq(invWarehouses.orgId, requiredOrgId(req)), branchWarehouseScope(req)];
     if (search) filters.push(or(ilike(invWarehouses.code, `%${search}%`), ilike(invWarehouses.name, `%${search}%`))!);
     if (status) filters.push(eq(invWarehouses.status, status));
     const rows = await db.select().from(invWarehouses).where(and(...filters)).orderBy(invWarehouses.code);
@@ -516,7 +522,7 @@ router.post("/warehouses", requirePermission(MODULE, "create"), async (req: Auth
     const [duplicate] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
       .where(and(eq(invWarehouses.orgId, orgId), sql`lower(${invWarehouses.code}) = lower(${parsed.data.code})`)).limit(1);
     if (duplicate) { res.status(409).json({ success: false, error: `Warehouse code "${parsed.data.code}" already exists` }); return; }
-    const [created] = await db.insert(invWarehouses).values({ ...parsed.data, orgId }).returning();
+    const [created] = await db.insert(invWarehouses).values({ ...parsed.data, orgId, branchId: req.user!.branchId ?? null }).returning();
     await recordAudit(req, "CREATE", "warehouse", created.id, created.name, undefined, created);
     res.status(201).json({ success: true, data: created });
   } catch {
@@ -535,7 +541,7 @@ router.put("/warehouses/:id", requirePermission(MODULE, "edit"), async (req: Aut
   try {
     const orgId = requiredOrgId(req);
     const [existing] = await db.select().from(invWarehouses)
-      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, orgId))).limit(1);
+      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, orgId), branchWarehouseScope(req))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Warehouse not found" }); return; }
     if (parsed.data.code) {
       const [duplicate] = await db.select({ id: invWarehouses.id }).from(invWarehouses)
@@ -543,7 +549,7 @@ router.put("/warehouses/:id", requirePermission(MODULE, "edit"), async (req: Aut
       if (duplicate) { res.status(409).json({ success: false, error: `Warehouse code "${parsed.data.code}" already exists` }); return; }
     }
     const [updated] = await db.update(invWarehouses).set({ ...parsed.data, updatedAt: new Date() })
-      .where(eq(invWarehouses.id, id)).returning();
+      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, orgId), branchWarehouseScope(req))).returning();
     await recordAudit(req, "UPDATE", "warehouse", updated.id, updated.name, existing, updated);
     res.json({ success: true, data: updated });
   } catch {
@@ -556,7 +562,7 @@ router.delete("/warehouses/:id", requirePermission(MODULE, "delete"), async (req
   if (!id) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
   try {
     const [existing] = await db.select({ id: invWarehouses.id, name: invWarehouses.name }).from(invWarehouses)
-      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, requiredOrgId(req)))).limit(1);
+      .where(and(eq(invWarehouses.id, id), eq(invWarehouses.orgId, requiredOrgId(req)), branchWarehouseScope(req))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "Warehouse not found" }); return; }
     const [{ stockCount }] = await db.select({ stockCount: sql<number>`count(*)::int` }).from(invStockLevels).where(eq(invStockLevels.warehouseId, id));
     const [{ movementCount }] = await db.select({ movementCount: sql<number>`count(*)::int` }).from(invMovements).where(eq(invMovements.warehouseId, id));

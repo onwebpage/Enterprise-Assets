@@ -56,7 +56,10 @@ async function resolveOrganizationContext(req: AuthRequest, res: Response, next:
 
     authenticatedUser.orgId = organizationId;
     authenticatedUser.tenantId = organization.tenantId;
-    if (membership) authenticatedUser.roleId = membership.roleId;
+    if (membership) {
+      authenticatedUser.roleId = membership.roleId;
+      authenticatedUser.branchId = membership.branchId;
+    }
     next();
   } catch {
     res.status(500).json({ success: false, error: "Failed to resolve company context" });

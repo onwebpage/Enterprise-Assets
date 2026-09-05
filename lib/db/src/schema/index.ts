@@ -42,3 +42,4 @@ export * from "./periodClosing";
 export * from "./intercompany";
 export * from "./multiCurrency";
 export * from "./financialControls";
+export * from "./multiEntity";

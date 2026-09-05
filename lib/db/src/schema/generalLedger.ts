@@ -3,6 +3,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 import { organizations } from "./organizations";
+import { branches } from "./branches";
 import { chartOfAccounts } from "./chartOfAccounts";
 import { users } from "./users";
 
@@ -21,6 +22,7 @@ export type JEStatus = (typeof JE_STATUSES)[number];
 export const journalEntries = pgTable("journal_entries", {
   id:           serial("id").primaryKey(),
   orgId:        integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  branchId:     integer("branch_id").references(() => branches.id, { onDelete: "set null" }),
   entryNumber:  text("entry_number").notNull(),          // e.g. JE-0001
   date:         text("date").notNull(),                  // ISO date YYYY-MM-DD
   reference:    text("reference"),                       // optional external ref (INV-xxx)
