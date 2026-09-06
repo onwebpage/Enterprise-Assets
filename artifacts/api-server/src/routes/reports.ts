@@ -5,6 +5,7 @@
  * to produce cross-module analytics endpoints.
  */
 import { Router } from "express";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { eq, and, sql, desc, gte, lte } from "drizzle-orm";
 import {
   db, roles, permissions,
@@ -13,14 +14,100 @@ import {
   hrEmployees, hrPayrollRuns, departments,
   invProducts, invStockLevels, invCategories,
   purchaseOrders, purchaseVendors,
+  powerBiIntegrations,
 } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { requireFeature } from "../middlewares/requireFeature";
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireFeature("reports"));
 
 const MODULE = "Reports";
+
+type PowerBiConfig = {
+  tenantId: string;
+  clientId: string;
+  clientSecretEncrypted: string;
+  workspaceId: string;
+  reportId: string;
+  datasetId: string | null;
+  embedUrl: string | null;
+};
+
+function encryptionKey(): Buffer {
+  const secret = process.env.POWERBI_ENCRYPTION_KEY;
+  if (!secret) throw new Error("POWERBI_ENCRYPTION_KEY is not configured");
+  return createHash("sha256").update(secret).digest();
+}
+
+function encryptSecret(value: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString("base64url")).join(".");
+}
+
+function decryptSecret(value: string): string {
+  const [ivEncoded, tagEncoded, encryptedEncoded] = value.split(".");
+  if (!ivEncoded || !tagEncoded || !encryptedEncoded) throw new Error("Invalid encrypted Power BI secret");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivEncoded, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagEncoded, "base64url"));
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedEncoded, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+function isGuid(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function getPowerBiEmbedToken(config: PowerBiConfig) {
+  const aadResponse = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(config.tenantId)}/oauth2/v2.0/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: config.clientId,
+      client_secret: decryptSecret(config.clientSecretEncrypted),
+      scope: "https://analysis.windows.net/powerbi/api/.default",
+    }),
+  });
+  const aadPayload = await aadResponse.json() as { access_token?: string; error_description?: string };
+  if (!aadResponse.ok || !aadPayload.access_token) {
+    throw new Error(aadPayload.error_description ?? "Microsoft Entra authentication failed");
+  }
+
+  const reportResponse = await fetch(
+    `https://api.powerbi.com/v1.0/myorg/groups/${config.workspaceId}/reports/${config.reportId}`,
+    { headers: { Authorization: `Bearer ${aadPayload.access_token}` } },
+  );
+  const reportPayload = await reportResponse.json() as { embedUrl?: string; datasetId?: string; error?: { message?: string } };
+  if (!reportResponse.ok) throw new Error(reportPayload.error?.message ?? "Power BI report was not found");
+
+  const tokenResponse = await fetch(
+    `https://api.powerbi.com/v1.0/myorg/groups/${config.workspaceId}/reports/${config.reportId}/GenerateToken`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${aadPayload.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ accessLevel: "View" }),
+    },
+  );
+  const tokenPayload = await tokenResponse.json() as { token?: string; expiration?: string; error?: { message?: string } };
+  if (!tokenResponse.ok || !tokenPayload.token) {
+    throw new Error(tokenPayload.error?.message ?? "Power BI embed token generation failed");
+  }
+
+  return {
+    token: tokenPayload.token,
+    expiration: tokenPayload.expiration ?? null,
+    embedUrl: config.embedUrl ?? reportPayload.embedUrl ?? null,
+    reportId: config.reportId,
+    datasetId: config.datasetId ?? reportPayload.datasetId ?? null,
+  };
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -602,6 +689,102 @@ router.get("/purchase", requirePermission(MODULE, "view"), async (req: AuthReque
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: "Failed to fetch purchase analytics" });
+  }
+});
+
+// ── Power BI Integration ─────────────────────────────────────────────────────
+
+router.get("/powerbi/config", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId;
+    if (!orgId) { res.status(400).json({ success: false, error: "No organization found" }); return; }
+    const [config] = await db.select().from(powerBiIntegrations).where(eq(powerBiIntegrations.orgId, orgId)).limit(1);
+    res.json({
+      success: true,
+      data: config ? {
+        configured: true,
+        tenantId: config.tenantId,
+        clientId: config.clientId,
+        workspaceId: config.workspaceId,
+        reportId: config.reportId,
+        datasetId: config.datasetId,
+        embedUrl: config.embedUrl,
+        enabled: config.enabled,
+        updatedAt: config.updatedAt,
+        hasClientSecret: true,
+      } : { configured: false, enabled: false, hasClientSecret: false },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: "Failed to fetch Power BI configuration" });
+  }
+});
+
+router.put("/powerbi/config", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId;
+    if (!orgId) { res.status(400).json({ success: false, error: "No organization found" }); return; }
+    const {
+      tenantId, clientId, clientSecret, workspaceId, reportId, datasetId, embedUrl, enabled,
+    } = req.body as Record<string, unknown>;
+    if (!isGuid(tenantId) || !isGuid(clientId) || !isGuid(workspaceId) || !isGuid(reportId)) {
+      res.status(400).json({ success: false, error: "Tenant, client, workspace, and report IDs must be valid GUIDs" });
+      return;
+    }
+    if (embedUrl !== undefined && embedUrl !== null && (typeof embedUrl !== "string" || !embedUrl.startsWith("https://"))) {
+      res.status(400).json({ success: false, error: "Embed URL must be an HTTPS URL" });
+      return;
+    }
+    const [existing] = await db.select().from(powerBiIntegrations).where(eq(powerBiIntegrations.orgId, orgId)).limit(1);
+    const secret = typeof clientSecret === "string" && clientSecret.trim() ? encryptSecret(clientSecret.trim()) : existing?.clientSecretEncrypted;
+    if (!secret) {
+      res.status(400).json({ success: false, error: "Client secret is required for the first configuration" });
+      return;
+    }
+    const values = {
+      orgId,
+      tenantId,
+      clientId,
+      clientSecretEncrypted: secret,
+      workspaceId,
+      reportId,
+      datasetId: typeof datasetId === "string" && datasetId ? datasetId : null,
+      embedUrl: typeof embedUrl === "string" && embedUrl ? embedUrl : null,
+      enabled: enabled !== false,
+      createdBy: req.user!.userId,
+      updatedAt: new Date(),
+    };
+    const [saved] = existing
+      ? await db.update(powerBiIntegrations).set(values).where(eq(powerBiIntegrations.orgId, orgId)).returning()
+      : await db.insert(powerBiIntegrations).values(values).returning();
+    res.json({ success: true, data: { configured: true, workspaceId: saved.workspaceId, reportId: saved.reportId, enabled: saved.enabled, updatedAt: saved.updatedAt } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err instanceof Error ? err.message : "Failed to save Power BI configuration" });
+  }
+});
+
+router.post("/powerbi/test", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId;
+    const [config] = orgId ? await db.select().from(powerBiIntegrations).where(eq(powerBiIntegrations.orgId, orgId)).limit(1) : [];
+    if (!config) { res.status(404).json({ success: false, error: "Power BI is not configured" }); return; }
+    await getPowerBiEmbedToken(config);
+    res.json({ success: true, data: { connected: true, message: "Power BI authentication and report access verified" } });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err instanceof Error ? err.message : "Power BI connection test failed" });
+  }
+});
+
+router.get("/powerbi/embed-token", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId;
+    const [config] = orgId ? await db.select().from(powerBiIntegrations).where(eq(powerBiIntegrations.orgId, orgId)).limit(1) : [];
+    if (!config || !config.enabled) { res.status(404).json({ success: false, error: "Power BI is not configured or enabled" }); return; }
+    const embed = await getPowerBiEmbedToken(config);
+    res.json({ success: true, data: embed });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err instanceof Error ? err.message : "Failed to create Power BI embed session" });
   }
 });
 

@@ -11,7 +11,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch
+  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch, Plug
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,7 +35,7 @@ const navGroups = [
   {
     label: 'Finance',
     items: [
-      { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance' },
+      { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance', featureKey: 'finance' },
       { icon: Coins, label: 'Advanced Budget & Forecasting', path: '/app/budget-cost' },
       { icon: Landmark,  label: 'Advanced Treasury Management', path: '/app/cash-treasury' },
       { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
@@ -52,10 +52,10 @@ const navGroups = [
   {
     label: 'Operations',
     items: [
-      { icon: Users, label: 'Advanced CRM', path: '/app/crm' },
+      { icon: Users, label: 'Advanced CRM', path: '/app/crm', featureKey: 'crm' },
       { icon: ListChecks, label: 'Order Management', path: '/app/order-management' },
       { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase' },
-      { icon: Package, label: 'Inventory', path: '/app/inventory' },
+      { icon: Package, label: 'Inventory', path: '/app/inventory', featureKey: 'inventory' },
       { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
       { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality' },
@@ -67,16 +67,16 @@ const navGroups = [
     label: 'Business',
     items: [
       { icon: FolderKanban, label: 'Projects', path: '/app/projects' },
-      { icon: UserCog, label: 'HR & Payroll', path: '/app/hr' },
-      { icon: FileText, label: 'Documents', path: '/app/documents' },
+      { icon: UserCog, label: 'HR & Payroll', path: '/app/hr', featureKey: 'hr' },
+      { icon: FileText, label: 'Documents', path: '/app/documents', featureKey: 'documents' },
     ]
   },
   {
     label: 'Intelligence',
     items: [
-      { icon: BarChart3, label: 'Reports & Analytics', path: '/app/reports' },
+      { icon: BarChart3, label: 'Reports & Analytics', path: '/app/reports', featureKey: 'reports' },
       { icon: Bot, label: 'AI Assistant', path: '/app/ai' },
-      { icon: Brain, label: 'AI Business Intelligence', path: '/app/ai-bi' },
+      { icon: Brain, label: 'AI Business Intelligence', path: '/app/ai-bi', featureKey: 'ai_bi' },
       { icon: Zap, label: 'Workflow Automation', path: '/app/workflow' },
     ]
   },
@@ -90,7 +90,7 @@ const navGroups = [
   {
     label: 'Administration',
     items: [
-      { icon: Bell, label: 'Notifications', path: '/app/notifications' },
+      { icon: Bell, label: 'Notification & Communication Center', path: '/app/notifications' },
       { icon: Building2, label: 'Organization', path: '/app/organization' },
       { icon: GitBranch, label: 'Multi-Entity Control', path: '/app/multi-entity' },
       { icon: Database, label: 'Master Data Management', path: '/app/master-data' },
@@ -105,6 +105,12 @@ const navGroups = [
     label: 'SaaS',
     items: [
       { icon: Server, label: 'SaaS Platform', path: '/app/saas' },
+    ]
+  },
+  {
+    label: 'Integrations',
+    items: [
+      { icon: Plug, label: 'Social Media Integration', path: '/app/integrations' },
     ]
   },
   {
@@ -133,6 +139,11 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   });
   const { data: notifSummary } = useNotificationSummary();
   const { data: notifList } = useNotifications({ filter: 'all', limit: 5 });
+  const { data: featureAccess = {} } = useQuery<Record<string, boolean>>({
+    queryKey: ['saas-feature-access'],
+    queryFn: () => api.get<{ success: boolean; data: Record<string, boolean> }>('/saas/features/access').then(response => response.data),
+    staleTime: 30_000,
+  });
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   const unreadCount = notifSummary?.unread ?? 0;
@@ -225,7 +236,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                 {group.label}
               </p>
             )}
-            {group.items.map((item) => {
+            {group.items.filter(item => !item.featureKey || featureAccess[item.featureKey] !== false).map((item) => {
               const active = location === item.path || location.startsWith(item.path + '/');
               return (
                 <Tooltip key={item.path} delayDuration={0}>

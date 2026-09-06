@@ -287,7 +287,7 @@ export default function NotificationsPage() {
   const unread  = summary?.unread ?? 0;
 
   return (
-    <AppLayout breadcrumbs={[{ label: 'Notification Center' }]}>
+    <AppLayout breadcrumbs={[{ label: 'Notification & Communication Center' }]}>
       <div className="p-6 space-y-6">
 
         {/* Header */}
@@ -297,7 +297,7 @@ export default function NotificationsPage() {
               <Bell className="w-5 h-5 text-[#2563EB]" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-white">Notification Center</h1>
+              <h1 className="text-xl font-semibold text-white">Notification &amp; Communication Center</h1>
               <p className="text-sm text-white/40">
                 {unread > 0 ? `${unread} unread notification${unread !== 1 ? 's' : ''}` : 'All caught up'}
               </p>

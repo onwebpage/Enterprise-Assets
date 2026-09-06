@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, boolean, jsonb, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations";
 
 export const saasPlans = pgTable("saas_plans", {
@@ -107,6 +107,41 @@ export const saasTrialConfig = pgTable("saas_trial_config", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// ── Feature Management ───────────────────────────────────────────────────────
+export const saasFeatures = pgTable("saas_features", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("general"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const saasPlanFeatures = pgTable("saas_plan_features", {
+  id: serial("id").primaryKey(),
+  planId: integer("plan_id").notNull().references(() => saasPlans.id, { onDelete: "cascade" }),
+  featureId: integer("feature_id").notNull().references(() => saasFeatures.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  planFeatureUnique: uniqueIndex("saas_plan_features_unique").on(table.planId, table.featureId),
+}));
+
+export const saasTenantFeatures = pgTable("saas_tenant_features", {
+  id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  featureId: integer("feature_id").notNull().references(() => saasFeatures.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  tenantFeatureUnique: uniqueIndex("saas_tenant_features_unique").on(table.orgId, table.featureId),
+}));
+
 // ── Agencies ──────────────────────────────────────────────────────────────────
 export const saasAgencies = pgTable("saas_agencies", {
   id: serial("id").primaryKey(),
@@ -151,6 +186,9 @@ export type SaasLicense = typeof saasLicenses.$inferSelect;
 export type SaasWhitelabel = typeof saasWhitelabel.$inferSelect;
 export type SaasTrialEvent = typeof saasTrialEvents.$inferSelect;
 export type SaasTrialConfig = typeof saasTrialConfig.$inferSelect;
+export type SaasFeature = typeof saasFeatures.$inferSelect;
+export type SaasPlanFeature = typeof saasPlanFeatures.$inferSelect;
+export type SaasTenantFeature = typeof saasTenantFeatures.$inferSelect;
 export type SaasAgency = typeof saasAgencies.$inferSelect;
 export type SaasAgencyClient = typeof saasAgencyClients.$inferSelect;
 export type SaasAgencyPayout = typeof saasAgencyPayouts.$inferSelect;

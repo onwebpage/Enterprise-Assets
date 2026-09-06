@@ -41,6 +41,12 @@ cd lib/db && pnpm run seed:finance
 
 # Seed AR demo data
 cd lib/db && pnpm run seed:ar
+
+# Create SaaS feature-management tables
+cd lib/db && pnpm run schema:saas-features
+
+# Create social integration tables
+cd lib/db && pnpm run schema:social-integrations
 ```
 
 ## Admin Credentials
@@ -52,6 +58,38 @@ Super-admin credentials are stored as bcrypt hashes in the configured database. 
 - `DATABASE_URL` — managed by Replit PostgreSQL integration
 - `SUPABASE_DB_URL` — PostgreSQL connection used by the imported project when configured
 - `SESSION_SECRET` — used for JWT signing
+- `POWERBI_ENCRYPTION_KEY` — server-only key used to encrypt stored Power BI client secrets
+- `INTEGRATION_ENCRYPTION_KEY` — server-only key used to encrypt social media access and refresh tokens
+
+## Social Media Integration
+
+Social Media Integration is available under **ERP Dashboard → Integrations → Social Media Integration**.
+It supports Facebook Pages, Instagram, LinkedIn, X, and YouTube provider tokens. Credentials
+are organization-scoped, encrypted at rest, hidden from API responses, tested against the
+provider API, and protected by the Settings RBAC permission.
+
+## SaaS Feature Management
+
+Feature Management is available under **ERP Dashboard → SaaS → Feature Management**.
+It stores a feature catalog, plan entitlements, and tenant-specific overrides in PostgreSQL.
+Access resolves in this order: tenant override, plan entitlement, then disabled. The
+SaaS Platform RBAC permission controls who can edit feature definitions and assignments;
+tenant navigation and the `/api/saas/features/access` endpoint use the effective result.
+
+## Power BI Integration
+
+Power BI is available under **ERP Dashboard → Reports & Analytics → Power BI Integration**.
+Configure a Microsoft Entra application with `Tenant ID`, `Client ID`, and client secret,
+grant it Power BI service application permissions for the target workspace/report, and
+grant admin consent. Enter the workspace and report IDs in the integration form. The API
+keeps the client secret encrypted, exchanges it server-side for an Entra token, generates
+a short-lived Power BI embed token, and never sends the client secret to the browser.
+
+Before enabling the feature in a new database, run:
+
+```bash
+cd lib/db && pnpm run schema:power-bi
+```
 
 ## Tech Stack
 

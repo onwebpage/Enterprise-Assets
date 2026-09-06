@@ -2,11 +2,14 @@ import { Router } from "express";
 import { eq, desc, sql, and, lt, gte } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { db } from "@workspace/db";
-import { saasPlans, saasSubscriptions, saasLicenses, saasWhitelabel, saasTrialEvents, saasTrialConfig, organizations, saasAgencies, saasAgencyClients, saasAgencyPayouts } from "@workspace/db/schema";
+import { saasPlans, saasSubscriptions, saasLicenses, saasWhitelabel, saasTrialEvents, saasTrialConfig, saasFeatures, saasPlanFeatures, saasTenantFeatures, organizations, saasAgencies, saasAgencyClients, saasAgencyPayouts } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
+import { requirePermission } from "../middlewares/requirePermission";
 
 const router = Router();
 router.use(requireAuth);
+
+const SAAS_MODULE = "SaaS Platform";
 
 // ── Platform Metrics ────────────────────────────────────────────────────────
 router.get("/metrics", async (_req, res) => {
@@ -118,6 +121,141 @@ router.delete("/plans/:id", async (req, res) => {
     res.json({ success: true, data: null });
   } catch {
     res.status(500).json({ success: false, error: "Failed to delete plan" });
+  }
+});
+
+// ── Feature Management ───────────────────────────────────────────────────────
+
+router.get("/features", requirePermission(SAAS_MODULE, "view"), async (_req, res) => {
+  try {
+    const [features, plans, tenants, planAssignments, tenantOverrides] = await Promise.all([
+      db.select().from(saasFeatures).orderBy(saasFeatures.sortOrder, saasFeatures.name),
+      db.select({ id: saasPlans.id, name: saasPlans.name, slug: saasPlans.slug }).from(saasPlans).where(eq(saasPlans.isActive, true)).orderBy(saasPlans.sortOrder),
+      db.select({ id: organizations.id, name: organizations.name, status: organizations.status }).from(organizations).orderBy(organizations.name),
+      db.select().from(saasPlanFeatures),
+      db.select().from(saasTenantFeatures),
+    ]);
+    res.json({ success: true, data: { features, plans, tenants, planAssignments, tenantOverrides } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to fetch SaaS features" });
+  }
+});
+
+router.post("/features", requirePermission(SAAS_MODULE, "edit"), async (req: AuthRequest, res) => {
+  try {
+    const { key, name, description, category, sortOrder } = req.body as Record<string, unknown>;
+    if (typeof key !== "string" || !/^[a-z][a-z0-9_-]{1,99}$/.test(key)) {
+      res.status(400).json({ success: false, error: "Feature key must use lowercase letters, numbers, hyphens, or underscores" }); return;
+    }
+    if (typeof name !== "string" || !name.trim()) {
+      res.status(400).json({ success: false, error: "Feature name is required" }); return;
+    }
+    const [feature] = await db.insert(saasFeatures).values({
+      key, name: name.trim(), description: typeof description === "string" ? description.trim() || null : null,
+      category: typeof category === "string" && category.trim() ? category.trim() : "general",
+      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+    }).returning();
+    res.status(201).json({ success: true, data: feature });
+  } catch (error: any) {
+    if (error?.code === "23505") { res.status(409).json({ success: false, error: "Feature key already exists" }); return; }
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to create feature" });
+  }
+});
+
+router.put("/features/:id", requirePermission(SAAS_MODULE, "edit"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, description, category, sortOrder, isActive } = req.body as Record<string, unknown>;
+    if (!Number.isInteger(id) || typeof name !== "string" || !name.trim()) { res.status(400).json({ success: false, error: "Valid id and feature name are required" }); return; }
+    const [feature] = await db.update(saasFeatures).set({
+      name: name.trim(), description: typeof description === "string" ? description.trim() || null : null,
+      category: typeof category === "string" && category.trim() ? category.trim() : "general",
+      sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+      isActive: typeof isActive === "boolean" ? isActive : true,
+      updatedAt: new Date(),
+    }).where(eq(saasFeatures.id, id)).returning();
+    if (!feature) { res.status(404).json({ success: false, error: "Feature not found" }); return; }
+    res.json({ success: true, data: feature });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to update feature" });
+  }
+});
+
+router.patch("/features/:id/toggle", requirePermission(SAAS_MODULE, "edit"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const [feature] = await db.select({ isActive: saasFeatures.isActive }).from(saasFeatures).where(eq(saasFeatures.id, id)).limit(1);
+    if (!feature) { res.status(404).json({ success: false, error: "Feature not found" }); return; }
+    const [updated] = await db.update(saasFeatures).set({ isActive: !feature.isActive, updatedAt: new Date() }).where(eq(saasFeatures.id, id)).returning();
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to toggle feature" });
+  }
+});
+
+router.put("/features/:featureId/plans/:planId", requirePermission(SAAS_MODULE, "edit"), async (req, res) => {
+  try {
+    const featureId = Number(req.params.featureId);
+    const planId = Number(req.params.planId);
+    if (!Number.isInteger(featureId) || !Number.isInteger(planId) || typeof req.body.enabled !== "boolean") { res.status(400).json({ success: false, error: "featureId, planId, and enabled are required" }); return; }
+    const [assignment] = await db.insert(saasPlanFeatures).values({ featureId, planId, enabled: req.body.enabled }).onConflictDoUpdate({
+      target: [saasPlanFeatures.planId, saasPlanFeatures.featureId], set: { enabled: req.body.enabled, updatedAt: new Date() },
+    }).returning();
+    res.json({ success: true, data: assignment });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to update plan feature" });
+  }
+});
+
+router.put("/features/:featureId/tenants/:orgId", requirePermission(SAAS_MODULE, "edit"), async (req, res) => {
+  try {
+    const featureId = Number(req.params.featureId);
+    const orgId = Number(req.params.orgId);
+    if (!Number.isInteger(featureId) || !Number.isInteger(orgId) || typeof req.body.enabled !== "boolean") { res.status(400).json({ success: false, error: "featureId, orgId, and enabled are required" }); return; }
+    const [override] = await db.insert(saasTenantFeatures).values({ featureId, orgId, enabled: req.body.enabled }).onConflictDoUpdate({
+      target: [saasTenantFeatures.orgId, saasTenantFeatures.featureId], set: { enabled: req.body.enabled, updatedAt: new Date() },
+    }).returning();
+    res.json({ success: true, data: override });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to update tenant feature" });
+  }
+});
+
+router.delete("/features/:featureId/tenants/:orgId", requirePermission(SAAS_MODULE, "edit"), async (req, res) => {
+  try {
+    await db.delete(saasTenantFeatures).where(and(eq(saasTenantFeatures.featureId, Number(req.params.featureId)), eq(saasTenantFeatures.orgId, Number(req.params.orgId))));
+    res.json({ success: true, data: null });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to clear tenant feature override" });
+  }
+});
+
+router.get("/features/access", async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.orgId;
+    if (!orgId) { res.json({ success: true, data: {} }); return; }
+    const rows = await db.execute(sql`
+      SELECT f.key,
+        f.is_active,
+        COALESCE(tf.enabled, pf.enabled, false) AS enabled
+      FROM saas_features f
+      LEFT JOIN saas_tenant_features tf ON tf.feature_id = f.id AND tf.org_id = ${orgId}
+      LEFT JOIN saas_subscriptions s ON s.org_id = ${orgId} AND s.status IN ('active', 'trial')
+      LEFT JOIN saas_plan_features pf ON pf.feature_id = f.id AND pf.plan_id = s.plan_id
+      ORDER BY f.sort_order, f.name
+    `);
+    const access = Object.fromEntries(((rows as any).rows ?? rows).map((row: any) => [row.key, Boolean(row.is_active && row.enabled)]));
+    res.json({ success: true, data: access });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Failed to resolve feature access" });
   }
 });
 

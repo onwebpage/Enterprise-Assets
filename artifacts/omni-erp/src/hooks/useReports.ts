@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type ApiResponse } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -71,6 +71,27 @@ export interface PurchaseAnalyticsData {
   monthlyTrend: { month: string; amount: number }[];
 }
 
+export interface PowerBiConfig {
+  configured: boolean;
+  tenantId?: string;
+  clientId?: string;
+  workspaceId?: string;
+  reportId?: string;
+  datasetId?: string | null;
+  embedUrl?: string | null;
+  enabled: boolean;
+  hasClientSecret: boolean;
+  updatedAt?: string;
+}
+
+export interface PowerBiEmbed {
+  token: string;
+  expiration: string | null;
+  embedUrl: string | null;
+  reportId: string;
+  datasetId: string | null;
+}
+
 // ── Hooks ─────────────────────────────────────────────────────────────────────
 
 export function useReportsPermissions() {
@@ -133,5 +154,37 @@ export function useReportsPurchase() {
     queryFn: () => api.get<ApiResponse<PurchaseAnalyticsData>>("/reports/purchase"),
     select: (d) => d.data,
     staleTime: 60_000,
+  });
+}
+
+export function usePowerBiConfig() {
+  return useQuery({
+    queryKey: ["reports", "powerbi", "config"],
+    queryFn: () => api.get<ApiResponse<PowerBiConfig>>("/reports/powerbi/config"),
+    select: (response) => response.data,
+  });
+}
+
+export function useSavePowerBiConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Record<string, unknown>) => api.put<ApiResponse<PowerBiConfig>>("/reports/powerbi/config", payload),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ["reports", "powerbi"] }); },
+  });
+}
+
+export function usePowerBiConnectionTest() {
+  return useMutation({
+    mutationFn: () => api.post<ApiResponse<{ connected: boolean; message: string }>>("/reports/powerbi/test", {}),
+  });
+}
+
+export function usePowerBiEmbedToken(enabled = false) {
+  return useQuery({
+    queryKey: ["reports", "powerbi", "embed-token"],
+    queryFn: () => api.get<ApiResponse<PowerBiEmbed>>("/reports/powerbi/embed-token"),
+    select: (response) => response.data,
+    enabled,
+    retry: false,
   });
 }

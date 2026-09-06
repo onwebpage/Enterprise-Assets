@@ -231,6 +231,30 @@ function useTenantDashboard(id: number | null) {
   });
 }
 
+interface SaasFeatureRow {
+  id: number; key: string; name: string; description: string | null;
+  category: string; isActive: boolean; sortOrder: number;
+}
+interface FeatureManagementData {
+  features: SaasFeatureRow[];
+  plans: { id: number; name: string; slug: string }[];
+  tenants: { id: number; name: string; status: string }[];
+  planAssignments: { id: number; planId: number; featureId: number; enabled: boolean }[];
+  tenantOverrides: { id: number; orgId: number; featureId: number; enabled: boolean }[];
+}
+
+function useSaasFeatures() {
+  return useQuery({
+    queryKey: ['saas-features'],
+    queryFn: async () => {
+      const r = await authFetch(api('/saas/features'));
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.error ?? 'Failed to load features');
+      return j.data as FeatureManagementData;
+    },
+  });
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────
 interface AgencyRow {
   id: number; name: string; slug: string;
@@ -705,6 +729,109 @@ function TenantsTab({ onAdd, onViewDashboard }: { onAdd: () => void; onViewDashb
           </>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Feature Management Tab ─────────────────────────────────────────────────
+function FeatureManagementTab() {
+  const { data, isLoading, isError, error } = useSaasFeatures();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ key: '', name: '', description: '', category: 'general' });
+
+  const request = async (path: string, method: string, body?: unknown) => {
+    const r = await authFetch(api(path), {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const json = await r.json();
+    if (!r.ok || !json.success) throw new Error(json.error ?? 'Request failed');
+    return json;
+  };
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ['saas-features'] }); };
+  const create = useMutation({
+    mutationFn: () => request('/saas/features', 'POST', form),
+    onSuccess: () => { refresh(); setShowCreate(false); setForm({ key: '', name: '', description: '', category: 'general' }); toast({ title: 'Feature created' }); },
+    onError: (error: Error) => toast({ title: 'Could not create feature', description: error.message, variant: 'destructive' }),
+  });
+  const toggleFeature = useMutation({
+    mutationFn: (feature: SaasFeatureRow) => request(`/saas/features/${feature.id}/toggle`, 'PATCH'),
+    onSuccess: refresh,
+    onError: (error: Error) => toast({ title: 'Could not update feature', description: error.message, variant: 'destructive' }),
+  });
+  const setPlan = useMutation({
+    mutationFn: ({ featureId, planId, enabled }: { featureId: number; planId: number; enabled: boolean }) => request(`/saas/features/${featureId}/plans/${planId}`, 'PUT', { enabled }),
+    onSuccess: refresh,
+    onError: (error: Error) => toast({ title: 'Could not update plan access', description: error.message, variant: 'destructive' }),
+  });
+  const setTenant = useMutation({
+    mutationFn: ({ featureId, orgId, enabled }: { featureId: number; orgId: number; enabled: boolean }) => request(`/saas/features/${featureId}/tenants/${orgId}`, 'PUT', { enabled }),
+    onSuccess: refresh,
+    onError: (error: Error) => toast({ title: 'Could not update tenant override', description: error.message, variant: 'destructive' }),
+  });
+  const clearTenant = useMutation({
+    mutationFn: ({ featureId, orgId }: { featureId: number; orgId: number }) => request(`/saas/features/${featureId}/tenants/${orgId}`, 'DELETE'),
+    onSuccess: refresh,
+    onError: (error: Error) => toast({ title: 'Could not clear tenant override', description: error.message, variant: 'destructive' }),
+  });
+
+  const assignment = (featureId: number, planId: number) => data?.planAssignments.find(a => a.featureId === featureId && a.planId === planId)?.enabled ?? false;
+  const override = (featureId: number) => selectedOrgId ? data?.tenantOverrides.find(o => o.featureId === featureId && o.orgId === selectedOrgId) : undefined;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-lg font-semibold text-white">Feature Management</h2>
+          <p className="mt-1 text-sm text-white/40">Control module availability by plan, then override access for individual tenants. Tenant overrides take precedence over plan access.</p>
+        </div>
+        <Button size="sm" className="bg-[#2563EB] hover:bg-[#1d4ed8]" onClick={() => setShowCreate(true)}><Plus className="w-3.5 h-3.5 mr-1.5" />Add Feature</Button>
+      </div>
+
+      {showCreate && (
+        <div className="rounded-xl border border-[#2563EB]/30 bg-[#0a0f1e] p-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            {[['key', 'Feature key'], ['name', 'Display name'], ['category', 'Category'], ['description', 'Description']].map(([field, label]) => (
+              <label key={field} className="space-y-1.5"><span className="text-xs text-white/45">{label}</span><Input value={form[field as keyof typeof form]} onChange={e => setForm(current => ({ ...current, [field]: e.target.value }))} placeholder={field === 'key' ? 'advanced_crm' : label} className="bg-[#050816] border-white/[0.08] text-white placeholder:text-white/20" /></label>
+            ))}
+          </div>
+          <div className="mt-3 flex gap-2 justify-end"><Button variant="ghost" onClick={() => setShowCreate(false)} className="text-white/50">Cancel</Button><Button onClick={() => create.mutate()} disabled={create.isPending || !form.key || !form.name} className="bg-[#2563EB]">{create.isPending ? 'Creating...' : 'Create feature'}</Button></div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-4">
+        <div className="flex-1"><p className="text-xs text-white/45">Tenant override target</p><p className="mt-0.5 text-sm text-white">Choose a tenant to edit individual access.</p></div>
+        <select value={selectedOrgId ?? ''} onChange={e => setSelectedOrgId(e.target.value ? Number(e.target.value) : null)} className="h-9 min-w-[220px] rounded-md border border-white/[0.08] bg-[#050816] px-3 text-sm text-white">
+          <option value="">No tenant override selected</option>
+          {(data?.tenants ?? []).map(tenant => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}
+        </select>
+      </div>
+
+      {isError ? <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300"><AlertCircle className="h-4 w-4" />{error instanceof Error ? error.message : 'You need SaaS Platform permission to manage features.'}</div> : isLoading ? <div className="h-64 animate-pulse rounded-xl bg-white/[0.04]" /> : (data?.features ?? []).length === 0 ? (
+        <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] py-16 text-center text-sm text-white/30">No SaaS features configured yet.</div>
+      ) : (
+        <div className="space-y-3">
+          {data?.features.map(feature => {
+            const currentOverride = override(feature.id);
+            return (
+              <div key={feature.id} className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-5">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="flex items-start gap-3"><div className={`mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center ${feature.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-white/[0.05] text-white/25'}`}><Zap className="h-4 w-4" /></div><div><div className="flex items-center gap-2"><h3 className="text-sm font-semibold text-white">{feature.name}</h3><Badge className="border-white/[0.08] bg-white/[0.04] text-[10px] text-white/40">{feature.category}</Badge></div><p className="mt-1 font-mono text-[11px] text-white/30">{feature.key}</p>{feature.description && <p className="mt-1 text-xs text-white/40">{feature.description}</p>}</div></div>
+                  <Button variant="outline" size="sm" onClick={() => toggleFeature.mutate(feature)} className="border-white/[0.1] bg-transparent text-white/60">{feature.isActive ? <><EyeOff className="w-3.5 h-3.5 mr-1.5" />Disable globally</> : <><Eye className="w-3.5 h-3.5 mr-1.5" />Enable globally</>}</Button>
+                </div>
+                <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                  <div><p className="mb-2 text-xs font-medium text-white/45">Plan access</p><div className="flex flex-wrap gap-2">{data.plans.map(plan => { const enabled = assignment(feature.id, plan.id); return <button key={plan.id} onClick={() => setPlan.mutate({ featureId: feature.id, planId: plan.id, enabled: !enabled })} className={`rounded-lg border px-3 py-2 text-xs transition-colors ${enabled ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-white/[0.08] bg-white/[0.02] text-white/35 hover:text-white/60'}`}><span className="block font-medium">{plan.name}</span><span className="text-[10px] opacity-70">{enabled ? 'Enabled' : 'Disabled'}</span></button>; })}</div></div>
+                  <div><p className="mb-2 text-xs font-medium text-white/45">Selected tenant override</p>{selectedOrgId ? <div className="flex items-center gap-2"><button onClick={() => setTenant.mutate({ featureId: feature.id, orgId: selectedOrgId, enabled: true })} className={`rounded-lg border px-3 py-2 text-xs ${currentOverride?.enabled === true ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-white/[0.08] text-white/40'}`}>Force enabled</button><button onClick={() => setTenant.mutate({ featureId: feature.id, orgId: selectedOrgId, enabled: false })} className={`rounded-lg border px-3 py-2 text-xs ${currentOverride?.enabled === false ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-white/[0.08] text-white/40'}`}>Force disabled</button>{currentOverride && <Button variant="ghost" size="sm" onClick={() => clearTenant.mutate({ featureId: feature.id, orgId: selectedOrgId })} className="text-white/40">Clear override</Button>}</div> : <p className="text-xs text-white/25">Select a tenant above to add an exception.</p>}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -4026,6 +4153,7 @@ export default function SaasPlatform() {
               { v: 'overview',     l: 'Overview',         icon: BarChart3 },
               { v: 'tenants',      l: 'Tenants',          icon: Building2 },
               { v: 'plans',        l: 'Plans',            icon: Star },
+              { v: 'features',     l: 'Feature Management', icon: Layers },
               { v: 'subscriptions',l: 'Subscriptions',    icon: CreditCard },
               { v: 'licenses',      l: 'Licenses',          icon: KeyRound },
               { v: 'trials',       l: 'Trial Management', icon: Clock },
@@ -4044,6 +4172,7 @@ export default function SaasPlatform() {
           <TabsContent value="overview"          className="mt-5"><OverviewTab /></TabsContent>
           <TabsContent value="tenants"           className="mt-5"><TenantsTab onAdd={() => { setTab('onboarding'); }} onViewDashboard={openTenantDashboard} /></TabsContent>
           <TabsContent value="plans"             className="mt-5"><PlansTab /></TabsContent>
+          <TabsContent value="features"          className="mt-5"><FeatureManagementTab /></TabsContent>
           <TabsContent value="subscriptions"     className="mt-5"><SubscriptionsTab /></TabsContent>
           <TabsContent value="licenses"         className="mt-5"><LicenseManagementTab /></TabsContent>
           <TabsContent value="trials"            className="mt-5"><TrialManagementTab /></TabsContent>

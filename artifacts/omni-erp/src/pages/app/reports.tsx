@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart3, TrendingUp, TrendingDown, Download, Search, Plus,
+  BarChart3, TrendingUp, TrendingDown, Download, Search, Plus, Cloud,
   FileText, Clock, Star, Play, MoreHorizontal, Loader2,
   DollarSign, Users, Package, ShoppingCart, AlertTriangle,
 } from 'lucide-react';
@@ -14,9 +14,11 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
+import { factories, models, service } from 'powerbi-client';
 import {
   useReportsOverview, useReportsARaging, useReportsAPaging,
   useReportsInventory, useReportsHR, useReportsPurchase,
+  usePowerBiConfig, useSavePowerBiConfig, usePowerBiConnectionTest, usePowerBiEmbedToken,
 } from '@/hooks/useReports';
 import { formatINR } from '@/lib/currency';
 
@@ -532,6 +534,125 @@ function SavedTab() {
   );
 }
 
+function PowerBiTab() {
+  const { data: config, isLoading } = usePowerBiConfig();
+  const save = useSavePowerBiConfig();
+  const test = usePowerBiConnectionTest();
+  const [embedRequested, setEmbedRequested] = useState(false);
+  const embed = usePowerBiEmbedToken(embedRequested);
+  const [showSecret, setShowSecret] = useState(false);
+  const [form, setForm] = useState({
+    tenantId: '', clientId: '', clientSecret: '', workspaceId: '', reportId: '', datasetId: '', embedUrl: '', enabled: true,
+  });
+  const [initialized, setInitialized] = useState(false);
+  const embedContainer = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!config || initialized) return;
+    setForm({
+      tenantId: config.tenantId ?? '', clientId: config.clientId ?? '', clientSecret: '',
+      workspaceId: config.workspaceId ?? '', reportId: config.reportId ?? '', datasetId: config.datasetId ?? '',
+      embedUrl: config.embedUrl ?? '', enabled: config.enabled,
+    });
+    setInitialized(true);
+  }, [config, initialized]);
+
+  useEffect(() => {
+    if (!embed.data?.token || !embed.data.embedUrl || !embedContainer.current) return;
+    const powerbi = new service.Service(factories.hpmFactory, factories.wpmpFactory, factories.routerFactory);
+    powerbi.embed(embedContainer.current, {
+      type: 'report',
+      id: embed.data.reportId,
+      embedUrl: embed.data.embedUrl,
+      accessToken: embed.data.token,
+      tokenType: models.TokenType.Embed,
+      viewMode: models.ViewMode.View,
+      settings: { panes: { filters: { visible: true }, pageNavigation: { visible: true } }, background: models.BackgroundType.Transparent },
+    });
+    return () => {
+      if (embedContainer.current) powerbi.reset(embedContainer.current);
+    };
+  }, [embed.data]);
+
+  const update = (field: keyof typeof form, value: string | boolean) => setForm((current) => ({ ...current, [field]: value }));
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await save.mutateAsync(form);
+    setInitialized(false);
+  };
+
+  if (isLoading) return <Skeleton className="h-80" />;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-lg bg-sky-500/15 p-2 text-sky-400"><Cloud className="h-5 w-5" /></div>
+            <div>
+              <h2 className="text-sm font-semibold text-white">Power BI Integration</h2>
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-white/40">Connect a Microsoft Entra application to embed a Power BI report securely inside Reports &amp; Analytics. Client secrets are encrypted at rest and never returned to the browser.</p>
+            </div>
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-[11px] ${config?.configured && config.enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-300'}`}>
+            {config?.configured && config.enabled ? 'Configured' : 'Setup required'}
+          </span>
+        </div>
+
+        <form onSubmit={submit} className="mt-5 grid gap-4 md:grid-cols-2">
+          {([
+            ['tenantId', 'Microsoft Entra tenant ID'], ['clientId', 'Application client ID'],
+            ['workspaceId', 'Power BI workspace ID'], ['reportId', 'Power BI report ID'],
+          ] as const).map(([field, label]) => (
+            <label key={field} className="space-y-1.5">
+              <span className="text-xs text-white/55">{label}</span>
+              <Input required value={form[field]} onChange={(event) => update(field, event.target.value)} placeholder="00000000-0000-0000-0000-000000000000" className="border-white/[0.07] bg-white/[0.04] text-white placeholder:text-white/20" />
+            </label>
+          ))}
+          <label className="space-y-1.5">
+            <span className="text-xs text-white/55">Client secret {config?.hasClientSecret ? '(leave blank to keep current)' : ''}</span>
+            <div className="flex gap-2">
+              <Input required={!config?.hasClientSecret} type={showSecret ? 'text' : 'password'} value={form.clientSecret} onChange={(event) => update('clientSecret', event.target.value)} className="border-white/[0.07] bg-white/[0.04] text-white" />
+              <Button type="button" variant="outline" onClick={() => setShowSecret((value) => !value)} className="border-white/[0.1] bg-transparent text-white/60">{showSecret ? 'Hide' : 'Show'}</Button>
+            </div>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-xs text-white/55">Dataset ID (optional)</span>
+            <Input value={form.datasetId} onChange={(event) => update('datasetId', event.target.value)} placeholder="Optional dataset GUID" className="border-white/[0.07] bg-white/[0.04] text-white placeholder:text-white/20" />
+          </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-xs text-white/55">Embed URL (optional, auto-discovered from Power BI)</span>
+            <Input type="url" value={form.embedUrl} onChange={(event) => update('embedUrl', event.target.value)} placeholder="https://app.powerbi.com/reportEmbed?..." className="border-white/[0.07] bg-white/[0.04] text-white placeholder:text-white/20" />
+          </label>
+          <label className="flex items-center gap-2 text-xs text-white/55 md:col-span-2">
+            <input type="checkbox" checked={form.enabled} onChange={(event) => update('enabled', event.target.checked)} className="h-4 w-4 accent-[#2563EB]" />
+            Enable embedded report access
+          </label>
+          <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+            <Button type="submit" disabled={save.isPending} className="bg-[#2563EB] hover:bg-[#1d4ed8]">{save.isPending ? 'Saving...' : 'Save configuration'}</Button>
+            <Button type="button" variant="outline" disabled={!config?.configured || test.isPending} onClick={() => test.mutate()} className="border-white/[0.1] bg-transparent text-white/65">{test.isPending ? 'Testing...' : 'Test connection'}</Button>
+            {save.isSuccess && <span className="text-xs text-emerald-400">Configuration saved.</span>}
+            {test.isSuccess && <span className="text-xs text-emerald-400">{test.data.data.message}.</span>}
+            {(save.error || test.error) && <span className="text-xs text-rose-400">{(save.error ?? test.error)?.message}</span>}
+          </div>
+        </form>
+      </div>
+
+      {config?.configured && config.enabled && (
+        <div className="rounded-xl border border-white/[0.07] bg-[#0a0f1e] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-sm font-semibold text-white">Embedded report</h2><p className="mt-1 text-xs text-white/35">A short-lived embed session is created only when you open the report.</p></div>
+            <Button onClick={() => setEmbedRequested(true)} disabled={embed.isFetching} className="bg-sky-600 hover:bg-sky-500">{embed.isFetching ? 'Opening...' : 'Open Power BI report'}</Button>
+          </div>
+          {embed.isError && <p className="mt-4 text-xs text-rose-400">{embed.error.message}</p>}
+          {embedRequested && embed.data?.embedUrl && <div ref={embedContainer} className="mt-4 min-h-[560px] overflow-hidden rounded-lg border border-white/[0.07] bg-[#111827]" />}
+          {embedRequested && embed.data && !embed.data.embedUrl && <p className="mt-4 text-xs text-amber-300">Power BI returned no embed URL. Add the report&apos;s HTTPS embed URL to the configuration.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function Reports() {
@@ -565,6 +686,7 @@ export default function Reports() {
               { val: 'finance',     label: 'Finance' },
               { val: 'operations',  label: 'Operations' },
               { val: 'hr',          label: 'HR' },
+              { val: 'powerbi',     label: 'Power BI Integration' },
               { val: 'saved',       label: 'Saved Reports' },
             ].map(t => (
               <TabsTrigger
@@ -580,6 +702,7 @@ export default function Reports() {
           <TabsContent value="finance"    className="mt-4"><FinanceTab /></TabsContent>
           <TabsContent value="operations" className="mt-4"><OperationsTab /></TabsContent>
           <TabsContent value="hr"         className="mt-4"><HRTab /></TabsContent>
+          <TabsContent value="powerbi"    className="mt-4"><PowerBiTab /></TabsContent>
           <TabsContent value="saved"      className="mt-4"><SavedTab /></TabsContent>
         </Tabs>
       </div>

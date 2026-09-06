@@ -36,7 +36,10 @@
     ,"schema:intercompany": "tsx src/apply-intercompany-schema.ts"
       ,"schema:multi-currency": "tsx src/apply-multi-currency-schema.ts"
        ,"schema:financial-controls": "tsx src/apply-financial-controls-schema.ts"
-       ,"schema:purchase-source-to-pay": "tsx src/apply-purchase-source-to-pay-schema.ts"
+      ,"schema:purchase-source-to-pay": "tsx src/apply-purchase-source-to-pay-schema.ts"
+      ,"schema:power-bi": "tsx src/apply-power-bi-schema.ts"
+      ,"schema:saas-features": "tsx src/apply-saas-features-schema.ts"
+      ,"schema:social-integrations": "tsx src/apply-social-integrations-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

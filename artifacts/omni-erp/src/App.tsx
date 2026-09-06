@@ -55,6 +55,7 @@ import AiBi from '@/pages/app/ai-bi';
 import CashTreasury from '@/pages/app/cash-treasury';
 import MasterData from '@/pages/app/master-data';
 import MultiEntity from '@/pages/app/multi-entity';
+import SocialIntegrationsPage from '@/pages/app/social-integrations';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -197,6 +198,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/saas">
         <ProtectedRoute><SaasPlatform /></ProtectedRoute>
+      </Route>
+      <Route path="/app/integrations">
+        <ProtectedRoute><SocialIntegrationsPage /></ProtectedRoute>
       </Route>
 
       {/* Super Admin Panel — only requires admin token, independent of ERP login */}
