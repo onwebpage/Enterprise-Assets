@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Twitter, Linkedin, Github } from "lucide-react";
+import { legalLinks } from "@/lib/legal-links";
 
 const footerLinks = {
   Products: [
@@ -32,6 +33,7 @@ const footerLinks = {
     { label: "Privacy Policy", href: "#" },
     { label: "Terms of Service", href: "#" },
   ],
+  Legal: legalLinks.map((link) => ({ label: link.label, href: `/legal/${link.slug}` })),
 };
 
 export function Footer() {
@@ -41,7 +43,7 @@ export function Footer() {
       className="border-t border-white/[0.05] bg-[#050816] pt-20 pb-10"
     >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-12 mb-16">
+        <div className="grid grid-cols-2 gap-12 mb-16 md:grid-cols-6 xl:grid-cols-7">
           {/* Brand & Newsletter */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 mb-6 group">
@@ -83,12 +85,7 @@ export function Footer() {
               <ul className="space-y-3.5">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-[14px] text-slate-400 hover:text-white transition-colors"
-                    >
-                      {link.label}
-                    </a>
+                    {link.href.startsWith("/legal/") ? <Link href={link.href} className="text-[14px] text-slate-400 hover:text-white transition-colors">{link.label}</Link> : <a href={link.href} className="text-[14px] text-slate-400 hover:text-white transition-colors">{link.label}</a>}
                   </li>
                 ))}
               </ul>

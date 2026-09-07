@@ -11,7 +11,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch, Plug
+  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch, Plug, MessageCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,37 +36,37 @@ const navGroups = [
     label: 'Finance',
     items: [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance', featureKey: 'finance' },
-      { icon: Coins, label: 'Advanced Budget & Forecasting', path: '/app/budget-cost' },
-      { icon: Landmark,  label: 'Advanced Treasury Management', path: '/app/cash-treasury' },
-      { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar' },
-      { icon: CreditCard, label: 'Accounts Payable',   path: '/app/ap' },
-      { icon: CreditCard, label: 'Bank Reconciliation', path: '/app/banking' },
-      { icon: Package,   label: 'Fixed Assets',        path: '/app/fixed-assets' },
-      { icon: Receipt,   label: 'GST & Tax',           path: '/app/gst' },
-      { icon: FileText,  label: 'GST Returns',         path: '/app/gst-returns' },
-      { icon: FileText,  label: 'TDS & TCS',           path: '/app/tds' },
-      { icon: FileText,  label: 'E-Invoicing',         path: '/app/einvoicing' },
-      { icon: Truck,     label: 'E-Way Bill',          path: '/app/eway-bill' },
+      { icon: Coins, label: 'Advanced Budget & Forecasting', path: '/app/budget-cost', featureKey: 'budget_cost' },
+      { icon: Landmark,  label: 'Advanced Treasury Management', path: '/app/cash-treasury', featureKey: 'cash_treasury' },
+      { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar', featureKey: 'accounts_receivable' },
+      { icon: CreditCard, label: 'Accounts Payable',   path: '/app/ap', featureKey: 'accounts_payable' },
+      { icon: CreditCard, label: 'Bank Reconciliation', path: '/app/banking', featureKey: 'banking' },
+      { icon: Package,   label: 'Fixed Assets',        path: '/app/fixed-assets', featureKey: 'fixed_assets' },
+      { icon: Receipt,   label: 'GST & Tax',           path: '/app/gst', featureKey: 'gst' },
+      { icon: FileText,  label: 'GST Returns',         path: '/app/gst-returns', featureKey: 'gst' },
+      { icon: FileText,  label: 'TDS & TCS',           path: '/app/tds', featureKey: 'tds' },
+      { icon: FileText,  label: 'E-Invoicing',         path: '/app/einvoicing', featureKey: 'einvoicing' },
+      { icon: Truck,     label: 'E-Way Bill',          path: '/app/eway-bill', featureKey: 'eway_bill' },
     ]
   },
   {
     label: 'Operations',
     items: [
       { icon: Users, label: 'Advanced CRM', path: '/app/crm', featureKey: 'crm' },
-      { icon: ListChecks, label: 'Order Management', path: '/app/order-management' },
-      { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase' },
+      { icon: ListChecks, label: 'Order Management', path: '/app/order-management', featureKey: 'order_management' },
+      { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase', featureKey: 'purchase' },
       { icon: Package, label: 'Inventory', path: '/app/inventory', featureKey: 'inventory' },
       { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
-      { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing' },
-      { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality' },
-      { icon: Wrench, label: 'Maintenance', path: '/app/maintenance' },
-      { icon: Receipt, label: 'Expense Management', path: '/app/expense' },
+      { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing', featureKey: 'manufacturing' },
+      { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality', featureKey: 'quality' },
+      { icon: Wrench, label: 'Maintenance', path: '/app/maintenance', featureKey: 'maintenance' },
+      { icon: Receipt, label: 'Expense Management', path: '/app/expense', featureKey: 'expense' },
     ]
   },
   {
     label: 'Business',
     items: [
-      { icon: FolderKanban, label: 'Projects', path: '/app/projects' },
+      { icon: FolderKanban, label: 'Projects', path: '/app/projects', featureKey: 'projects' },
       { icon: UserCog, label: 'HR & Payroll', path: '/app/hr', featureKey: 'hr' },
       { icon: FileText, label: 'Documents', path: '/app/documents', featureKey: 'documents' },
     ]
@@ -75,22 +75,22 @@ const navGroups = [
     label: 'Intelligence',
     items: [
       { icon: BarChart3, label: 'Reports & Analytics', path: '/app/reports', featureKey: 'reports' },
-      { icon: Bot, label: 'AI Assistant', path: '/app/ai' },
+      { icon: Bot, label: 'AI Assistant', path: '/app/ai', featureKey: 'ai' },
       { icon: Brain, label: 'AI Business Intelligence', path: '/app/ai-bi', featureKey: 'ai_bi' },
-      { icon: Zap, label: 'Workflow Automation', path: '/app/workflow' },
+      { icon: Zap, label: 'Workflow Automation', path: '/app/workflow', featureKey: 'workflow' },
     ]
   },
   {
     label: 'Portals',
     items: [
-      { icon: Globe, label: 'Customer Portal', path: '/app/customer-portal' },
-      { icon: Truck, label: 'Vendor Portal', path: '/app/vendor-portal' },
+      { icon: Globe, label: 'Customer Portal', path: '/app/customer-portal', featureKey: 'customer_portal' },
+      { icon: Truck, label: 'Vendor Portal', path: '/app/vendor-portal', featureKey: 'vendor_portal' },
     ]
   },
   {
     label: 'Administration',
     items: [
-      { icon: Bell, label: 'Notification & Communication Center', path: '/app/notifications' },
+      { icon: Bell, label: 'Notification & Communication Center', path: '/app/notifications', featureKey: 'notifications' },
       { icon: Building2, label: 'Organization', path: '/app/organization' },
       { icon: GitBranch, label: 'Multi-Entity Control', path: '/app/multi-entity' },
       { icon: Database, label: 'Master Data Management', path: '/app/master-data' },
@@ -98,7 +98,7 @@ const navGroups = [
       { icon: Shield, label: 'Roles & Permissions', path: '/app/roles' },
       { icon: ClipboardList, label: 'Audit Logs', path: '/app/audit-logs' },
       { icon: Settings, label: 'Settings', path: '/app/settings' },
-      { icon: BillingIcon, label: 'Subscription & Billing', path: '/app/billing' },
+      { icon: BillingIcon, label: 'Subscription & Billing', path: '/app/billing', featureKey: 'billing' },
     ]
   },
   {
@@ -110,7 +110,8 @@ const navGroups = [
   {
     label: 'Integrations',
     items: [
-      { icon: Plug, label: 'Social Media Integration', path: '/app/integrations' },
+      { icon: Plug, label: 'Social Media Integration', path: '/app/integrations', featureKey: 'social_media' },
+      { icon: MessageCircle, label: 'WhatsApp', path: '/app/integrations/whatsapp', featureKey: 'social_media' },
     ]
   },
   {
@@ -236,7 +237,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                 {group.label}
               </p>
             )}
-            {group.items.filter(item => !item.featureKey || featureAccess[item.featureKey] !== false).map((item) => {
+            {group.items.filter(item => !item.featureKey || featureAccess[item.featureKey] === true).map((item) => {
               const active = location === item.path || location.startsWith(item.path + '/');
               return (
                 <Tooltip key={item.path} delayDuration={0}>

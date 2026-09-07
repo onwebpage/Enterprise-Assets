@@ -68,6 +68,15 @@ It supports Facebook Pages, Instagram, LinkedIn, X, and YouTube provider tokens.
 are organization-scoped, encrypted at rest, hidden from API responses, tested against the
 provider API, and protected by the Settings RBAC permission.
 
+WhatsApp is available under **ERP Dashboard → Integrations → Social Media Integration → WhatsApp**.
+It uses a local demo transport with no external credentials: contacts are selected from AR
+customers, messages and templates are persisted per organization, and delivery history records
+Sent, Pending, and Failed statuses. Before enabling it in a new database, run:
+
+```bash
+cd lib/db && pnpm run schema:whatsapp
+```
+
 ## SaaS Feature Management
 
 Feature Management is available under **ERP Dashboard → SaaS → Feature Management**.

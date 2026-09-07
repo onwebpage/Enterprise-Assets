@@ -40,6 +40,7 @@
       ,"schema:power-bi": "tsx src/apply-power-bi-schema.ts"
       ,"schema:saas-features": "tsx src/apply-saas-features-schema.ts"
       ,"schema:social-integrations": "tsx src/apply-social-integrations-schema.ts"
+      ,"schema:whatsapp": "tsx src/apply-whatsapp-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

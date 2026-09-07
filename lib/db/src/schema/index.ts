@@ -45,3 +45,4 @@ export * from "./financialControls";
 export * from "./multiEntity";
 export * from "./powerBi";
 export * from "./socialIntegrations";
+export * from "./whatsapp";

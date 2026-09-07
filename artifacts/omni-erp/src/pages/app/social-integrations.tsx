@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Facebook, Instagram, Linkedin, Youtube, Send, Plug, RefreshCw, Trash2, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Youtube, Send, Plug, RefreshCw, Trash2, CheckCircle2, AlertCircle, Eye, EyeOff, MessageCircle } from "lucide-react";
+import { Link } from "wouter";
 import AppLayout from "@/components/app/AppLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,7 @@ export default function SocialIntegrationsPage() {
             );
           })}
         </div>
+        <Link href="/app/integrations/whatsapp" className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-4 transition-colors hover:bg-emerald-500/[0.1]"><div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-300"><MessageCircle className="h-4 w-4" /></div><div className="flex-1"><p className="text-sm font-semibold text-white">WhatsApp</p><p className="mt-1 text-xs text-white/40">Local demo messaging, customer contacts, templates, notifications, and history.</p></div><span className="text-xs font-medium text-emerald-300">Open module</span></Link>
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 text-xs leading-5 text-white/35">Provider API access is organization-scoped. Publishing and reporting workflows should still enforce provider-specific scopes and token expiry before sending requests.</div>
       </div>
     </AppLayout>

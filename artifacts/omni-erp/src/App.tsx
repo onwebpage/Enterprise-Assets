@@ -56,6 +56,8 @@ import CashTreasury from '@/pages/app/cash-treasury';
 import MasterData from '@/pages/app/master-data';
 import MultiEntity from '@/pages/app/multi-entity';
 import SocialIntegrationsPage from '@/pages/app/social-integrations';
+import WhatsappPage from '@/pages/app/whatsapp';
+import { LegalPage } from '@/pages/legal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,82 +73,94 @@ function AppRoutes() {
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
       <Route path="/admin-login" component={AdminLogin} />
+      <Route path="/legal/privacy-policy"><LegalPage slug="privacy-policy" /></Route>
+      <Route path="/legal/terms-conditions"><LegalPage slug="terms-conditions" /></Route>
+      <Route path="/legal/refund-cancellation"><LegalPage slug="refund-cancellation" /></Route>
+      <Route path="/legal/cookie-policy"><LegalPage slug="cookie-policy" /></Route>
+      <Route path="/legal/data-processing-agreement"><LegalPage slug="data-processing-agreement" /></Route>
+      <Route path="/legal/security-policy"><LegalPage slug="security-policy" /></Route>
+      <Route path="/legal/acceptable-use"><LegalPage slug="acceptable-use" /></Route>
+      <Route path="/legal/service-level-agreement"><LegalPage slug="service-level-agreement" /></Route>
+      <Route path="/legal/disclaimer"><LegalPage slug="disclaimer" /></Route>
+      <Route path="/legal/grievance-redressal"><LegalPage slug="grievance-redressal" /></Route>
+      <Route path="/legal/intellectual-property"><LegalPage slug="intellectual-property" /></Route>
+      <Route path="/legal/legal-notice-contact"><LegalPage slug="legal-notice-contact" /></Route>
 
       {/* Protected app routes */}
       <Route path="/app/dashboard">
         <ProtectedRoute><Dashboard /></ProtectedRoute>
       </Route>
       <Route path="/app/finance">
-        <ProtectedRoute><Finance /></ProtectedRoute>
+        <ProtectedRoute featureKey="finance"><Finance /></ProtectedRoute>
       </Route>
       <Route path="/app/sales">
-        <ProtectedRoute><OrderManagement /></ProtectedRoute>
+        <ProtectedRoute featureKey="order_management"><OrderManagement /></ProtectedRoute>
       </Route>
       <Route path="/app/purchase">
-        <ProtectedRoute><Purchase /></ProtectedRoute>
+        <ProtectedRoute featureKey="purchase"><Purchase /></ProtectedRoute>
       </Route>
       <Route path="/app/order-management">
-        <ProtectedRoute><OrderManagement /></ProtectedRoute>
+        <ProtectedRoute featureKey="order_management"><OrderManagement /></ProtectedRoute>
       </Route>
       <Route path="/app/quality">
-        <ProtectedRoute><Quality /></ProtectedRoute>
+        <ProtectedRoute featureKey="quality"><Quality /></ProtectedRoute>
       </Route>
       <Route path="/app/maintenance">
-        <ProtectedRoute><Maintenance /></ProtectedRoute>
+        <ProtectedRoute featureKey="maintenance"><Maintenance /></ProtectedRoute>
       </Route>
       <Route path="/app/expense">
-        <ProtectedRoute><Expense /></ProtectedRoute>
+        <ProtectedRoute featureKey="expense"><Expense /></ProtectedRoute>
       </Route>
       <Route path="/app/crm">
-        <ProtectedRoute><Crm /></ProtectedRoute>
+        <ProtectedRoute featureKey="crm"><Crm /></ProtectedRoute>
       </Route>
       <Route path="/app/ai-bi">
-        <ProtectedRoute><AiBi /></ProtectedRoute>
+        <ProtectedRoute featureKey="ai_bi"><AiBi /></ProtectedRoute>
       </Route>
       <Route path="/app/cash-treasury">
-        <ProtectedRoute><CashTreasury /></ProtectedRoute>
+        <ProtectedRoute featureKey="cash_treasury"><CashTreasury /></ProtectedRoute>
       </Route>
       <Route path="/app/inventory">
-        <ProtectedRoute><Inventory /></ProtectedRoute>
+        <ProtectedRoute featureKey="inventory"><Inventory /></ProtectedRoute>
       </Route>
       <Route path="/app/wms">
-        <ProtectedRoute><Wms /></ProtectedRoute>
+        <ProtectedRoute featureKey="wms"><Wms /></ProtectedRoute>
       </Route>
       <Route path="/app/budget-cost">
-        <ProtectedRoute><BudgetCost /></ProtectedRoute>
+        <ProtectedRoute featureKey="budget_cost"><BudgetCost /></ProtectedRoute>
       </Route>
       <Route path="/app/manufacturing">
-        <ProtectedRoute><Manufacturing /></ProtectedRoute>
+        <ProtectedRoute featureKey="manufacturing"><Manufacturing /></ProtectedRoute>
       </Route>
       <Route path="/app/projects">
-        <ProtectedRoute><Projects /></ProtectedRoute>
+        <ProtectedRoute featureKey="projects"><Projects /></ProtectedRoute>
       </Route>
       <Route path="/app/hr">
-        <ProtectedRoute><HR /></ProtectedRoute>
+        <ProtectedRoute featureKey="hr"><HR /></ProtectedRoute>
       </Route>
       <Route path="/app/gst">
-        <ProtectedRoute><GST /></ProtectedRoute>
+        <ProtectedRoute featureKey="gst"><GST /></ProtectedRoute>
       </Route>
       <Route path="/app/banking">
-        <ProtectedRoute><Banking /></ProtectedRoute>
+        <ProtectedRoute featureKey="banking"><Banking /></ProtectedRoute>
       </Route>
       <Route path="/app/reports">
-        <ProtectedRoute><Reports /></ProtectedRoute>
+        <ProtectedRoute featureKey="reports"><Reports /></ProtectedRoute>
       </Route>
       <Route path="/app/ai">
-        <ProtectedRoute><AIAssistant /></ProtectedRoute>
+        <ProtectedRoute featureKey="ai"><AIAssistant /></ProtectedRoute>
       </Route>
       <Route path="/app/workflow">
-        <ProtectedRoute><Workflow /></ProtectedRoute>
+        <ProtectedRoute featureKey="workflow"><Workflow /></ProtectedRoute>
       </Route>
       <Route path="/app/documents">
-        <ProtectedRoute><Documents /></ProtectedRoute>
+        <ProtectedRoute featureKey="documents"><Documents /></ProtectedRoute>
       </Route>
       <Route path="/app/customer-portal">
-        <ProtectedRoute><CustomerPortal /></ProtectedRoute>
+        <ProtectedRoute featureKey="customer_portal"><CustomerPortal /></ProtectedRoute>
       </Route>
       <Route path="/app/vendor-portal">
-        <ProtectedRoute><VendorPortal /></ProtectedRoute>
+        <ProtectedRoute featureKey="vendor_portal"><VendorPortal /></ProtectedRoute>
       </Route>
       <Route path="/app/organization">
         <ProtectedRoute><Organization /></ProtectedRoute>
@@ -161,37 +175,37 @@ function AppRoutes() {
         <ProtectedRoute><SettingsPage /></ProtectedRoute>
       </Route>
       <Route path="/app/billing">
-        <ProtectedRoute><Billing /></ProtectedRoute>
+        <ProtectedRoute featureKey="billing"><Billing /></ProtectedRoute>
       </Route>
       <Route path="/app/master-data">
-        <ProtectedRoute><MasterData /></ProtectedRoute>
+        <ProtectedRoute featureKey="master_data"><MasterData /></ProtectedRoute>
       </Route>
       <Route path="/app/multi-entity">
-        <ProtectedRoute><MultiEntity /></ProtectedRoute>
+        <ProtectedRoute featureKey="multi_entity"><MultiEntity /></ProtectedRoute>
       </Route>
       <Route path="/app/ar">
-        <ProtectedRoute><AccountsReceivable /></ProtectedRoute>
+        <ProtectedRoute featureKey="accounts_receivable"><AccountsReceivable /></ProtectedRoute>
       </Route>
       <Route path="/app/ap">
-        <ProtectedRoute><AccountsPayable /></ProtectedRoute>
+        <ProtectedRoute featureKey="accounts_payable"><AccountsPayable /></ProtectedRoute>
       </Route>
       <Route path="/app/fixed-assets">
-        <ProtectedRoute><FixedAssets /></ProtectedRoute>
+        <ProtectedRoute featureKey="fixed_assets"><FixedAssets /></ProtectedRoute>
       </Route>
       <Route path="/app/einvoicing">
-        <ProtectedRoute><EInvoicing /></ProtectedRoute>
+        <ProtectedRoute featureKey="einvoicing"><EInvoicing /></ProtectedRoute>
       </Route>
       <Route path="/app/eway-bill">
-        <ProtectedRoute><EWayBill /></ProtectedRoute>
+        <ProtectedRoute featureKey="eway_bill"><EWayBill /></ProtectedRoute>
       </Route>
       <Route path="/app/gst-returns">
-        <ProtectedRoute><GSTReturns /></ProtectedRoute>
+        <ProtectedRoute featureKey="gst"><GSTReturns /></ProtectedRoute>
       </Route>
       <Route path="/app/tds">
-        <ProtectedRoute><TDS /></ProtectedRoute>
+        <ProtectedRoute featureKey="tds"><TDS /></ProtectedRoute>
       </Route>
       <Route path="/app/notifications">
-        <ProtectedRoute><NotificationsPage /></ProtectedRoute>
+        <ProtectedRoute featureKey="notifications"><NotificationsPage /></ProtectedRoute>
       </Route>
       <Route path="/app/audit-logs">
         <ProtectedRoute><AuditLogs /></ProtectedRoute>
@@ -200,7 +214,10 @@ function AppRoutes() {
         <ProtectedRoute><SaasPlatform /></ProtectedRoute>
       </Route>
       <Route path="/app/integrations">
-        <ProtectedRoute><SocialIntegrationsPage /></ProtectedRoute>
+        <ProtectedRoute featureKey="social_media"><SocialIntegrationsPage /></ProtectedRoute>
+      </Route>
+      <Route path="/app/integrations/whatsapp">
+        <ProtectedRoute featureKey="social_media"><WhatsappPage /></ProtectedRoute>
       </Route>
 
       {/* Super Admin Panel — only requires admin token, independent of ERP login */}

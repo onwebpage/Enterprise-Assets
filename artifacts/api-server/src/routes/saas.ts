@@ -11,6 +11,14 @@ router.use(requireAuth);
 
 const SAAS_MODULE = "SaaS Platform";
 
+// Feature and subscription administration is a super-admin capability. The
+// access resolver remains available to authenticated tenant users so the app
+// can build their allowed navigation.
+router.use((req, res, next) => {
+  if (req.path === "/features/access") { next(); return; }
+  requirePermission(SAAS_MODULE, req.method === "GET" ? "view" : "edit")(req, res, next);
+});
+
 // ── Platform Metrics ────────────────────────────────────────────────────────
 router.get("/metrics", async (_req, res) => {
   try {
@@ -247,7 +255,16 @@ router.get("/features/access", async (req: AuthRequest, res) => {
         COALESCE(tf.enabled, pf.enabled, false) AS enabled
       FROM saas_features f
       LEFT JOIN saas_tenant_features tf ON tf.feature_id = f.id AND tf.org_id = ${orgId}
-      LEFT JOIN saas_subscriptions s ON s.org_id = ${orgId} AND s.status IN ('active', 'trial')
+      LEFT JOIN LATERAL (
+        SELECT plan_id
+        FROM saas_subscriptions
+        WHERE org_id = ${orgId}
+          AND status IN ('active', 'trial')
+          AND (expires_at IS NULL OR expires_at > now())
+          AND (status <> 'trial' OR trial_ends_at IS NULL OR trial_ends_at > now())
+        ORDER BY started_at DESC NULLS LAST, id DESC
+        LIMIT 1
+      ) s ON true
       LEFT JOIN saas_plan_features pf ON pf.feature_id = f.id AND pf.plan_id = s.plan_id
       ORDER BY f.sort_order, f.name
     `);
