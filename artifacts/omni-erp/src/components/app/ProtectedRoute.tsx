@@ -37,7 +37,7 @@ export default function ProtectedRoute({ children, featureKey }: { children: Rea
     return <div className="min-h-screen bg-background flex items-center justify-center text-sm text-white/40">Checking module access...</div>;
   }
 
-  if (featureKey && featureAccess.data?.[featureKey] === false) {
+  if (featureKey && featureAccess.data && featureAccess.data[featureKey] === false) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-6 text-center">
         <div className="max-w-md space-y-3"><h1 className="text-xl font-semibold text-white">Module unavailable</h1><p className="text-sm leading-6 text-white/50">Your company subscription does not include this module. Contact your administrator to request access.</p><Redirect to="/app/dashboard" /></div>

@@ -4,9 +4,11 @@ import { db, saasFeatures } from "@workspace/db";
 import type { AuthRequest } from "./auth";
 
 /**
- * Gate a module by its SaaS feature key. During the initial migration, an empty
- * feature catalog preserves legacy access. Once the catalog has been configured,
- * an undeclared module is denied by default.
+ * Gate a module by its SaaS feature key.
+ *
+ * Preserve legacy ERP modules by default: only an explicit deny should hide a
+ * module. If the company has no tenant/plan override and no active subscription
+ * record, the module remains visible for the existing ERP workflow.
  */
 export function requireFeature(featureKey: string) {
   return async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -27,7 +29,7 @@ export function requireFeature(featureKey: string) {
 
       const accessResult = await db.execute(sql`
         SELECT f.is_active,
-          COALESCE(tf.enabled, pf.enabled, false) AS enabled
+          COALESCE(tf.enabled, pf.enabled, NULL) AS enabled
         FROM saas_features f
         LEFT JOIN saas_tenant_features tf
           ON tf.feature_id = f.id AND tf.org_id = ${orgId}
@@ -46,11 +48,14 @@ export function requireFeature(featureKey: string) {
         WHERE f.id = ${feature.id}
         LIMIT 1
       `);
-      const access = ((accessResult as any).rows ?? accessResult)[0] as { enabled?: boolean; is_active?: boolean } | undefined;
-      if (!feature.isActive || !access?.enabled) {
+      const access = ((accessResult as any).rows ?? accessResult)[0] as { enabled?: boolean | null; is_active?: boolean | null } | undefined;
+
+      const explicitlyBlocked = !feature.isActive || access?.enabled === false;
+      if (explicitlyBlocked) {
         res.status(403).json({ success: false, error: "This module is not enabled for your plan" });
         return;
       }
+
       next();
     } catch {
       res.status(500).json({ success: false, error: "Feature access check failed" });

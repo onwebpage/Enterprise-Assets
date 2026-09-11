@@ -252,7 +252,7 @@ router.get("/features/access", async (req: AuthRequest, res) => {
     const rows = await db.execute(sql`
       SELECT f.key,
         f.is_active,
-        COALESCE(tf.enabled, pf.enabled, false) AS enabled
+        COALESCE(tf.enabled, pf.enabled, NULL) AS enabled
       FROM saas_features f
       LEFT JOIN saas_tenant_features tf ON tf.feature_id = f.id AND tf.org_id = ${orgId}
       LEFT JOIN LATERAL (
@@ -268,7 +268,7 @@ router.get("/features/access", async (req: AuthRequest, res) => {
       LEFT JOIN saas_plan_features pf ON pf.feature_id = f.id AND pf.plan_id = s.plan_id
       ORDER BY f.sort_order, f.name
     `);
-    const access = Object.fromEntries(((rows as any).rows ?? rows).map((row: any) => [row.key, Boolean(row.is_active && row.enabled)]));
+    const access = Object.fromEntries(((rows as any).rows ?? rows).map((row: any) => [row.key, Boolean(row.is_active && row.enabled !== false)]));
     res.json({ success: true, data: access });
   } catch (error) {
     console.error(error);

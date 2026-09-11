@@ -237,7 +237,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                 {group.label}
               </p>
             )}
-            {group.items.filter(item => !item.featureKey || featureAccess[item.featureKey] === true).map((item) => {
+            {group.items.filter(item => !item.featureKey || featureAccess[item.featureKey] !== false).map((item) => {
               const active = location === item.path || location.startsWith(item.path + '/');
               return (
                 <Tooltip key={item.path} delayDuration={0}>
