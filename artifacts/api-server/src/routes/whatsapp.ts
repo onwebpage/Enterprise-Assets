@@ -8,6 +8,9 @@ const router = Router();
 const MODULE = "Settings";
 const notificationTypes = ["general", "invoice", "payment", "order"] as const;
 type NotificationType = (typeof notificationTypes)[number];
+const whatsappApiUrl = process.env.WHATSAPP_API_URL ?? "https://graph.facebook.com/v22.0";
+const whatsappAccessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+const whatsappPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
 const defaultTemplates = [
   { name: "Invoice reminder", category: "invoice", body: "Hello {{customer}}, your invoice is ready. Reply here if you need any help." },
@@ -20,22 +23,22 @@ router.use(requireAuth);
 router.get("/whatsapp/config", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
   try {
     const [config] = await db.select().from(whatsappConfigs).where(eq(whatsappConfigs.orgId, req.user!.orgId!)).limit(1);
-    res.json({ success: true, data: config ?? { displayName: "WhatsApp Demo", phoneNumber: null, enabled: true, mode: "demo" } });
+    res.json({ success: true, data: config ?? { displayName: "WhatsApp", phoneNumber: null, enabled: false, mode: "unconfigured" } });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch WhatsApp configuration" });
   }
 });
 
 router.put("/whatsapp/config", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
-  const displayName = typeof req.body.displayName === "string" ? req.body.displayName.trim() : "WhatsApp Demo";
+  const displayName = typeof req.body.displayName === "string" ? req.body.displayName.trim() : "WhatsApp";
   const phoneNumber = typeof req.body.phoneNumber === "string" ? req.body.phoneNumber.trim() || null : null;
   const enabled = req.body.enabled !== false;
   if (!displayName) { res.status(400).json({ success: false, error: "A display name is required" }); return; }
   try {
     const [existing] = await db.select({ id: whatsappConfigs.id }).from(whatsappConfigs).where(eq(whatsappConfigs.orgId, req.user!.orgId!)).limit(1);
     const [config] = existing
-      ? await db.update(whatsappConfigs).set({ displayName, phoneNumber, enabled, mode: "demo", updatedAt: new Date() }).where(eq(whatsappConfigs.id, existing.id)).returning()
-      : await db.insert(whatsappConfigs).values({ orgId: req.user!.orgId!, displayName, phoneNumber, enabled, mode: "demo", createdBy: req.user!.userId }).returning();
+      ? await db.update(whatsappConfigs).set({ displayName, phoneNumber, enabled, mode: "cloud_api", updatedAt: new Date() }).where(eq(whatsappConfigs.id, existing.id)).returning()
+      : await db.insert(whatsappConfigs).values({ orgId: req.user!.orgId!, displayName, phoneNumber, enabled, mode: "cloud_api", createdBy: req.user!.userId }).returning();
     res.json({ success: true, data: config });
   } catch {
     res.status(500).json({ success: false, error: "Failed to save WhatsApp configuration" });
@@ -103,11 +106,27 @@ router.post("/whatsapp/messages", requirePermission(MODULE, "edit"), async (req:
   if (!Number.isInteger(customerId) || !body) { res.status(400).json({ success: false, error: "Select a customer and enter a message" }); return; }
   try {
     const [config] = await db.select({ enabled: whatsappConfigs.enabled }).from(whatsappConfigs).where(eq(whatsappConfigs.orgId, req.user!.orgId!)).limit(1);
-    if (config && !config.enabled) { res.status(409).json({ success: false, error: "WhatsApp local sending is disabled" }); return; }
+    if (config && !config.enabled) { res.status(409).json({ success: false, error: "WhatsApp sending is disabled" }); return; }
+    if (!whatsappAccessToken || !whatsappPhoneNumberId) {
+      res.status(503).json({ success: false, error: "WhatsApp Cloud API is not configured. Set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID." });
+      return;
+    }
     const [customer] = await db.select({ id: arCustomers.id, name: arCustomers.name, phone: arCustomers.phone }).from(arCustomers)
       .where(and(eq(arCustomers.id, customerId), eq(arCustomers.orgId, req.user!.orgId!), eq(arCustomers.status, "active"))).limit(1);
     if (!customer?.phone) { res.status(400).json({ success: false, error: "The selected customer does not have a phone number" }); return; }
     const [message] = await db.insert(whatsappMessages).values({ orgId: req.user!.orgId!, customerId: customer.id, recipientName: customer.name, recipientPhone: customer.phone, templateId, notificationType, body, status: "pending", createdBy: req.user!.userId }).returning();
+    const providerResponse = await fetch(`${whatsappApiUrl}/${whatsappPhoneNumberId}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${whatsappAccessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: customer.phone, type: "text", text: { preview_url: false, body } }),
+    });
+    if (!providerResponse.ok) {
+      const providerBody = await providerResponse.json().catch(() => ({})) as { error?: { message?: string } };
+      const failureReason = providerBody.error?.message ?? `WhatsApp provider returned HTTP ${providerResponse.status}`;
+      const [failed] = await db.update(whatsappMessages).set({ status: "failed", failureReason }).where(eq(whatsappMessages.id, message.id)).returning();
+      res.status(502).json({ success: false, error: failureReason, data: failed });
+      return;
+    }
     const [sent] = await db.update(whatsappMessages).set({ status: "sent", sentAt: new Date() }).where(eq(whatsappMessages.id, message.id)).returning();
     res.status(201).json({ success: true, data: sent });
   } catch (error) {

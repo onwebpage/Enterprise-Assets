@@ -138,7 +138,7 @@ router.post("/", async (req: AuthRequest, res) => {
     let targetUserId = user.userId;
 
     if (data.userId && data.userId !== user.userId) {
-      const adminOk = user.roleId === null || (user.roleId != null && await isSystemRole(user.roleId));
+      const adminOk = user.roleId != null && await isSystemRole(user.roleId);
       if (!adminOk) {
         res.status(403).json({ success: false, error: "Cannot create notifications for other users" });
         return;

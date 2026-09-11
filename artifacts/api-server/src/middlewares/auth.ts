@@ -42,8 +42,7 @@ async function resolveOrganizationContext(req: AuthRequest, res: Response, next:
       .where(and(eq(organizationMemberships.userId, authenticatedUser.userId), eq(organizationMemberships.organizationId, organizationId)))
       .limit(1);
 
-    // Preserve access for legacy super-admin tokens while requiring membership for normal users.
-    if (!membership && authenticatedUser.roleId !== null) {
+    if (!membership) {
       res.status(403).json({ success: false, error: "You are not assigned to this company" });
       return;
     }

@@ -46,3 +46,4 @@ export * from "./multiEntity";
 export * from "./powerBi";
 export * from "./socialIntegrations";
 export * from "./whatsapp";
+export * from "./projects";

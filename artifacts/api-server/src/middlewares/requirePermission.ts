@@ -9,7 +9,6 @@ type Action = "view" | "create" | "edit" | "delete";
  * requirePermission(module, action)
  *
  * Checks the authenticated user's role has the requested permission on a module.
- * - Users with no roleId are treated as super-admins and always pass.
  * - Users whose role has isSystem=true are treated as super-admins and always pass.
  * - Users with a roleId that has no permission row for the module are denied.
  */
@@ -21,9 +20,9 @@ export function requirePermission(module: string, action: Action) {
       return;
     }
 
-    // No roleId → super-admin, allow everything
+    // A missing role is an unprivileged account, never an implicit super-admin.
     if (user.roleId === null) {
-      next();
+      res.status(403).json({ success: false, error: "Access denied: no role assigned" });
       return;
     }
 

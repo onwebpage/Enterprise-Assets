@@ -33,7 +33,7 @@ function chequeNumber(prefix: string | null, number: number) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function getMyPermissions(roleId: number | null) {
-  if (roleId === null) return { canView: true, canCreate: true, canEdit: true, canDelete: true };
+  if (roleId === null) return { canView: false, canCreate: false, canEdit: false, canDelete: false };
   const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, roleId)).limit(1);
   if (role?.isSystem) return { canView: true, canCreate: true, canEdit: true, canDelete: true };
   const [perm] = await db

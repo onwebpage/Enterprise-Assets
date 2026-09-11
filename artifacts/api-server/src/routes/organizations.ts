@@ -53,8 +53,12 @@ router.post("/memberships", async (req: AuthRequest, res) => {
     const branchId = req.body?.branchId == null ? null : Number(req.body.branchId);
     const roleId = req.body?.roleId == null ? null : Number(req.body.roleId);
     if (!Number.isInteger(userId) || userId < 1) { res.status(400).json({ success: false, error: "A valid user is required" }); return; }
-    const [targetUser] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+    const [targetUser] = await db.select({ id: users.id, orgId: users.orgId }).from(users).where(eq(users.id, userId)).limit(1);
     if (!targetUser) { res.status(404).json({ success: false, error: "User not found" }); return; }
+    if (targetUser.orgId !== null && targetUser.orgId !== req.user!.orgId!) {
+      res.status(409).json({ success: false, error: "User already belongs to another company" });
+      return;
+    }
     if (branchId !== null && !(await db.select({ id: branches.id }).from(branches).where(and(eq(branches.id, branchId), eq(branches.orgId, req.user!.orgId!))).limit(1)).length) { res.status(400).json({ success: false, error: "Branch does not belong to this company" }); return; }
     if (roleId !== null && !(await db.select({ id: roles.id }).from(roles).where(and(eq(roles.id, roleId), eq(roles.orgId, req.user!.orgId!))).limit(1)).length) { res.status(400).json({ success: false, error: "Role does not belong to this company" }); return; }
     const [membership] = await db.insert(organizationMemberships).values({ userId, organizationId: req.user!.orgId!, branchId, roleId, isDefault: false }).onConflictDoUpdate({ target: [organizationMemberships.userId, organizationMemberships.organizationId], set: { branchId, roleId } }).returning();

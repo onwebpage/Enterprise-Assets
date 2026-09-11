@@ -67,7 +67,7 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
     const { roleId } = req.user!;
     if (roleId === null) {
-      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false } });
       return;
     }
     const [role] = await db.select({ isSystem: roles.isSystem }).from(roles)

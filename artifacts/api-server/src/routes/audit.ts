@@ -108,22 +108,6 @@ router.get("/", async (req: AuthRequest, res) => {
   }
 });
 
-// ── Single ────────────────────────────────────────────────────────────────────
-
-router.get("/:id", async (req: AuthRequest, res) => {
-  try {
-    const id = parseInt(req.params.id as string);
-    if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
-    const [row] = await db.select().from(auditLogs)
-      .where(and(eq(auditLogs.id, id), eq(auditLogs.orgId, req.user!.orgId!)))
-      .limit(1);
-    if (!row) { res.status(404).json({ success: false, error: "Not found" }); return; }
-    res.json({ success: true, data: row });
-  } catch {
-    res.status(500).json({ success: false, error: "Failed to fetch audit log" });
-  }
-});
-
 // ── Create (internal — called by other modules) ───────────────────────────────
 
 router.post("/", async (req: AuthRequest, res) => {
@@ -209,6 +193,22 @@ router.get("/export/csv", async (req: AuthRequest, res) => {
     res.send(csv);
   } catch {
     res.status(500).json({ success: false, error: "Failed to export audit logs" });
+  }
+});
+
+// ── Single ────────────────────────────────────────────────────────────────────
+
+router.get("/:id", async (req: AuthRequest, res) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+    const [row] = await db.select().from(auditLogs)
+      .where(and(eq(auditLogs.id, id), eq(auditLogs.orgId, req.user!.orgId!)))
+      .limit(1);
+    if (!row) { res.status(404).json({ success: false, error: "Not found" }); return; }
+    res.json({ success: true, data: row });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch audit log" });
   }
 });
 

@@ -122,11 +122,11 @@ router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
     const { roleId } = req.user!;
 
-    // No roleId → super-admin
+    // A missing role has no finance permissions.
     if (roleId === null) {
       res.json({
         success: true,
-        data: { canView: true, canCreate: true, canEdit: true, canDelete: true },
+        data: { canView: false, canCreate: false, canEdit: false, canDelete: false },
       });
       return;
     }

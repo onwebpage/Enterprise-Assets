@@ -52,6 +52,7 @@ import masterDataRouter from "./masterData";
 import multiEntityRouter from "./multiEntity";
 import integrationsRouter from "./integrations";
 import whatsappRouter from "./whatsapp";
+import projectsRouter from "./projects";
 import { requireAuth } from "../middlewares/auth";
 import { requireFeature } from "../middlewares/requireFeature";
 
@@ -100,6 +101,7 @@ router.use("/maintenance", requireAuth, requireFeature("maintenance"), maintenan
 router.use("/expense", requireAuth, requireFeature("expense"), expenseRouter);
 router.use("/crm", requireAuth, requireFeature("crm"), crmRouter);
 router.use("/cash-treasury", requireAuth, requireFeature("cash_treasury"), cashTreasuryRouter);
+router.use("/projects", requireAuth, requireFeature("projects"), projectsRouter);
 router.use("/finance/closing", periodClosingRouter);
 router.use("/finance/intercompany", intercompanyRouter);
 router.use("/finance/multi-currency", multiCurrencyRouter);

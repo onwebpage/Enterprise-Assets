@@ -125,7 +125,7 @@ export async function assertPostingDateOpen(req: AuthRequest, date: string) {
 router.get("/permissions", async (req: AuthRequest, res) => {
   try {
     if (req.user!.roleId === null) {
-      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
+      res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false } });
       return;
     }
     const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
