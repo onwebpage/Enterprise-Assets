@@ -11,11 +11,12 @@ import { Testimonials } from '@/components/testimonials';
 import { FAQ } from '@/components/faq';
 import { CTABanner } from '@/components/cta-banner';
 import { Footer } from '@/components/footer';
+import { BarChart3, Home as HomeIcon, Menu, Sparkles } from 'lucide-react';
 
 export default function Home() {
   return (
     <motion.div
-      className="min-h-screen w-full bg-background"
+      className="home-page min-h-screen w-full bg-background"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -32,6 +33,12 @@ export default function Home() {
       <FAQ />
       <CTABanner />
       <Footer />
+      <nav className="home-mobile-nav" aria-label="Home page navigation">
+        <a href="#top"><HomeIcon className="h-4 w-4" /><span>Home</span></a>
+        <a href="#products"><Sparkles className="h-4 w-4" /><span>Products</span></a>
+        <a href="#pricing"><BarChart3 className="h-4 w-4" /><span>Pricing</span></a>
+        <a href="#company"><Menu className="h-4 w-4" /><span>More</span></a>
+      </nav>
     </motion.div>
   );
 }

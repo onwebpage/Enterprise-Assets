@@ -158,6 +158,12 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
     plan: user?.roleName || 'Workspace',
     logo: user?.initials || 'OR',
   };
+  const mobileNav = [
+    { icon: LayoutDashboard, label: 'Home', path: '/app/dashboard' },
+    { icon: DollarSign, label: 'Finance', path: '/app/finance' },
+    { icon: ShoppingCart, label: 'Operations', path: '/app/purchase' },
+    { icon: Bell, label: 'Alerts', path: '/app/notifications' },
+  ];
 
   const switchOrganization = async (organizationId: number) => {
     await api.post('/organizations/switch', { organizationId });
@@ -242,7 +248,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
               return (
                 <Tooltip key={item.path} delayDuration={0}>
                   <TooltipTrigger asChild>
-                    <Link href={item.path}>
+                    <Link href={item.path} onClick={() => setMobileOpen(false)}>
                       <motion.div
                         whileHover={{ x: 2 }}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 cursor-pointer transition-all group ${
@@ -318,7 +324,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
             <motion.aside
               initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
               transition={{ type: 'spring', damping: 25 }}
-              className="lg:hidden fixed left-0 top-0 bottom-0 w-64 bg-[#07091a] border-r border-white/[0.07] z-50 flex flex-col"
+              className="lg:hidden fixed left-0 top-0 bottom-0 w-[min(86vw,340px)] bg-[#07091a] border-r border-white/[0.07] z-50 flex flex-col shadow-2xl"
             >
               <SidebarContent />
             </motion.aside>
@@ -329,7 +335,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Nav */}
-        <header className="flex items-center gap-3 px-4 lg:px-6 py-3 border-b border-white/[0.07] bg-[#07091a]/80 backdrop-blur-xl flex-shrink-0">
+        <header className="sticky top-0 z-30 flex min-h-14 items-center gap-3 border-b border-white/[0.07] bg-[#07091a]/90 px-3 py-2 backdrop-blur-xl lg:px-6 lg:py-3">
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -366,6 +372,15 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
                 </span>
               ))}
             </div>
+            <div className="flex min-w-0 items-center gap-2 md:hidden">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#06B6D4]">
+                <Building className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">{breadcrumbs.at(-1)?.label ?? 'Dashboard'}</p>
+                <p className="truncate text-[10px] text-white/35">{currentOrganization.name}</p>
+              </div>
+            </div>
           </div>
 
           <div className="flex-1" />
@@ -373,11 +388,18 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
           {/* Search */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07] hover:bg-white/[0.07] transition-colors text-sm text-white/40 min-w-[200px]"
+            className="hidden min-w-[200px] items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.04] px-3 py-1.5 text-sm text-white/40 transition-colors hover:bg-white/[0.07] md:flex"
           >
             <Search className="w-3.5 h-3.5" />
             <span>Search...</span>
             <kbd className="ml-auto text-[10px] bg-white/[0.08] px-1.5 py-0.5 rounded font-mono">⌘K</kbd>
+          </button>
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search modules and records"
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white md:hidden"
+          >
+            <Search className="h-4 w-4" />
           </button>
 
           {/* AI Button */}
@@ -471,10 +493,27 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-20 md:pb-0">
           {children}
         </main>
       </div>
+
+      {/* Mobile app navigation. The drawer above remains the complete module index. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-white/[0.08] bg-[#07091a]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+        {mobileNav.map((item) => {
+          const active = location === item.path || location.startsWith(item.path + '/');
+          return (
+            <Link key={item.path} href={item.path} className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors ${active ? 'text-[#60a5fa]' : 'text-white/40 hover:text-white'}`}>
+              <item.icon className="h-5 w-5" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button onClick={() => setMobileOpen(true)} className="flex min-h-16 flex-col items-center justify-center gap-1 text-[10px] font-medium text-white/40 hover:text-white" aria-label="Open all ERP modules">
+          <Menu className="h-5 w-5" />
+          <span>Modules</span>
+        </button>
+      </nav>
 
       {/* Search Modal */}
       <AnimatePresence>

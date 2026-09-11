@@ -37,20 +37,20 @@ const sidebarItems = [
 /* ─── Hero ─────────────────────────────────────────────────────────── */
 export function Hero() {
   return (
-    <section className="relative min-h-[100dvh] flex items-center overflow-hidden pt-24 pb-16">
+    <section id="top" className="home-hero relative min-h-[100dvh] flex items-center overflow-hidden pt-24 pb-16">
       {/* Primary glow — center right */}
       <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/[0.12] blur-[120px] pointer-events-none" />
       <div className="absolute top-1/2 right-1/4 translate-x-1/4 -translate-y-1/2 w-[600px] h-[500px] rounded-full bg-accent/[0.08] blur-[100px] pointer-events-none" />
 
       <div className="relative z-10 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="grid lg:grid-cols-[45fr_55fr] gap-12 lg:gap-16 items-center">
+        <div className="home-hero-grid grid lg:grid-cols-[45fr_55fr] gap-12 lg:gap-16 items-center">
           {/* ── LEFT: Copy ──────────────────────────────────────────── */}
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="flex flex-col gap-6"
+            className="home-hero-copy flex flex-col gap-6"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/20 bg-primary/10 text-primary text-[11px] uppercase tracking-[0.15em] font-medium self-start">
               Enterprise-Grade ERP Platform
@@ -124,7 +124,7 @@ export function Hero() {
               delay: 0.1,
             }}
             style={{ perspective: 1200 }}
-            className="relative lg:ml-auto w-full max-w-[800px]"
+            className="home-hero-preview relative lg:ml-auto w-full max-w-[800px]"
           >
             <div className="relative rounded-xl overflow-hidden border border-white/[0.08] bg-[#050816] shadow-[0_0_80px_rgba(37,99,235,0.15),0_0_120px_rgba(6,182,212,0.08)]">
               {/* Browser Chrome */}
