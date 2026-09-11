@@ -308,7 +308,7 @@ export default function AIAssistant() {
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Intelligence' }, { label: 'AI Assistant' }]}>
-      <div className="flex h-full overflow-hidden">
+      <div className="ai-assistant-page flex h-full overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
         <div className="w-72 flex-shrink-0 border-r border-white/[0.07] flex flex-col hidden xl:flex">
@@ -406,7 +406,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-auto p-6 space-y-5">
+          <div className="ai-message-list flex-1 overflow-auto p-6 space-y-5">
 
             {/* Empty state */}
             {showEmptyState && (
@@ -483,7 +483,7 @@ export default function AIAssistant() {
           )}
 
           {/* Input area */}
-          <div className="p-4 border-t border-white/[0.07] flex-shrink-0">
+          <div className="ai-composer p-4 border-t border-white/[0.07] flex-shrink-0">
             <div className={`flex items-end gap-3 bg-[#0a0f1e] border rounded-2xl p-3 transition-colors
               ${isThinking ? 'border-white/[0.05]' : 'border-white/[0.1] focus-within:border-[#2563EB]/40'}`}>
               <textarea

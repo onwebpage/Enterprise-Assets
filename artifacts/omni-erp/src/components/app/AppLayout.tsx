@@ -493,7 +493,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-auto pb-20 md:pb-0">
+        <main className="app-content flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
           {children}
         </main>
       </div>

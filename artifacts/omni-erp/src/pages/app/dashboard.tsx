@@ -135,7 +135,7 @@ export default function Dashboard() {
 
   return (
     <AppLayout breadcrumbs={[{ label: "Dashboard" }]}>
-      <div className="mx-auto max-w-[1800px] space-y-5 p-6">
+      <div className="dashboard-page mx-auto max-w-[1800px] space-y-5 p-6">
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}

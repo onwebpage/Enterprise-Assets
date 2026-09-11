@@ -4147,7 +4147,7 @@ export default function SaasPlatform() {
           </div>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={setTab} className="saas-tabs">
           <TabsList className="bg-white/[0.04] border border-white/[0.07] flex-wrap h-auto gap-0.5">
             {[
               { v: 'overview',     l: 'Overview',         icon: BarChart3 },
