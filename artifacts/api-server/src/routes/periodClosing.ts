@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -124,24 +125,9 @@ export async function assertPostingDateOpen(req: AuthRequest, date: string) {
 
 router.get("/permissions", async (req: AuthRequest, res) => {
   try {
-    if (req.user!.roleId === null) {
-      res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false } });
-      return;
-    }
-    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
-    if (role?.isSystem) {
-      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
-      return;
-    }
-    const [permission] = await db.select().from(permissions)
-      .where(and(eq(permissions.roleId, req.user!.roleId), sql`lower(${permissions.module}) = 'finance'`))
-      .limit(1);
-    res.json({
-      success: true,
-      data: permission
-        ? { canView: permission.canView, canCreate: permission.canCreate, canEdit: permission.canEdit, canDelete: permission.canDelete }
-        : { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    });
+    const roleId = req.user?.roleId ?? null;
+    const perms = await resolveRoleModulePermissions(roleId, "finance");
+    res.json({ success: true, data: perms });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch closing permissions" });
   }

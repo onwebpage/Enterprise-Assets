@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifyToken, type JwtPayload } from "../lib/jwt";
-import { and, eq } from "drizzle-orm";
-import { db, organizationMemberships, organizations } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
+import { db, organizationMemberships, organizations, users, roles } from "@workspace/db";
 
 export interface AuthRequest extends Request {
   user?: JwtPayload;
@@ -37,7 +37,7 @@ async function resolveOrganizationContext(req: AuthRequest, res: Response, next:
 
   try {
     const [membership] = await db
-      .select({ organizationId: organizationMemberships.organizationId, roleId: organizationMemberships.roleId, branchId: organizationMemberships.branchId })
+      .select({ id: organizationMemberships.id, organizationId: organizationMemberships.organizationId, roleId: organizationMemberships.roleId, branchId: organizationMemberships.branchId })
       .from(organizationMemberships)
       .where(and(eq(organizationMemberships.userId, authenticatedUser.userId), eq(organizationMemberships.organizationId, organizationId)))
       .limit(1);
@@ -53,12 +53,29 @@ async function resolveOrganizationContext(req: AuthRequest, res: Response, next:
       return;
     }
 
+    // Auto-heal membership roleId if null
+    if (!membership.roleId) {
+      const [dbUser] = await db.select({ roleId: users.roleId }).from(users).where(eq(users.id, authenticatedUser.userId)).limit(1);
+      let targetRoleId = dbUser?.roleId ?? null;
+      if (!targetRoleId) {
+        const [adminRole] = await db
+          .select({ id: roles.id })
+          .from(roles)
+          .where(and(eq(roles.orgId, organizationId), sql`lower(${roles.name}) in ('admin', 'administrator', 'company admin', 'owner')`))
+          .limit(1);
+        if (adminRole) targetRoleId = adminRole.id;
+      }
+      if (targetRoleId) {
+        membership.roleId = targetRoleId;
+        await db.update(organizationMemberships).set({ roleId: targetRoleId }).where(eq(organizationMemberships.id, membership.id));
+        await db.update(users).set({ roleId: targetRoleId }).where(eq(users.id, authenticatedUser.userId));
+      }
+    }
+
     authenticatedUser.orgId = organizationId;
     authenticatedUser.tenantId = organization.tenantId;
-    if (membership) {
-      authenticatedUser.roleId = membership.roleId;
-      authenticatedUser.branchId = membership.branchId;
-    }
+    authenticatedUser.roleId = membership.roleId ?? authenticatedUser.roleId ?? null;
+    authenticatedUser.branchId = membership.branchId;
     next();
   } catch {
     res.status(500).json({ success: false, error: "Failed to resolve company context" });

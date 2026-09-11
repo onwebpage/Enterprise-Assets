@@ -17,6 +17,7 @@ import {
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -58,20 +59,8 @@ function calculateLines(lines: Array<{ itemCode?: string | null; description: st
 router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
     const { roleId } = req.user!;
-    if (roleId === null) {
-      res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false } });
-      return;
-    }
-    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, roleId)).limit(1);
-    if (role?.isSystem) {
-      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } });
-      return;
-    }
-    const [permission] = await db.select().from(permissions)
-      .where(and(eq(permissions.roleId, roleId), sql`lower(${permissions.module}) = lower(${MODULE})`)).limit(1);
-    res.json({ success: true, data: permission
-      ? { canView: permission.canView, canCreate: permission.canCreate, canEdit: permission.canEdit, canDelete: permission.canDelete }
-      : { canView: false, canCreate: false, canEdit: false, canDelete: false } });
+    const perms = await resolveRoleModulePermissions(roleId, MODULE);
+    res.json({ success: true, data: perms });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch permissions" });
   }

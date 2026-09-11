@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db, projects } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 const statuses = new Set(["planned", "active", "on_hold", "completed", "cancelled"]);
@@ -26,14 +27,13 @@ function projectInput(body: Record<string, unknown>) {
 }
 
 router.get("/my-permissions", async (req: AuthRequest, res) => {
-  if (req.user!.roleId === null) { res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false } }); return; }
   try {
-    const [role] = await db.query.roles.findMany({ where: (roles, { eq }) => eq(roles.id, req.user!.roleId!), columns: { isSystem: true }, limit: 1 });
-    if (role?.isSystem) { res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true } }); return; }
-    const rows = await db.query.permissions.findMany({ where: (permissions, { and, eq, sql }) => and(eq(permissions.roleId, req.user!.roleId!), sql`lower(${permissions.module}) = 'projects'`), limit: 1 });
-    const permission = rows[0];
-    res.json({ success: true, data: { canView: permission?.canView === true, canCreate: permission?.canCreate === true, canEdit: permission?.canEdit === true, canDelete: permission?.canDelete === true } });
-  } catch { res.status(500).json({ success: false, error: "Failed to fetch project permissions" }); }
+    const { roleId } = req.user!;
+    const perms = await resolveRoleModulePermissions(roleId, "Projects");
+    res.json({ success: true, data: perms });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch project permissions" });
+  }
 });
 
 router.get("/", requirePermission("Projects", "view"), async (req: AuthRequest, res) => {

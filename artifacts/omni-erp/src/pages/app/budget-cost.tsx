@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, GitBranch, Pencil, BarChart3, Save, X, Eye, Loader2 } from "lucide-react";
+import { Wallet, Target, Percent, Package, ChartLine, Coins, Plus, Trash2, RefreshCw, CheckCircle2, XCircle, GitBranch, Pencil, BarChart3, Save, X, Eye, Loader2, AlertCircle } from "lucide-react";
 import AppLayout from "@/components/app/AppLayout";
 import KPICard from "@/components/app/KPICard";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useInvProducts } from "@/hooks/useInventory";
 import {
-  useBudgetCostSummary, useBudgetAccounts, useBudget, useBudgetVsActual, useCostCentres, useProfitCentres, useBudgets,
+  useBudgetCostSummary, useBudgetCostPermissions, useBudgetAccounts, useBudget, useBudgetVsActual, useCostCentres, useProfitCentres, useBudgets,
   useProductCostings, useVariances, useForecasts,
   useCreateCostCentre, useDeleteCostCentre,
   useCreateProfitCentre, useDeleteProfitCentre,
@@ -36,6 +36,8 @@ function Label({ children }: { children: React.ReactNode }) { return <label clas
 
 export default function BudgetCost() {
   const [tab, setTab] = useState("overview");
+  const { data: permsRes, isLoading: permsLoading } = useBudgetCostPermissions();
+  const perms = permsRes?.data;
   const { data: summaryRes, isLoading } = useBudgetCostSummary();
   const summary = summaryRes?.data;
   const tabs = [
@@ -53,11 +55,28 @@ export default function BudgetCost() {
     { label: "Open variances", value: isLoading ? "..." : fmt(summary?.openVariances), change: `${formatINR(summary?.varianceAmount)} total`, icon: Percent, iconColor: "text-amber-400", gradient: "bg-amber-500/15", sparkline: [2, 3, 2, 3, 2, 1, Number(summary?.openVariances ?? 0)] },
     { label: "Product cost cards", value: isLoading ? "..." : fmt(summary?.productCosts), change: `${fmt(summary?.activeForecasts)} active forecasts`, icon: Package, iconColor: "text-purple-400", gradient: "bg-purple-500/15", sparkline: [1, 2, 2, 3, 3, 4, Number(summary?.productCosts ?? 0)] },
   ];
+
+  if (!permsLoading && perms && !perms.canView) {
+    return (
+      <AppLayout breadcrumbs={[{ label: "Finance" }, { label: "Advanced Budget & Forecasting" }]}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-10 h-10 text-white/20 mx-auto mb-3" />
+            <p className="text-sm text-white/40">You don't have permission to view Advanced Budget & Forecasting.</p>
+            <p className="text-xs text-white/25 mt-1">Contact your system administrator.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
   return <AppLayout breadcrumbs={[{ label: "Finance" }, { label: "Advanced Budget & Forecasting" }]}>
     <div className="mx-auto max-w-[1800px] space-y-5 p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div><div className="flex items-center gap-2"><div className="rounded-lg bg-cyan-500/15 p-2 text-cyan-400"><Coins className="h-5 w-5" /></div><h1 className="text-2xl font-bold tracking-tight text-white">Advanced Budget &amp; Forecasting</h1></div><p className="mt-1 text-sm text-white/40">Plan, approve and monitor budgets against actuals, then project the months ahead with auditable forecasts.</p></div>
-        <Button onClick={() => setTab("budgets")} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Plus className="mr-2 h-4 w-4" />Create budget</Button>
+        {perms?.canCreate && (
+          <Button onClick={() => setTab("budgets")} className="h-9 bg-cyan-600 hover:bg-cyan-500"><Plus className="mr-2 h-4 w-4" />Create budget</Button>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{kpis.map((k, i) => <KPICard key={k.label} {...k} index={i} />)}</div>
       <div className="overflow-x-auto"><div className="inline-flex min-w-max gap-1 rounded-xl border border-white/[0.07] bg-white/[0.03] p-1">{tabs.map(t => <button key={t.id} onClick={() => setTab(t.id)} className={`flex h-9 items-center gap-2 rounded-lg px-3 text-xs font-medium transition-colors ${tab === t.id ? "bg-cyan-600 text-white" : "text-white/45 hover:bg-white/[0.06] hover:text-white"}`}><t.icon className="h-3.5 w-3.5" />{t.label}</button>)}</div></div>

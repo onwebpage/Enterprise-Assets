@@ -1,6 +1,17 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
-import { db, users, roles, organizations, tenants, organizationMemberships } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
+import {
+  db,
+  users,
+  roles,
+  permissions,
+  organizations,
+  tenants,
+  organizationMemberships,
+  saasFeatures,
+  saasPlans,
+  saasSubscriptions,
+} from "@workspace/db";
 import { signToken } from "../lib/jwt";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
@@ -88,7 +99,7 @@ router.post("/register", async (req, res) => {
     const displayCompanyName =
       normalizedCompanyName || `${normalizedFirstName} ${normalizedLastName}'s Organization`;
 
-    const { user } = await db.transaction(async (tx) => {
+    const { user, roleName } = await db.transaction(async (tx) => {
       const [tenant] = await tx.insert(tenants).values({ name: displayCompanyName }).returning({ id: tenants.id });
       const [organization] = await tx
         .insert(organizations)
@@ -104,6 +115,45 @@ router.post("/register", async (req, res) => {
         })
         .returning({ id: organizations.id });
 
+      // Create Admin role for this organization
+      const [adminRole] = await tx
+        .insert(roles)
+        .values({
+          orgId: organization.id,
+          name: "Admin",
+          description: "Organization Administrator",
+          isSystem: false,
+        })
+        .returning();
+
+      // Seed all feature permissions for the Admin role
+      const allFeatures = await tx.select({ key: saasFeatures.key }).from(saasFeatures);
+      const featureKeys = allFeatures.map((f) => f.key);
+      const permKeys = Array.from(new Set([...featureKeys, "asset_depreciation", "gst_returns", "finance"]));
+      if (permKeys.length > 0) {
+        await tx.insert(permissions).values(
+          permKeys.map((key) => ({
+            roleId: adminRole.id,
+            module: key,
+            canView: true,
+            canCreate: true,
+            canEdit: true,
+            canDelete: true,
+          }))
+        );
+      }
+
+      // Ensure active subscription for the new organization
+      const [defaultPlan] = await tx.select({ id: saasPlans.id }).from(saasPlans).limit(1);
+      if (defaultPlan) {
+        await tx.insert(saasSubscriptions).values({
+          orgId: organization.id,
+          planId: defaultPlan.id,
+          status: "active",
+          billingCycle: "monthly",
+        });
+      }
+
       const [createdUser] = await tx
         .insert(users)
         .values({
@@ -112,14 +162,20 @@ router.post("/register", async (req, res) => {
           passwordHash,
           firstName: normalizedFirstName,
           lastName: normalizedLastName,
+          roleId: adminRole.id,
           status: "active",
           mfaEnabled: false,
         })
         .returning();
 
-      await tx.insert(organizationMemberships).values({ userId: createdUser.id, organizationId: organization.id, isDefault: true });
+      await tx.insert(organizationMemberships).values({
+        userId: createdUser.id,
+        organizationId: organization.id,
+        roleId: adminRole.id,
+        isDefault: true,
+      });
 
-      return { user: createdUser };
+      return { user: createdUser, roleName: adminRole.name };
     });
 
     const token = signToken({
@@ -133,7 +189,7 @@ router.post("/register", async (req, res) => {
       success: true,
       data: {
         token,
-        user: authUser(user),
+        user: authUser(user, roleName),
       },
     });
   } catch (err) {
@@ -182,6 +238,34 @@ router.post("/login", async (req, res) => {
       return;
     }
 
+    // Auto-heal missing roleId for organization owner/primary user
+    if (!user.roleId && user.orgId) {
+      let [adminRole] = await db
+        .select({ id: roles.id, name: roles.name })
+        .from(roles)
+        .where(and(eq(roles.orgId, user.orgId), sql`lower(${roles.name}) in ('admin', 'administrator', 'company admin', 'owner')`))
+        .limit(1);
+
+      if (!adminRole) {
+        [adminRole] = await db
+          .insert(roles)
+          .values({
+            orgId: user.orgId,
+            name: "Admin",
+            description: "Organization Administrator",
+            isSystem: false,
+          })
+          .returning({ id: roles.id, name: roles.name });
+      }
+
+      user.roleId = adminRole.id;
+      await db.update(users).set({ roleId: adminRole.id }).where(eq(users.id, user.id));
+      await db
+        .update(organizationMemberships)
+        .set({ roleId: adminRole.id })
+        .where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.organizationId, user.orgId)));
+    }
+
     // Update last login
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
@@ -226,14 +310,33 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
       return;
     }
 
+    // Auto-heal missing roleId
+    if (!user.roleId && user.orgId) {
+      let [adminRole] = await db
+        .select({ id: roles.id, name: roles.name })
+        .from(roles)
+        .where(and(eq(roles.orgId, user.orgId), sql`lower(${roles.name}) in ('admin', 'administrator', 'company admin', 'owner')`))
+        .limit(1);
+
+      if (adminRole) {
+        user.roleId = adminRole.id;
+        await db.update(users).set({ roleId: adminRole.id }).where(eq(users.id, user.id));
+        await db
+          .update(organizationMemberships)
+          .set({ roleId: adminRole.id })
+          .where(and(eq(organizationMemberships.userId, user.id), eq(organizationMemberships.organizationId, user.orgId)));
+      }
+    }
+
+    const resolvedRoleId = user.roleId ?? req.user!.roleId;
     let roleName = "User";
-    if (req.user!.roleId) {
-      const [role] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
+    if (resolvedRoleId) {
+      const [role] = await db.select({ name: roles.name }).from(roles).where(eq(roles.id, resolvedRoleId)).limit(1);
       if (role) roleName = role.name;
     }
 
-    user.orgId = req.user!.orgId;
-    user.roleId = req.user!.roleId;
+    user.orgId = user.orgId ?? req.user!.orgId;
+    user.roleId = resolvedRoleId;
 
     res.json({
       success: true,

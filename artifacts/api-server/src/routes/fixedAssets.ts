@@ -18,6 +18,7 @@ import {
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -26,20 +27,6 @@ const MODULE_ASSETS = "Fixed Assets";
 const MODULE_DEPR   = "Asset Depreciation";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function getMyPermissions(module: string, roleId: number | null) {
-  if (roleId === null) return { canView: false, canCreate: false, canEdit: false, canDelete: false };
-  const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, roleId)).limit(1);
-  if (role?.isSystem) return { canView: true, canCreate: true, canEdit: true, canDelete: true };
-  const [perm] = await db
-    .select()
-    .from(permissions)
-    .where(and(eq(permissions.roleId, roleId), sql`lower(${permissions.module}) = lower(${module})`))
-    .limit(1);
-  return perm
-    ? { canView: perm.canView, canCreate: perm.canCreate, canEdit: perm.canEdit, canDelete: perm.canDelete }
-    : { canView: false, canCreate: false, canEdit: false, canDelete: false };
-}
 
 async function nextAssetNumber(orgId: number): Promise<string> {
   const [{ cnt }] = await db
@@ -76,9 +63,10 @@ function calcSumOfYearsDigits(cost: number, salvage: number, lifeMo: number, per
 
 router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
+    const { roleId } = req.user!;
     const [assets, depreciation] = await Promise.all([
-      getMyPermissions(MODULE_ASSETS, req.user!.roleId),
-      getMyPermissions(MODULE_DEPR, req.user!.roleId),
+      resolveRoleModulePermissions(roleId, MODULE_ASSETS),
+      resolveRoleModulePermissions(roleId, MODULE_DEPR),
     ]);
     res.json({ success: true, data: { assets, depreciation } });
   } catch {

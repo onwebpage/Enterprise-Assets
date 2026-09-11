@@ -20,6 +20,7 @@ import {
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -30,27 +31,12 @@ function chequeNumber(prefix: string | null, number: number) {
   return `${prefix ?? ""}${String(number).padStart(6, "0")}`;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-async function getMyPermissions(roleId: number | null) {
-  if (roleId === null) return { canView: false, canCreate: false, canEdit: false, canDelete: false };
-  const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, roleId)).limit(1);
-  if (role?.isSystem) return { canView: true, canCreate: true, canEdit: true, canDelete: true };
-  const [perm] = await db
-    .select()
-    .from(permissions)
-    .where(and(eq(permissions.roleId, roleId), sql`lower(${permissions.module}) = lower(${MODULE})`))
-    .limit(1);
-  return perm
-    ? { canView: perm.canView, canCreate: perm.canCreate, canEdit: perm.canEdit, canDelete: perm.canDelete }
-    : { canView: false, canCreate: false, canEdit: false, canDelete: false };
-}
-
 // ── My Permissions ────────────────────────────────────────────────────────────
 
 router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
-    const perms = await getMyPermissions(req.user!.roleId);
+    const { roleId } = req.user!;
+    const perms = await resolveRoleModulePermissions(roleId, MODULE);
     res.json({ success: true, data: perms });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch permissions" });

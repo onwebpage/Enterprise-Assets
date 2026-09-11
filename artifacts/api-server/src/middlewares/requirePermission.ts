@@ -1,7 +1,6 @@
 import type { Response, NextFunction } from "express";
-import { eq, and, sql } from "drizzle-orm";
-import { db, permissions, roles } from "@workspace/db";
 import type { AuthRequest } from "./auth";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 type Action = "view" | "create" | "edit" | "delete";
 
@@ -27,39 +26,12 @@ export function requirePermission(module: string, action: Action) {
     }
 
     try {
-      // System roles (isSystem=true) have full access to all modules
-      const [role] = await db
-        .select({ isSystem: roles.isSystem })
-        .from(roles)
-        .where(eq(roles.id, user.roleId))
-        .limit(1);
-
-      if (role?.isSystem) {
-        next();
-        return;
-      }
-
-      const [perm] = await db
-        .select()
-        .from(permissions)
-        .where(
-          and(
-            eq(permissions.roleId, user.roleId),
-            sql`lower(${permissions.module}) = lower(${module})`,
-          ),
-        )
-        .limit(1);
-
-      // No permission row for this module → deny
-      if (!perm) {
-        res.status(403).json({ success: false, error: "Access denied: no permission for this module" });
-        return;
-      }
+      const perm = await resolveRoleModulePermissions(user.roleId, module);
 
       const allowed =
-        action === "view"   ? perm.canView   :
+        action === "view" ? perm.canView :
         action === "create" ? perm.canCreate :
-        action === "edit"   ? perm.canEdit   :
+        action === "edit" ? perm.canEdit :
         perm.canDelete;
 
       if (!allowed) {

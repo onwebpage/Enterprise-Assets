@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { pool } from "@workspace/db";
 import { requireAdminAuth, type AdminRequest } from "../middlewares/adminAuth";
 import { hashPassword } from "../lib/password";
+import { getAllCanonicalModuleKeys } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAdminAuth);
@@ -450,8 +451,17 @@ router.get("/roles", async (_req, res) => {
 
 router.get("/permission-modules", async (_req, res) => {
   try {
-    const result = await pool.query<{ module: string }>("SELECT DISTINCT module FROM permissions WHERE module IS NOT NULL ORDER BY module");
-    res.json({ success: true, data: result.rows.map(row => row.module) });
+    const result = await pool.query<{ module: string }>(`
+      SELECT DISTINCT module FROM (
+        SELECT module FROM permissions WHERE module IS NOT NULL
+        UNION
+        SELECT key AS module FROM saas_features WHERE is_active = true
+      ) m ORDER BY module
+    `);
+    const dbModules = result.rows.map((row) => row.module);
+    const canonicalModules = getAllCanonicalModuleKeys();
+    const allModules = Array.from(new Set([...canonicalModules, ...dbModules])).sort();
+    res.json({ success: true, data: allModules });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to fetch permission modules" });

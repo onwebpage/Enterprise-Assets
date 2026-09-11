@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "@workspace/db";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -23,6 +24,17 @@ async function nextNumber(table: string, column: string, prefix: string, orgId: 
   const result = await client.query(`select count(*)::int as count from ${table} where org_id=$1`, [orgId]);
   return `${prefix}-${String(Number(result.rows[0]?.count ?? 0) + 1).padStart(4, "0")}`;
 }
+
+// ── My Permissions ─────────────────────────────────────────────────────────────
+router.get("/my-permissions", async (req: AuthRequest, res) => {
+  try {
+    const roleId = req.user?.roleId ?? null;
+    const perms = await resolveRoleModulePermissions(roleId, MODULE);
+    res.json({ success: true, data: perms });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch permissions" });
+  }
+});
 
 // ── Summary ────────────────────────────────────────────────────────────────────
 router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {

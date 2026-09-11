@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -221,19 +222,18 @@ async function createJournalEntry(tx: any, values: {
 
 router.get("/permissions", async (req: AuthRequest, res) => {
   try {
-    if (req.user!.roleId === null) {
-      res.json({ success: true, data: { canView: false, canCreate: false, canEdit: false, canDelete: false, canManageCompanies: false } }); return;
-    }
-    const [role] = await db.select({ isSystem: roles.isSystem }).from(roles).where(eq(roles.id, req.user!.roleId)).limit(1);
-    if (role?.isSystem) {
-      res.json({ success: true, data: { canView: true, canCreate: true, canEdit: true, canDelete: true, canManageCompanies: req.user!.orgId === null } }); return;
-    }
-    const [permission] = await db.select().from(permissions)
-      .where(and(eq(permissions.roleId, req.user!.roleId), sql`lower(${permissions.module}) = 'finance'`)).limit(1);
-    res.json({ success: true, data: permission ? {
-      canView: permission.canView, canCreate: permission.canCreate, canEdit: permission.canEdit, canDelete: permission.canDelete,
-    } : { canView: false, canCreate: false, canEdit: false, canDelete: false, canManageCompanies: false } });
-  } catch { res.status(500).json({ success: false, error: "Failed to fetch intercompany permissions" }); }
+    const roleId = req.user?.roleId ?? null;
+    const perms = await resolveRoleModulePermissions(roleId, "finance");
+    res.json({
+      success: true,
+      data: {
+        ...perms,
+        canManageCompanies: perms.canEdit || req.user!.orgId === null,
+      },
+    });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch intercompany permissions" });
+  }
 });
 
 router.get("/companies", requirePermission("finance", "view"), async (req: AuthRequest, res) => {

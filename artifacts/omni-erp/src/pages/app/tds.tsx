@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, TrendingDown, TrendingUp, Clock, CheckCircle, DollarSign, BookOpen } from 'lucide-react';
+import { FileText, TrendingDown, TrendingUp, Clock, CheckCircle, DollarSign, BookOpen, AlertCircle } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
 import { cn } from '@/lib/utils';
 import { useTDSSummary, useTDSPermissions } from '@/hooks/useTDS';
@@ -242,6 +242,22 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function TDSPage() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const { data: permsRes, isLoading: permsLoading } = useTDSPermissions();
+  const perms = permsRes?.data;
+
+  if (!permsLoading && perms && !perms.canView) {
+    return (
+      <AppLayout breadcrumbs={[{ label: 'Finance' }, { label: 'TDS & TCS' }]}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-10 h-10 text-white/20 mx-auto mb-3" />
+            <p className="text-sm text-white/40">You don't have permission to view TDS & TCS.</p>
+            <p className="text-xs text-white/25 mt-1">Contact your system administrator.</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout breadcrumbs={[{ label: 'Finance' }, { label: 'TDS & TCS' }]}>

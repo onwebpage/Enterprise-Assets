@@ -3,6 +3,13 @@ import { api, type ApiResponse } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type TreasuryPermissions = {
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
 export type TreasurySummary = {
   totalAccounts: number;
   activeAccounts: number;
@@ -249,3 +256,13 @@ export function useCreateTreasuryTransfer() { return mutation((data: any) => api
 export function useAuthorizeTransfer() { return mutation((id: number) => api.post(`/cash-treasury/transfers/${id}/authorize`, {})); }
 export function useExecuteTransfer() { return mutation((id: number) => api.post(`/cash-treasury/transfers/${id}/execute`, {})); }
 export function useDeleteTreasuryTransfer() { return mutation((id: number) => api.delete(`/cash-treasury/transfers/${id}`)); }
+
+// ── Permissions ─────────────────────────────────────────────────────────────
+export function useTreasuryPermissions() {
+  return useQuery<ApiResponse<TreasuryPermissions>>({
+    queryKey: ["cash-treasury", "permissions"],
+    queryFn: () => api.get("/cash-treasury/my-permissions"),
+    staleTime: 60_000,
+    retry: 1,
+  });
+}

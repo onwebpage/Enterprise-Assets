@@ -10,6 +10,7 @@ import { db, chartOfAccounts, permissions, roles } from "@workspace/db";
 import { insertChartOfAccountSchema, updateChartOfAccountSchema } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
+import { resolveRoleModulePermissions } from "../lib/rbac";
 
 const router = Router();
 router.use(requireAuth);
@@ -121,44 +122,8 @@ router.get("/parents", requirePermission("finance", "view"), async (req: AuthReq
 router.get("/my-permissions", async (req: AuthRequest, res) => {
   try {
     const { roleId } = req.user!;
-
-    // A missing role has no finance permissions.
-    if (roleId === null) {
-      res.json({
-        success: true,
-        data: { canView: false, canCreate: false, canEdit: false, canDelete: false },
-      });
-      return;
-    }
-
-    // System roles bypass per-module checks
-    const [role] = await db
-      .select({ isSystem: roles.isSystem })
-      .from(roles)
-      .where(eq(roles.id, roleId))
-      .limit(1);
-
-    if (role?.isSystem) {
-      res.json({
-        success: true,
-        data: { canView: true, canCreate: true, canEdit: true, canDelete: true },
-      });
-      return;
-    }
-
-    // Look up the Finance module permission (case-insensitive)
-    const [perm] = await db
-      .select()
-      .from(permissions)
-      .where(and(eq(permissions.roleId, roleId), sql`lower(${permissions.module}) = 'finance'`))
-      .limit(1);
-
-    res.json({
-      success: true,
-      data: perm
-        ? { canView: perm.canView, canCreate: perm.canCreate, canEdit: perm.canEdit, canDelete: perm.canDelete }
-        : { canView: false, canCreate: false, canEdit: false, canDelete: false },
-    });
+    const perms = await resolveRoleModulePermissions(roleId, "finance");
+    res.json({ success: true, data: perms });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch permissions" });
   }

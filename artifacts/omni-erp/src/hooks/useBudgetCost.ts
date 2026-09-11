@@ -3,6 +3,13 @@ import { api, type ApiResponse } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type BudgetCostPermissions = {
+  canView: boolean;
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
 export type BudgetCostSummary = {
   activeBudgets: number;
   budgetAmount: string;
@@ -391,3 +398,13 @@ export function useDeleteAllocationRule() { return mutation((id: number) => api.
 export function useGenerateAllocationRun() { return mutation((data: any) => api.post("/budget-cost/allocation-runs", data)); }
 export function usePostAllocationRun() { return mutation((id: number) => api.post(`/budget-cost/allocation-runs/${id}/post`, {})); }
 export function useDeleteAllocationRun() { return mutation((id: number) => api.delete(`/budget-cost/allocation-runs/${id}`)); }
+
+// ── Permissions ─────────────────────────────────────────────────────────────
+export function useBudgetCostPermissions() {
+  return useQuery<ApiResponse<BudgetCostPermissions>>({
+    queryKey: ["budget-cost", "permissions"],
+    queryFn: () => api.get("/budget-cost/my-permissions"),
+    staleTime: 60_000,
+    retry: 1,
+  });
+}

@@ -120,5 +120,95 @@ export async function ensureAuthSchema(): Promise<void> {
     FROM users
     WHERE org_id IS NOT NULL
     ON CONFLICT (user_id, organization_id) DO NOTHING;
+
+    -- Ensure a default Enterprise SaaS plan exists
+    INSERT INTO saas_plans (name, slug, price_monthly, price_yearly, max_users, max_modules, max_storage_gb, max_api_calls_monthly, is_active)
+    VALUES ('Enterprise', 'enterprise', 0, 0, 9999, 999, 1000, 10000000, true)
+    ON CONFLICT (slug) DO NOTHING;
+
+    -- Enable all saas_features for existing plans
+    INSERT INTO saas_plan_features (plan_id, feature_id, enabled)
+    SELECT p.id, f.id, true
+    FROM saas_plans p
+    CROSS JOIN saas_features f
+    ON CONFLICT (plan_id, feature_id) DO UPDATE SET enabled = true;
+
+    -- Ensure every organization has an active SaaS subscription
+    INSERT INTO saas_subscriptions (org_id, plan_id, status, billing_cycle)
+    SELECT o.id, (SELECT id FROM saas_plans ORDER BY id ASC LIMIT 1), 'active', 'monthly'
+    FROM organizations o
+    WHERE NOT EXISTS (
+      SELECT 1 FROM saas_subscriptions s WHERE s.org_id = o.id AND s.status IN ('active', 'trial')
+    );
+
+    -- Ensure an Admin role exists for every organization
+    INSERT INTO roles (org_id, name, description, is_system)
+    SELECT o.id, 'Admin', 'Organization Administrator', false
+    FROM organizations o
+    WHERE NOT EXISTS (
+      SELECT 1 FROM roles r WHERE r.org_id = o.id AND lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner')
+    );
+
+    -- Auto-heal users with role_id IS NULL: assign the organization's Admin role
+    WITH admin_roles AS (
+      SELECT org_id, id AS role_id
+      FROM (
+        SELECT org_id, id, ROW_NUMBER() OVER (PARTITION BY org_id ORDER BY id ASC) as rn
+        FROM roles
+        WHERE lower(name) IN ('admin', 'administrator', 'company admin', 'owner')
+      ) sub WHERE rn = 1
+    ),
+    primary_users AS (
+      SELECT DISTINCT ON (u.org_id) u.id AS user_id, u.org_id
+      FROM users u
+      LEFT JOIN organization_memberships om ON om.user_id = u.id AND om.organization_id = u.org_id
+      WHERE u.role_id IS NULL AND u.org_id IS NOT NULL
+      ORDER BY u.org_id, om.is_default DESC NULLS LAST, u.id ASC
+    )
+    UPDATE users u
+    SET role_id = ar.role_id
+    FROM primary_users pu
+    JOIN admin_roles ar ON ar.org_id = pu.org_id
+    WHERE u.id = pu.user_id AND u.role_id IS NULL;
+
+    -- Sync organization_memberships role_id with users.role_id
+    UPDATE organization_memberships om
+    SET role_id = u.role_id
+    FROM users u
+    WHERE om.user_id = u.id AND om.organization_id = u.org_id AND om.role_id IS NULL AND u.role_id IS NOT NULL;
+
+    -- Seed full permissions for Admin roles across all canonical features
+    INSERT INTO permissions (role_id, module, can_view, can_create, can_edit, can_delete)
+    SELECT r.id, f.key, true, true, true, true
+    FROM roles r
+    CROSS JOIN saas_features f
+    WHERE lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner')
+      AND NOT EXISTS (
+        SELECT 1 FROM permissions p
+        WHERE p.role_id = r.id AND (lower(p.module) = lower(f.key) OR lower(p.module) = lower(replace(f.key, '_', ' ')))
+      );
+
+    -- Also seed sub-module keys used across the codebase
+    INSERT INTO permissions (role_id, module, can_view, can_create, can_edit, can_delete)
+    SELECT r.id, m.module, true, true, true, true
+    FROM roles r
+    CROSS JOIN (
+      VALUES 
+        ('asset_depreciation'),
+        ('gst_returns'),
+        ('finance')
+    ) AS m(module)
+    WHERE lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner')
+      AND NOT EXISTS (
+        SELECT 1 FROM permissions p
+        WHERE p.role_id = r.id AND lower(p.module) = lower(m.module)
+      );
+
+    -- Ensure all existing Admin permissions have full CRUD
+    UPDATE permissions p
+    SET can_view = true, can_create = true, can_edit = true, can_delete = true
+    FROM roles r
+    WHERE p.role_id = r.id
+      AND lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner');
   `);
 }
