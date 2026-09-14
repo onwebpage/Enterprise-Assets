@@ -331,6 +331,15 @@ router.post("/users", async (req: AdminRequest, res) => {
        RETURNING id, email, first_name, last_name, org_id, role_id, status, mfa_enabled, created_at`,
       [normalizedEmail, passwordHash, normalizedFirstName, normalizedLastName, organizationId, role, status ?? "active", mfaEnabled === true],
     );
+    if (organizationId) {
+      await pool.query(
+        `INSERT INTO organization_memberships (user_id, organization_id, role_id, is_default)
+         VALUES ($1, $2, $3, true)
+         ON CONFLICT (user_id, organization_id)
+         DO UPDATE SET role_id = EXCLUDED.role_id, is_default = true`,
+        [result.rows[0]?.id, organizationId, role],
+      );
+    }
     await audit(req, "CREATE", "user", result.rows[0]?.id, { email: normalizedEmail });
     res.status(201).json({ success: true, data: result.rows[0] });
   } catch (e) {

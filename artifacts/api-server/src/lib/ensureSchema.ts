@@ -40,6 +40,68 @@ export async function ensureAuthSchema(): Promise<void> {
       updated_at timestamp NOT NULL DEFAULT now(),
       CONSTRAINT projects_org_code_unique UNIQUE(org_id, code)
     );
+    CREATE TABLE IF NOT EXISTS payment_submissions (
+      id serial PRIMARY KEY,
+      org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      subscription_id integer REFERENCES billing_subscriptions(id) ON DELETE SET NULL,
+      amount numeric(12,2) NOT NULL,
+      currency text NOT NULL DEFAULT 'INR',
+      payment_method text NOT NULL DEFAULT 'razorpay_upi',
+      utr text NOT NULL,
+      paid_at timestamp NOT NULL,
+      proof_data text,
+      proof_file_name text,
+      notes text,
+      status text NOT NULL DEFAULT 'pending',
+      reviewed_by integer,
+      reviewed_at timestamp,
+      rejection_reason text,
+      billing_invoice_id integer REFERENCES billing_invoices(id) ON DELETE SET NULL,
+      created_at timestamp NOT NULL DEFAULT now(),
+      updated_at timestamp NOT NULL DEFAULT now(),
+      CONSTRAINT payment_submissions_org_utr_unique UNIQUE(org_id, utr)
+    );
+    CREATE INDEX IF NOT EXISTS payment_submissions_status_idx
+      ON payment_submissions(status, created_at);
+    CREATE TABLE IF NOT EXISTS whatsapp_configs (
+      id serial PRIMARY KEY,
+      org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      display_name text NOT NULL DEFAULT 'WhatsApp Demo',
+      phone_number text,
+      enabled boolean NOT NULL DEFAULT true,
+      mode text NOT NULL DEFAULT 'demo',
+      created_by integer REFERENCES users(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT whatsapp_configs_org_unique UNIQUE(org_id)
+    );
+    CREATE TABLE IF NOT EXISTS whatsapp_templates (
+      id serial PRIMARY KEY,
+      org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      name text NOT NULL,
+      category text NOT NULL DEFAULT 'general',
+      body text NOT NULL,
+      created_by integer REFERENCES users(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT whatsapp_templates_org_name_unique UNIQUE(org_id, name)
+    );
+    CREATE TABLE IF NOT EXISTS whatsapp_messages (
+      id serial PRIMARY KEY,
+      org_id integer NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+      customer_id integer REFERENCES ar_customers(id) ON DELETE SET NULL,
+      recipient_name text NOT NULL,
+      recipient_phone text NOT NULL,
+      template_id integer REFERENCES whatsapp_templates(id) ON DELETE SET NULL,
+      notification_type text NOT NULL DEFAULT 'general',
+      body text NOT NULL,
+      status text NOT NULL DEFAULT 'pending',
+      failure_reason text,
+      sent_at timestamptz,
+      created_by integer REFERENCES users(id) ON DELETE SET NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
     CREATE TABLE IF NOT EXISTS saas_features (
       id serial PRIMARY KEY,
       key text NOT NULL UNIQUE,
