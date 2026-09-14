@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, UserPlus, Shield, Clock, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Lock, Unlock, CheckCircle, AlertCircle, Download } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AppLayout from '@/components/app/AppLayout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { TableRowSkeleton } from '@/components/app/LoadingSkeleton';
 
 interface UserRow {
   id: number;
+  roleId: number | null;
   email: string;
   firstName: string;
   lastName: string;
@@ -53,6 +54,7 @@ function timeAgo(dateStr: string | null): string {
 export default function UserManagement() {
   const [tab, setTab] = useState('users');
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['users', search],
@@ -60,6 +62,15 @@ export default function UserManagement() {
   });
 
   const users = data?.data ?? [];
+  const { data: rolesData } = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => api.get<ApiListResponse<{ id: number; name: string }>>('/roles'),
+    select: (response) => response.data,
+  });
+  const updateRole = useMutation({
+    mutationFn: ({ userId, roleId }: { userId: number; roleId: number | null }) => api.put(`/users/${userId}`, { roleId }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['users'] }); },
+  });
   const total = data?.total ?? 0;
   const activeCount = users.filter(u => u.status === 'active').length;
   const adminCount = users.filter(u => u.roleName === 'System Admin').length;
@@ -167,9 +178,10 @@ export default function UserManagement() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge className={`text-[11px] border ${roleColors[u.roleName ?? ''] ?? 'bg-white/5 text-white/50 border-white/10'}`}>
-                      {u.roleName ?? '—'}
-                    </Badge>
+                    <select aria-label={`Role for ${u.email}`} value={u.roleId ?? ''} onChange={(event) => updateRole.mutate({ userId: u.id, roleId: event.target.value ? Number(event.target.value) : null })} className={`max-w-40 rounded-md border px-2 py-1 text-xs ${roleColors[u.roleName ?? ''] ?? 'bg-white/5 text-white/70 border-white/10'}`}>
+                      <option value="">No role</option>
+                      {(rolesData ?? []).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-sm text-white/60">{u.deptName ?? '—'}</td>
                   <td className="px-4 py-3">

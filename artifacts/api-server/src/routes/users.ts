@@ -93,18 +93,24 @@ router.post("/", requirePermission("users", "create"), async (req: AuthRequest, 
       res.status(400).json({ success: false, error: "email, password, firstName, lastName are required" });
       return;
     }
+    const requestedRoleId = roleId == null ? null : Number(roleId);
+    if (requestedRoleId !== null) {
+      if (!Number.isInteger(requestedRoleId) || requestedRoleId <= 0) { res.status(400).json({ success: false, error: "Invalid role id" }); return; }
+      const [role] = await db.select({ id: roles.id }).from(roles).where(and(eq(roles.id, requestedRoleId), eq(roles.orgId, req.user!.orgId!))).limit(1);
+      if (!role) { res.status(400).json({ success: false, error: "Role does not belong to this company" }); return; }
+    }
     const passwordHash = await hashPassword(password);
     const [user] = await db.insert(users).values({
       email: email.toLowerCase().trim(),
       passwordHash,
       firstName, lastName, phone,
-      roleId: roleId ?? null,
+      roleId: requestedRoleId,
       deptId: deptId ?? null,
       branchId: branchId ?? null,
       orgId: req.user?.orgId ?? null,
       status: status ?? "active",
     }).returning();
-    await db.insert(organizationMemberships).values({ userId: user.id, organizationId: req.user!.orgId!, branchId: branchId ?? null, roleId: roleId ?? null, isDefault: false });
+    await db.insert(organizationMemberships).values({ userId: user.id, organizationId: req.user!.orgId!, branchId: branchId ?? null, roleId: requestedRoleId, isDefault: true });
     const { passwordHash: _ph, ...safe } = user;
     res.status(201).json({ success: true, data: safe });
   } catch (err: unknown) {
@@ -121,11 +127,17 @@ router.post("/", requirePermission("users", "create"), async (req: AuthRequest, 
 router.put("/:id", requirePermission("users", "edit"), async (req: AuthRequest, res) => {
   try {
     const { firstName, lastName, phone, roleId, deptId, branchId, status, mfaEnabled } = req.body;
+    const normalizedRoleId = roleId === undefined ? undefined : roleId === null ? null : Number(roleId);
+    if (normalizedRoleId !== undefined && normalizedRoleId !== null) {
+      if (!Number.isInteger(normalizedRoleId) || normalizedRoleId <= 0) { res.status(400).json({ success: false, error: "Invalid role id" }); return; }
+      const [role] = await db.select({ id: roles.id }).from(roles).where(and(eq(roles.id, normalizedRoleId), eq(roles.orgId, req.user!.orgId!))).limit(1);
+      if (!role) { res.status(400).json({ success: false, error: "Role does not belong to this company" }); return; }
+    }
     const [user] = await db.update(users).set({
       ...(firstName !== undefined && { firstName }),
       ...(lastName !== undefined && { lastName }),
       ...(phone !== undefined && { phone }),
-      ...(roleId !== undefined && { roleId }),
+      ...(normalizedRoleId !== undefined && { roleId: normalizedRoleId }),
       ...(deptId !== undefined && { deptId }),
       ...(branchId !== undefined && { branchId }),
       ...(status !== undefined && { status }),
@@ -133,6 +145,9 @@ router.put("/:id", requirePermission("users", "edit"), async (req: AuthRequest, 
       updatedAt: new Date(),
     }).where(and(eq(users.id, parseInt(req.params.id as string)), eq(users.orgId, req.user!.orgId!))).returning();
     if (!user) { res.status(404).json({ success: false, error: "User not found" }); return; }
+    if (normalizedRoleId !== undefined) {
+      await db.insert(organizationMemberships).values({ userId: user.id, organizationId: req.user!.orgId!, roleId: normalizedRoleId, isDefault: true }).onConflictDoUpdate({ target: [organizationMemberships.userId, organizationMemberships.organizationId], set: { roleId: normalizedRoleId, isDefault: true } });
+    }
     const { passwordHash: _ph, ...safe } = user;
     res.json({ success: true, data: safe });
   } catch {

@@ -52,8 +52,8 @@ The 0% figure reflects the strict rule that no tool completed every applicable C
 - A disposable signup tenant authenticated successfully and all 43 non-admin ERP routes rendered with live zero-state data.
 - WhatsApp configuration saved and remained after refresh, but config/template GET requests returned HTTP 500.
 - Payment approval list returned HTTP 500.
-- Two local fixes were prepared in `artifacts/api-server/src/lib/ensureSchema.ts` and `artifacts/api-server/src/routes/admin.ts`; API typecheck and build pass.
-- Production deployment and post-fix retest remain blocked because no Render deploy hook or authorized database console is available.
+- Three local fix areas are prepared in `artifacts/api-server/src/lib/ensureSchema.ts` and `artifacts/api-server/src/routes/admin.ts`: payment/WhatsApp schema initialization, Admin user membership creation, and transactional tenant/default-plan provisioning. API typecheck and build pass.
+- Production deployment and post-fix retest remain blocked. The only discovered path was `git push origin main`; it failed with `remote: Repository not found` for `https://github.com/onwebpage/Enterprise-Assets.git/`. Render therefore still runs the pre-fix code.
 
 ## Identified module surfaces
 
@@ -75,6 +75,7 @@ Protected frontend pages: dashboard, finance, sales/order management, purchase, 
 | WhatsApp | `GET /api/integrations/whatsapp/config` and `/templates` | HTTP 500 while the UI displays fallback/demo state | Production startup schema helper does not create WhatsApp tables | Added idempotent creation for config, template, and message tables; deploy required | Not retested in production; currently failing |
 | Admin user provisioning | Admin-created user cannot load `/api/auth/me`; HTTP 403 `You are not assigned to this company` | Admin user creation inserts `users` but not `organization_memberships` | Added membership upsert to Admin user creation; deploy required | Not retested in production; current pre-fix test user was deleted |
 | Test-data cleanup | Signup test tenant `CERT Signup Audit 20260914` remains | Subscription dependency prevents tenant delete and no subscription-delete endpoint exists | Admin cleanup surface is incomplete | Cancelled subscription; manual DB cleanup or a controlled subscription-delete operation is required | Cleanup partially complete |
+| Deployment | Render production | GitHub push failed with `Repository not found`; no Render deploy hook, CLI, or service credentials are available | Repository access/deployment credentials are missing or the remote URL is wrong | Grant push access to the connected GitHub repository or provide a Render deploy hook/service deployment credential | Not deployed; no production retest possible |
 
 ## Conclusion
 

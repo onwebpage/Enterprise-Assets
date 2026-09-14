@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { api, type ApiListResponse } from '@/lib/api';
+import RolesFunctional from '@/pages/app/roles-functional';
 
 interface PermissionRow {
   id: number;
@@ -38,7 +39,7 @@ const ROLE_STYLES = [
   { color: 'from-white/5 to-white/2',               textColor: 'text-white/50',    borderColor: 'border-white/10'       },
 ];
 
-export default function Roles() {
+function LegacyRoles() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
@@ -153,3 +154,5 @@ export default function Roles() {
     </AppLayout>
   );
 }
+
+export default RolesFunctional;

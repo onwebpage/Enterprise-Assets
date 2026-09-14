@@ -191,11 +191,36 @@ router.post("/tenants", async (req: AdminRequest, res) => {
     const normalizedName = textField(name, 200);
     if (!normalizedName) { res.status(400).json({ success: false, error: "Name is required and must be 200 characters or fewer" }); return; }
     if (status != null && !tenantStatuses.has(status)) { res.status(400).json({ success: false, error: "Invalid tenant status" }); return; }
-    const result = await pool.query<{ id: number }>(
-      `INSERT INTO organizations (name, legal_name, country, industry, gstin, status)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-      [normalizedName, textField(legalName, 200), textField(country, 100), textField(industry, 150), textField(gstin, 50), status ?? "active"]
-    );
+    const client = await pool.connect();
+    let result: { rows: Array<{ id: number }> };
+    try {
+      await client.query("BEGIN");
+      const tenant = await client.query<{ id: number }>(
+        `INSERT INTO tenants (name) VALUES ($1) RETURNING id`,
+        [normalizedName],
+      );
+      result = await client.query<{ id: number }>(
+        `INSERT INTO organizations (tenant_id, name, legal_name, country, industry, gstin, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [tenant.rows[0]?.id, normalizedName, textField(legalName, 200), textField(country, 100), textField(industry, 150), textField(gstin, 50), status ?? "active"]
+      );
+      const plan = await client.query<{ id: number }>(
+        `SELECT id FROM saas_plans WHERE is_active = true ORDER BY id ASC LIMIT 1`,
+      );
+      if (plan.rows[0]?.id && result.rows[0]?.id) {
+        await client.query(
+          `INSERT INTO saas_subscriptions (org_id, plan_id, status, billing_cycle)
+           VALUES ($1, $2, 'active', 'monthly')`,
+          [result.rows[0].id, plan.rows[0].id],
+        );
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
     const id = result.rows[0]?.id;
     await audit(req, "CREATE", "tenant", id, { name: normalizedName });
     res.status(201).json({ success: true, data: result.rows[0] });
