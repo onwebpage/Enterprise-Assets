@@ -80,3 +80,22 @@ Protected frontend pages: dashboard, finance, sales/order management, purchase, 
 ## Conclusion
 
 This deployment passed reachability, basic HTTP/SPA delivery, unauthenticated authorization gates, input-validation probes, and static TypeScript validation. Those checks do not satisfy the requested production certification. Because at least one tool is untested and multiple mandatory security, persistence, workflow, and integration checks are blocked, the only defensible status is **⚠️ NOT 100% VERIFIED**.
+
+## Roles & Permissions Live Certification
+
+**Final status:** **❌ NOT 100%**
+
+Live production evidence collected on 2026-09-14:
+
+- `GET /api/roles`: `200`; tenant-scoped Admin role returned.
+- `GET /api/roles/modules`: `200`; canonical module catalog returned.
+- `POST /api/roles`: `201`; disposable role created in the test tenant.
+- Live Roles UI rendered the permission matrix, but clicking `Create Role` produced no dialog and no mutation. The deployed frontend is not the locally implemented functional editor.
+- Custom role assignment through `PUT /api/users/:id`: `200`.
+- Custom role with no Finance permission: `GET /api/finance/dashboard`: `403`, confirming backend denial.
+- Attempted permission restore through `PUT /api/roles/:id`: `403` because the custom role had no `roles.edit` permission. The allow -> deny -> restore sequence therefore did not complete.
+- Attempted user reassignment from the restricted user: `403` on `users.edit`, as expected for the restricted role; Super Admin restored the user and deleted the probe role.
+- Logout/login persistence, cross-tenant isolation, subscription matrix, mobile mutation controls, and complete role CRUD through the live UI were not fully verified.
+- Test user was deleted and subscription cancelled. Test tenant cleanup returned `409` because the Admin API has no subscription-delete operation.
+
+Roles & Permissions passes are limited to backend list/module discovery, role creation, assignment, and denial behavior. The deployed UI CRUD and full authorization restoration flow remain unverified, so this module is not production-certified at 100%.
