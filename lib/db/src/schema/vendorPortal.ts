@@ -10,7 +10,7 @@
 import {
   pgTable, serial, text, integer, timestamp, boolean, numeric,
 } from "drizzle-orm/pg-core";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { organizations } from "./organizations";
 import { users } from "./users";
 
@@ -123,7 +123,7 @@ export const vpTicketMessages = pgTable("vp_ticket_messages", {
 
 export const insertVpVendorSchema = z.object({
   name:          z.string().min(1),
-  email:         z.email(),
+  email:         z.string().email(),
   company:       z.string().optional(),
   phone:         z.string().optional(),
   category:      z.string().optional(),

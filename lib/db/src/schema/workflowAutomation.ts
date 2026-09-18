@@ -10,7 +10,7 @@
 import {
   pgTable, serial, text, integer, timestamp, boolean, jsonb,
 } from "drizzle-orm/pg-core";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { organizations } from "./organizations";
 import { users } from "./users";
 

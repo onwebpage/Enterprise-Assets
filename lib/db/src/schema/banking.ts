@@ -1,7 +1,7 @@
 import {
   pgTable, serial, text, integer, timestamp, numeric, boolean, unique,
 } from "drizzle-orm/pg-core";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { organizations } from "./organizations";
 import { users } from "./users";
 
@@ -205,11 +205,12 @@ export const updateBankReconciliationSchema = z.object({
   matchedTransactionIds:  z.array(z.number().int().positive()).optional(),
 });
 
-export const insertChequeBookSchema = z.object({
+const baseChequeBookSchema = z.object({
   bankAccountId: z.number().int().positive(), name: z.string().trim().min(1).max(200), prefix: z.string().trim().max(30).nullable().optional(),
   startNumber: z.number().int().positive(), endNumber: z.number().int().positive(), issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), notes: z.string().max(1000).nullable().optional(),
-}).refine((value) => value.endNumber >= value.startNumber, { message: "End number must be greater than or equal to start number" });
-export const updateChequeBookSchema = insertChequeBookSchema.omit({ bankAccountId: true, startNumber: true, endNumber: true }).partial();
+});
+export const insertChequeBookSchema = baseChequeBookSchema.refine((value) => value.endNumber >= value.startNumber, { message: "End number must be greater than or equal to start number" });
+export const updateChequeBookSchema = baseChequeBookSchema.omit({ bankAccountId: true, startNumber: true, endNumber: true }).partial();
 export const insertChequeSchema = z.object({
   bankAccountId: z.number().int().positive(), chequeBookId: z.number().int().positive().nullable().optional(), chequeNumber: z.string().trim().min(1).max(50).optional(), direction: z.enum(CHEQUE_DIRECTIONS), issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), chequeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), partyName: z.string().trim().min(1).max(200), amount: posAmountStr, reference: z.string().max(100).nullable().optional(), notes: z.string().max(1000).nullable().optional(), journalEntryId: z.number().int().positive().nullable().optional(),
 });

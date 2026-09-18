@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { z } from "zod/v4";
+import { z } from "zod";
 import {
   db,
   purchaseVendors,

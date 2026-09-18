@@ -1,7 +1,7 @@
 import {
   pgTable, serial, text, integer, timestamp, numeric, boolean,
 } from "drizzle-orm/pg-core";
-import { z } from "zod/v4";
+import { z } from "zod";
 import { organizations } from "./organizations";
 import { branches } from "./branches";
 import { users } from "./users";
