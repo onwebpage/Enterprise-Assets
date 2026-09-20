@@ -9,7 +9,9 @@
 import pg from "pg";
 const { Pool } = pg;
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const connectionString = process.env.SUPABASE_DATABASE_URL;
+if (!connectionString) throw new Error("SUPABASE_DATABASE_URL must be set");
+const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
 
 // Simplified version of canonicalizeModuleKey from rbac.ts
 const MODULE_ALIASES = {

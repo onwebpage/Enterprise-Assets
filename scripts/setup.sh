@@ -7,9 +7,9 @@
 # and intentionally want to apply destructive changes unattended.
 set -e
 
-DB_URL="${SUPABASE_DB_URL:-$DATABASE_URL}"
+DB_URL="${SUPABASE_DATABASE_URL:-}"
 if [ -z "$DB_URL" ]; then
-  echo "SUPABASE_DB_URL or DATABASE_URL must be set."
+  echo "SUPABASE_DATABASE_URL must be set."
   exit 1
 fi
 

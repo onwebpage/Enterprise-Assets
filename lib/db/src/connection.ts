@@ -1,18 +1,19 @@
-const configuredDatabaseUrl =
-  process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL;
+const configuredDatabaseUrl = process.env.SUPABASE_DATABASE_URL;
 
 if (!configuredDatabaseUrl) {
   throw new Error(
-    "SUPABASE_DB_URL or DATABASE_URL must be set. Did you forget to configure a database?",
+    "SUPABASE_DATABASE_URL must be set. Did you forget to configure Supabase?",
+  );
+}
+if (configuredDatabaseUrl.includes("[YOUR-PASSWORD]")) {
+  throw new Error(
+    "SUPABASE_DATABASE_URL still contains [YOUR-PASSWORD]. Set the Supabase database password before starting the application.",
   );
 }
 
 function normalizeDatabaseUrl(urlValue: string): string {
-  if (!process.env.SUPABASE_DB_URL) return urlValue;
-
   const url = new URL(urlValue);
-  // Supabase's pooler certificate is encrypted but not trusted by the
-  // container CA bundle. Keep TLS enabled while accepting that certificate.
+  // Supabase pooler certificates may not be present in the runtime CA bundle.
   url.searchParams.set("sslmode", "no-verify");
   return url.toString();
 }

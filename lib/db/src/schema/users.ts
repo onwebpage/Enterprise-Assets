@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { organizations } from "./organizations";
 import { branches } from "./branches";
 import { departments } from "./departments";
@@ -20,6 +20,7 @@ export const users = pgTable("users", {
   status: text("status").notNull().default("active"), // active, inactive, on_leave, pending
   paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid, overdue
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  sessionVersion: integer("session_version").notNull().default(0),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

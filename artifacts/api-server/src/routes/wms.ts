@@ -73,7 +73,7 @@ router.get("/summary", requirePermission(MODULE, "view"), async (req: AuthReques
       pool.query(`select count(*)::int as count from wms_serials where org_id=$1 and status='available'`, [orgId]),
       pool.query(`select count(*)::int as count from wms_receipts where org_id=$1 and status in ('draft','received')`, [orgId]),
       pool.query(`select count(*)::int as count from wms_cycle_counts where org_id=$1 and status in ('draft','in_progress')`, [orgId]),
-      pool.query(`select count(*)::int as count from wms_lots where org_id=$1 and expiry_date is not null and expiry_date <= current_date + 30 and qty_on_hand>0`, [orgId]),
+      pool.query(`select count(*)::int as count from wms_lots where org_id=$1 and expiry_date ~ '^\\d{4}-\\d{2}-\\d{2}$' and expiry_date::date <= current_date + 30 and qty_on_hand>0`, [orgId]),
     ]);
     res.json({ success: true, data: {
       activeBins: bins.rows[0].count, activeLots: lots.rows[0].count, lotUnits: lots.rows[0].units,

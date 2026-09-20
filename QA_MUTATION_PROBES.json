@@ -1,0 +1,2712 @@
+[
+  {
+    "method": "POST",
+    "path": "/ap/vendors",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ap/vendors/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ap/vendors/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ap/bills",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ap/bills/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ap/bills/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ap/payments",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ap/payments/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ap/payments/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ar/customers",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ar/customers/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ar/customers/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ar/invoices",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ar/invoices/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ar/invoices/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ar/payments",
+    "status": 422
+  },
+  {
+    "method": "PUT",
+    "path": "/ar/payments/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/ar/payments/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/admin/payment-submissions/999999/decision",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/tenants",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/tenants/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/tenants/999999/status",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/tenants/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/users/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/users/999999/status",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/users/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/roles/999999/permissions",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/roles",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/roles/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/roles/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/plans",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/plans/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/plans/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/subscriptions/999999/status",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/licenses",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/licenses/999999/status",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/licenses/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/features",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/features/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/features/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/features/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/whitelabel/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/agencies",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/agencies/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/integrations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/integrations/999999/test",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/security",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/backups",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/backups/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/notifications/broadcast",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/support-tickets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/support-tickets/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/admin/settings",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/admin/auth/login",
+    "status": 400
+  },
+  {
+    "method": "POST",
+    "path": "/admin/auth/logout",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/auth/credentials",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/auth/password",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/report",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/ai/conversations",
+    "status": 200
+  },
+  {
+    "method": "DELETE",
+    "path": "/ai/conversations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/ai/chat",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/ai/messages/999999/feedback",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/audit/",
+    "status": 400
+  },
+  {
+    "method": "POST",
+    "path": "/auth/register",
+    "status": 400
+  },
+  {
+    "method": "POST",
+    "path": "/auth/login",
+    "status": 400
+  },
+  {
+    "method": "POST",
+    "path": "/auth/logout",
+    "status": 200
+  },
+  {
+    "method": "POST",
+    "path": "/banking/accounts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/banking/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/banking/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/cheque-books",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/banking/cheque-books/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/cheques",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/banking/cheques/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/transactions",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/banking/transactions/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/banking/transactions/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/statements/import",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/statements/auto-match",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/transactions/999999/match",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/banking/transactions/999999/match",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/reconciliations",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/banking/reconciliations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/banking/reconciliations/999999/complete",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/banking/reconciliations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/billing/payment-submissions",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/billing/change-plan",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/billing/cancel",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/billing/payment-methods",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/billing/payment-methods/999999/default",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/billing/payment-methods/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/billing/add-ons/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/billing/usage",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/cost-centres",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/cost-centres/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/cost-centres/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/profit-centres",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/profit-centres/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/profit-centres/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/budgets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/budgets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/budgets/999999/activate",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/budgets/999999/close",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/budgets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/product-costings",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/product-costings/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/product-costings/999999/recalculate",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/product-costings/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/variances",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/variances/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/variances/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/forecasts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/forecasts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/forecasts/999999/approve",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/forecasts/999999/generate",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/forecasts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/allocation-rules",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/budget-cost/allocation-rules/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/allocation-rules/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/allocation-runs",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/budget-cost/allocation-runs/999999/post",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/budget-cost/allocation-runs/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/accounts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/cash-treasury/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/positions",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/positions/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/cash-treasury/positions/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/forecasts",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/forecasts/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/cash-treasury/forecasts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/payments",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/cash-treasury/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/payments/999999/approve",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/payments/999999/mark-paid",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/collections",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/cash-treasury/collections/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/collections/999999/mark-received",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/collections/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/transfers",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/transfers/999999/authorize",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/cash-treasury/transfers/999999/execute",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/cash-treasury/transfers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/leads",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/crm/leads/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/leads/999999/convert",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/leads/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/opportunities",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/crm/opportunities/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/opportunities/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/quotations",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/crm/quotations/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/quotations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/activities",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/activities/999999/complete",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/activities/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/communications",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/communications/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/crm/targets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/crm/targets/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/crm/targets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/customers",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/customer-portal/customers/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/customer-portal/customers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/customers/999999/invite",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/customers/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/invoices",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/customer-portal/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/customer-portal/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/tickets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/customer-portal/tickets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/customer-portal/tickets/999999/messages",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/folders",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/docs/folders/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/docs/folders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/files",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/docs/files/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/docs/files/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/files/999999/star",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/files/999999/archive",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/files/999999/share",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/docs/files/999999/shares/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/docs/files/999999/move",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/einvoice/buyers",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/einvoice/buyers/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/einvoice/buyers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/einvoice/invoices",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/einvoice/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/einvoice/invoices/999999/submit",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/einvoice/invoices/999999/acknowledge",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/einvoice/invoices/999999/cancel",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/einvoice/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/eway-bill/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/eway-bill/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/eway-bill/999999/generate",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/eway-bill/999999/cancel",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/eway-bill/999999/extend",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/eway-bill/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/categories",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/expense/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/expense/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/policies",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/expense/policies/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/expense/policies/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/claims",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/expense/claims/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/claims/999999/submit",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/claims/999999/approve",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/claims/999999/reject",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/expense/claims/999999/reimburse",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/expense/claims/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/accounts/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/accounts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/controls/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/controls/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/controls/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/controls/999999/runs",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/controls/runs/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/controls/runs/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/controls/runs/999999/exceptions",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/controls/exceptions/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/controls/exceptions/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/assets/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/assets/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/assets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/assets/depreciation/run",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/assets/depreciation/post",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/assets/depreciation/entries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/ledger/journal-entries",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/ledger/journal-entries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/ledger/journal-entries/999999/post",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/ledger/journal-entries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/tax-rates",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/gst/tax-rates/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/gst/tax-rates/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/returns",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/gst/returns/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/returns/999999/submit",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/gst/returns/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/returns/999999/entries",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/gst/entries/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/gst/entries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/tds",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/gst/tds/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/gst/tds/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/gst/payments",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/gst/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/gst/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/payroll/statutory/config",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/payroll/statutory/config/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/payroll/statutory/config/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/payroll/statutory/filings",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/payroll/statutory/filings/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/payroll/statutory/filings/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/payroll/runs/999999/calculate-statutory",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/employees",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/employees/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/employees/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/leaves/types",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/leaves/types/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/leaves/types/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/leaves/requests",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/leaves/requests/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/leaves/requests/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/payroll/runs",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/payroll/runs/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/payroll/runs/999999/lines",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/hr/jobs",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/hr/jobs/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/hr/jobs/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/integrations/social/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/integrations/social/999999/test",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/integrations/social/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/companies",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/intercompany/companies/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/intercompany/companies/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/relationships",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/intercompany/relationships/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/intercompany/relationships/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/transactions",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/intercompany/transactions/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/intercompany/transactions/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/transactions/999999/post",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/transactions/999999/settle",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/intercompany/transactions/999999/eliminate",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/inventory/categories",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/inventory/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/inventory/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/inventory/warehouses",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/inventory/warehouses/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/inventory/warehouses/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/inventory/products",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/inventory/products/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/inventory/products/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/inventory/stock/adjust",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/inventory/transfers",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/inventory/transfers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/assets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/assets/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/assets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/schedules",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/schedules/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/schedules/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/breakdowns",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/breakdowns/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/breakdowns/999999/resolve",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/breakdowns/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/work-orders",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/work-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/work-orders/999999/complete",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/work-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/amcs",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/amcs/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/amcs/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/maintenance/parts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/maintenance/parts/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/maintenance/parts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/manufacturing/work-centers",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/manufacturing/work-centers/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/manufacturing/work-centers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/manufacturing/boms",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/manufacturing/boms/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/manufacturing/boms/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/manufacturing/work-orders",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/manufacturing/work-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/manufacturing/work-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/master-data/customers",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/master-data/customers/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/master-data/customers/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/master-data/vendors",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/master-data/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/master-data/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/master-data/categories",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/master-data/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/master-data/categories/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/master-data/products",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/master-data/products/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/master-data/products/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/master-data/warehouses",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/master-data/warehouses/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/master-data/warehouses/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/currencies",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/multi-currency/currencies/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/multi-currency/currencies/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/rates",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/multi-currency/rates/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/multi-currency/rates/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/convert",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/revaluations",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/multi-currency/revaluations/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/multi-currency/revaluations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/revaluations/999999/post",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/multi-currency/revaluations/999999/void",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/multi-entity/business-units",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/multi-entity/business-units/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/multi-entity/business-units/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/multi-entity/warehouse-hierarchy",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/multi-entity/warehouse-hierarchy/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/multi-entity/warehouse-hierarchy/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/multi-entity/consolidation",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/multi-entity/reconciliation",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/notifications/999999/read",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/notifications/999999/unread",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/notifications/read-all",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/notifications/999999/archive",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/notifications/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/order-management/sales-orders",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/order-management/sales-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/order-management/sales-orders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/order-management/quotations",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/order-management/quotations/999999/convert",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/order-management/deliveries",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/order-management/deliveries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/organizations/",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/organizations/switch",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/organizations/memberships",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/organizations/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/organizations/branches",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/organizations/branches/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/organizations/branches/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/organizations/departments",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/organizations/departments/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/organizations/departments/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/closing/periods",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/finance/closing/periods/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/finance/closing/periods/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/closing/periods/999999/soft-close",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/closing/periods/999999/close",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/closing/periods/999999/reopen",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/finance/closing/periods/999999/year-end-close",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/projects/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/projects/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/projects/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/vendors",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/orders",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/orders/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/orders/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/grns",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/grns/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/grns/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/rfqs",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/rfqs/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/rfqs/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/requisitions",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/requisitions/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/requisitions/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/requisitions/999999/approve",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/requisitions/999999/reject",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/requisitions/999999/convert",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/rfqs/999999/invites",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/rfqs/999999/quotes",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/quotes/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/rfqs/999999/award",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/invoices",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/purchase/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/purchase/invoices/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/invoices/999999/match",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/invoices/999999/approve",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/payments",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/payments/999999/razorpay-order",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/payments/999999/mark-paid",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/purchase/payments/999999/fail",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/parameters",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/quality/parameters/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/quality/parameters/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/inspections",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/quality/inspections/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/inspections/999999/complete",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/quality/inspections/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/rejections",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/quality/rejections/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/quality/rejections/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/capas",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/quality/capas/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/capas/999999/close",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/quality/capas/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/certificates",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/quality/certificates/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/quality/certificates/999999/issue",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/quality/certificates/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/reports/powerbi/config",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/reports/powerbi/test",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/roles/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/roles/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/roles/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/reseller-tiers",
+    "status": 404
+  },
+  {
+    "method": "PUT",
+    "path": "/reseller-tiers/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/reseller-tiers/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/resellers",
+    "status": 404
+  },
+  {
+    "method": "PUT",
+    "path": "/resellers/999999",
+    "status": 404
+  },
+  {
+    "method": "PATCH",
+    "path": "/resellers/999999/status",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/resellers/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/deal-registrations",
+    "status": 404
+  },
+  {
+    "method": "PATCH",
+    "path": "/deal-registrations/999999/status",
+    "status": 404
+  },
+  {
+    "method": "PUT",
+    "path": "/deal-registrations/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/saas/plans",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/plans/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/saas/plans/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/features",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/features/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/features/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/features/999999/plans/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/features/999999/tenants/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/saas/features/999999/tenants/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/tenants",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/tenants/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/tenants/999999/status",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/licenses",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/licenses/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/licenses/999999/renew",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/licenses/999999/status",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/whitelabel",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/whitelabel/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/whitelabel/999999/domain-verify",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/whitelabel/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/saas/whitelabel/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/trials/999999/extend",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/trials/999999/convert",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/trials/999999/cancel",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/trials/999999/reminder",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/trial-config",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/agencies",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/saas/agencies/999999",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/agencies/999999/status",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/saas/agencies/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/agencies/999999/clients",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/saas/agencies/999999/clients/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/agencies/999999/payouts",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/agencies/999999/payouts/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/saas/agencies/999999/payouts/generate",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/saas/payouts/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/settings/profile",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/settings/change-password",
+    "status": 401
+  },
+  {
+    "method": "PATCH",
+    "path": "/settings/mfa",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/settings/org",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/settings/preferences",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/tds/entries",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/tds/entries/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/tds/entries/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/tds/payments",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/tds/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/tds/payments/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/users/",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/users/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/users/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/vendors",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/vendor-portal/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/vendor-portal/vendors/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/vendors/999999/invite",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/vendors/999999/toggle",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/bills",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/vendor-portal/bills/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/vendor-portal/bills/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/tickets",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/vendor-portal/tickets/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/vendor-portal/tickets/999999/messages",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/integrations/whatsapp/config",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/integrations/whatsapp/templates",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/integrations/whatsapp/templates/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/integrations/whatsapp/messages",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/wms/bins",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/wms/bins/999999",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/wms/bins/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/wms/barcodes",
+    "status": 401
+  },
+  {
+    "method": "DELETE",
+    "path": "/wms/barcodes/999999",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/wms/receipts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/wms/receipts/999999/putaway",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/wms/cycle-counts",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/wms/cycle-counts/999999/lines/999999",
+    "status": 401
+  },
+  {
+    "method": "PUT",
+    "path": "/wms/cycle-counts/999999/complete",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/wms/bin-transfers",
+    "status": 401
+  },
+  {
+    "method": "POST",
+    "path": "/definitions",
+    "status": 404
+  },
+  {
+    "method": "PUT",
+    "path": "/definitions/999999",
+    "status": 404
+  },
+  {
+    "method": "DELETE",
+    "path": "/definitions/999999",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/definitions/999999/toggle",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/definitions/999999/publish",
+    "status": 404
+  },
+  {
+    "method": "POST",
+    "path": "/definitions/999999/trigger",
+    "status": 404
+  }
+]

@@ -183,6 +183,7 @@ router.post("/register", async (req, res) => {
       email: user.email,
       roleId: user.roleId,
       orgId: user.orgId,
+      sessionVersion: user.sessionVersion,
     });
 
     res.status(201).json({
@@ -281,6 +282,7 @@ router.post("/login", async (req, res) => {
       email: user.email,
       roleId: user.roleId,
       orgId: user.orgId,
+      sessionVersion: user.sessionVersion,
     });
 
     res.json({
@@ -348,9 +350,13 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
 });
 
 // POST /api/auth/logout
-router.post("/logout", requireAuth, (_req, res) => {
-  // JWT is stateless — client drops the token
-  res.json({ success: true, data: null });
+router.post("/logout", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    await db.update(users).set({ sessionVersion: sql`${users.sessionVersion} + 1` }).where(eq(users.id, req.user!.userId));
+    res.json({ success: true, data: null });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to log out" });
+  }
 });
 
 export default router;

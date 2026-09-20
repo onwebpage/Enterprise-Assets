@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, numeric, boolean, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, numeric, boolean, unique, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { organizations } from "./organizations";
 import { chartOfAccounts } from "./chartOfAccounts";
 import { journalEntries } from "./generalLedger";
@@ -28,7 +28,7 @@ export const financeCurrencies = pgTable("finance_currencies", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  codeUnique: uniqueIndex("finance_currencies_code_uidx").on(table.code),
+  codeUnique: unique("finance_currencies_code_key").on(table.code),
 }));
 
 export const financeExchangeRates = pgTable("finance_exchange_rates", {

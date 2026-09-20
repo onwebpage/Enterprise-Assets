@@ -10,6 +10,7 @@ export interface JwtPayload {
   orgId: number | null;
   branchId?: number | null;
   tenantId?: number | null;
+  sessionVersion?: number;
 }
 
 export function signToken(payload: JwtPayload): string {

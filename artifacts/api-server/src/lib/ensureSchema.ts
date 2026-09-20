@@ -8,6 +8,7 @@ export async function ensureAuthSchema(): Promise<void> {
   await pool.query(`
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id integer;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending' NOT NULL;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version integer DEFAULT 0 NOT NULL;
     CREATE TABLE IF NOT EXISTS tenants (
       id serial PRIMARY KEY,
       name text NOT NULL,
@@ -188,6 +189,10 @@ export async function ensureAuthSchema(): Promise<void> {
     VALUES ('Enterprise', 'enterprise', 0, 0, 9999, 999, 1000, 10000000, true)
     ON CONFLICT (slug) DO NOTHING;
 
+    INSERT INTO billing_plans (name, slug, description, price_monthly, price_yearly, max_users, max_modules, max_storage_gb, max_api_calls_monthly, features, is_active, is_popular, sort_order)
+    VALUES ('Enterprise', 'enterprise', 'Full OmniERP access', 0, 0, 9999, 999, 1000, 10000000, '[]'::jsonb, true, true, 0)
+    ON CONFLICT (slug) DO NOTHING;
+
     -- Enable all saas_features for existing plans
     INSERT INTO saas_plan_features (plan_id, feature_id, enabled)
     SELECT p.id, f.id, true
@@ -201,6 +206,13 @@ export async function ensureAuthSchema(): Promise<void> {
     FROM organizations o
     WHERE NOT EXISTS (
       SELECT 1 FROM saas_subscriptions s WHERE s.org_id = o.id AND s.status IN ('active', 'trial')
+    );
+
+    INSERT INTO billing_subscriptions (org_id, plan_id, status, billing_cycle)
+    SELECT o.id, (SELECT id FROM billing_plans WHERE slug = 'enterprise' LIMIT 1), 'active', 'monthly'
+    FROM organizations o
+    WHERE NOT EXISTS (
+      SELECT 1 FROM billing_subscriptions s WHERE s.org_id = o.id AND s.status IN ('active', 'trial')
     );
 
     -- Ensure an Admin role exists for every organization

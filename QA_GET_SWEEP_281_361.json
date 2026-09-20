@@ -1,0 +1,326 @@
+[
+  {
+    "status": 200,
+    "path": "/purchase/source-to-pay/summary"
+  },
+  {
+    "status": 200,
+    "path": "/purchase/summary"
+  },
+  {
+    "status": 200,
+    "path": "/purchase/vendors"
+  },
+  {
+    "status": 404,
+    "path": "/purchase/vendors/1"
+  },
+  {
+    "status": 200,
+    "path": "/quality/capas"
+  },
+  {
+    "status": 200,
+    "path": "/quality/certificates"
+  },
+  {
+    "status": 404,
+    "path": "/quality/certificates/1"
+  },
+  {
+    "status": 200,
+    "path": "/quality/inspections"
+  },
+  {
+    "status": 404,
+    "path": "/quality/inspections/1"
+  },
+  {
+    "status": 200,
+    "path": "/quality/parameters"
+  },
+  {
+    "status": 200,
+    "path": "/quality/rejections"
+  },
+  {
+    "status": 200,
+    "path": "/quality/summary"
+  },
+  {
+    "status": 200,
+    "path": "/reports/ap-aging"
+  },
+  {
+    "status": 200,
+    "path": "/reports/ar-aging"
+  },
+  {
+    "status": 200,
+    "path": "/reports/hr"
+  },
+  {
+    "status": 200,
+    "path": "/reports/inventory"
+  },
+  {
+    "status": 200,
+    "path": "/reports/my-permissions"
+  },
+  {
+    "status": 200,
+    "path": "/reports/overview"
+  },
+  {
+    "status": 200,
+    "path": "/reports/powerbi/config"
+  },
+  {
+    "status": 404,
+    "path": "/reports/powerbi/embed-token"
+  },
+  {
+    "status": 200,
+    "path": "/reports/purchase"
+  },
+  {
+    "status": 200,
+    "path": "/reseller-metrics"
+  },
+  {
+    "status": 200,
+    "path": "/reseller-tiers"
+  },
+  {
+    "status": 200,
+    "path": "/resellers"
+  },
+  {
+    "status": 200,
+    "path": "/resellers/1"
+  },
+  {
+    "status": 200,
+    "path": "/resellers/1/deals"
+  },
+  {
+    "status": 200,
+    "path": "/roles/"
+  },
+  {
+    "status": 200,
+    "path": "/roles/modules"
+  },
+  {
+    "status": 200,
+    "path": "/saas/agencies"
+  },
+  {
+    "status": 404,
+    "path": "/saas/agencies/1"
+  },
+  {
+    "status": 200,
+    "path": "/saas/agencies/1/clients"
+  },
+  {
+    "status": 200,
+    "path": "/saas/agencies/1/payouts"
+  },
+  {
+    "status": 200,
+    "path": "/saas/agency-metrics"
+  },
+  {
+    "status": 200,
+    "path": "/saas/features"
+  },
+  {
+    "status": 200,
+    "path": "/saas/features/access"
+  },
+  {
+    "status": 200,
+    "path": "/saas/licenses"
+  },
+  {
+    "status": 200,
+    "path": "/saas/licenses/metrics"
+  },
+  {
+    "status": 200,
+    "path": "/saas/metrics"
+  },
+  {
+    "status": 200,
+    "path": "/saas/payouts"
+  },
+  {
+    "status": 200,
+    "path": "/saas/plans"
+  },
+  {
+    "status": 200,
+    "path": "/saas/subscriptions"
+  },
+  {
+    "status": 200,
+    "path": "/saas/tenants"
+  },
+  {
+    "status": 200,
+    "path": "/saas/tenants/1"
+  },
+  {
+    "status": 200,
+    "path": "/saas/tenants/1/dashboard"
+  },
+  {
+    "status": 200,
+    "path": "/saas/trial-config"
+  },
+  {
+    "status": 200,
+    "path": "/saas/trials"
+  },
+  {
+    "status": 200,
+    "path": "/saas/trials/1/events"
+  },
+  {
+    "status": 200,
+    "path": "/saas/trials/stats"
+  },
+  {
+    "status": 200,
+    "path": "/saas/whitelabel"
+  },
+  {
+    "status": 404,
+    "path": "/saas/whitelabel/1"
+  },
+  {
+    "status": 200,
+    "path": "/sales-forecast"
+  },
+  {
+    "status": 200,
+    "path": "/settings/org"
+  },
+  {
+    "status": 200,
+    "path": "/settings/preferences"
+  },
+  {
+    "status": 200,
+    "path": "/settings/profile"
+  },
+  {
+    "status": 200,
+    "path": "/summary"
+  },
+  {
+    "status": 200,
+    "path": "/tds/entries"
+  },
+  {
+    "status": 404,
+    "path": "/tds/entries/1"
+  },
+  {
+    "status": 200,
+    "path": "/tds/my-permissions"
+  },
+  {
+    "status": 200,
+    "path": "/tds/payments"
+  },
+  {
+    "status": 200,
+    "path": "/tds/summary"
+  },
+  {
+    "status": 200,
+    "path": "/users/"
+  },
+  {
+    "status": 200,
+    "path": "/users/1"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/activity"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/bills"
+  },
+  {
+    "status": 404,
+    "path": "/vendor-portal/bills/1"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/my-permissions"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/summary"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/tickets"
+  },
+  {
+    "status": 404,
+    "path": "/vendor-portal/tickets/1"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/tickets/1/messages"
+  },
+  {
+    "status": 200,
+    "path": "/vendor-portal/vendors"
+  },
+  {
+    "status": 404,
+    "path": "/vendor-portal/vendors/1"
+  },
+  {
+    "status": 200,
+    "path": "/wms/barcodes"
+  },
+  {
+    "status": 200,
+    "path": "/wms/bins"
+  },
+  {
+    "status": 200,
+    "path": "/wms/cycle-counts"
+  },
+  {
+    "status": 404,
+    "path": "/wms/cycle-counts/1"
+  },
+  {
+    "status": 200,
+    "path": "/wms/lots"
+  },
+  {
+    "status": 200,
+    "path": "/wms/receipts"
+  },
+  {
+    "status": 400,
+    "path": "/wms/scan"
+  },
+  {
+    "status": 200,
+    "path": "/wms/serials"
+  },
+  {
+    "status": 200,
+    "path": "/wms/summary"
+  }
+]

@@ -18,7 +18,18 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   try {
     req.user = verifyToken(token);
     const authenticatedUser = req.user;
-    resolveOrganizationContext(req, res, next, authenticatedUser);
+    db.select({ sessionVersion: users.sessionVersion, status: users.status })
+      .from(users)
+      .where(eq(users.id, authenticatedUser.userId))
+      .limit(1)
+      .then(([user]) => {
+        if (!user || user.status === "inactive" || (authenticatedUser.sessionVersion ?? 0) !== user.sessionVersion) {
+          res.status(401).json({ success: false, error: "Invalid or expired token" });
+          return;
+        }
+        resolveOrganizationContext(req, res, next, authenticatedUser);
+      })
+      .catch(() => res.status(500).json({ success: false, error: "Failed to validate session" }));
   } catch {
     res.status(401).json({ success: false, error: "Invalid or expired token" });
   }

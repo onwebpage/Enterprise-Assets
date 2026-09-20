@@ -10,6 +10,10 @@
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.ts",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "check:connection": "node ./test-db.mjs",
+    "repair:supabase-constraints": "tsx src/repair-supabase-constraints.ts",
+    "apply:supabase-sql": "tsx src/apply-supabase-sql.ts",
+    "verify:supabase-schema": "tsx src/verify-supabase-schema.ts",
     "seed": "tsx src/seed.ts",
     "seed:finance": "tsx src/seed-finance.ts",
     "seed:ar": "tsx src/seed-ar.ts",

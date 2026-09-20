@@ -1,6 +1,6 @@
 import { pgTable, serial, integer, boolean, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { users } from "./users";
 
 export const userPreferences = pgTable("user_preferences", {

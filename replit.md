@@ -27,7 +27,7 @@ The mockup sandbox remains available for design-canvas previews when needed.
 ## Database Setup
 
 Uses the configured PostgreSQL connection. This imported project prefers
-`SUPABASE_DB_URL` and falls back to Replit's managed `DATABASE_URL`.
+`SUPABASE_DATABASE_URL` is the only PostgreSQL connection used by the application.
 
 ```bash
 # Push schema to DB
@@ -55,8 +55,7 @@ Super-admin credentials are stored as bcrypt hashes in the configured database. 
 
 ## Environment Secrets
 
-- `DATABASE_URL` — managed by Replit PostgreSQL integration
-- `SUPABASE_DB_URL` — PostgreSQL connection used by the imported project when configured
+- `SUPABASE_DATABASE_URL` — Supabase PostgreSQL connection used by the application
 - `SESSION_SECRET` — used for JWT signing
 - `POWERBI_ENCRYPTION_KEY` — server-only key used to encrypt stored Power BI client secrets
 - `INTEGRATION_ENCRYPTION_KEY` — server-only key used to encrypt social media access and refresh tokens

@@ -1,0 +1,402 @@
+[
+    {
+        "status":  401,
+        "path":  "/admin/agencies"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/analytics"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/audit-logs"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/auth/me"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/backups"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/backups/1/download"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/billing/invoices"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/billing/overview"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/dashboard"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/features"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/health"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/integrations"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/licenses"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/notifications"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/payment-submissions"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/permission-modules"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/plans"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/roles"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/security"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/settings"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/subscriptions"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/support-tickets"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/tenants"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/users"
+    },
+    {
+        "status":  401,
+        "path":  "/admin/whitelabel"
+    },
+    {
+        "status":  200,
+        "path":  "/ai/conversations"
+    },
+    {
+        "status":  404,
+        "path":  "/ai/conversations/1/messages"
+    },
+    {
+        "status":  200,
+        "path":  "/anomalies"
+    },
+    {
+        "status":  200,
+        "path":  "/ap/bills"
+    },
+    {
+        "status":  404,
+        "path":  "/ap/bills/1"
+    },
+    {
+        "status":  200,
+        "path":  "/ap/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/ap/payments"
+    },
+    {
+        "status":  200,
+        "path":  "/ap/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/ap/vendors"
+    },
+    {
+        "status":  404,
+        "path":  "/ap/vendors/1"
+    },
+    {
+        "status":  200,
+        "path":  "/ar/customers"
+    },
+    {
+        "status":  404,
+        "path":  "/ar/customers/1"
+    },
+    {
+        "status":  200,
+        "path":  "/ar/invoices"
+    },
+    {
+        "status":  404,
+        "path":  "/ar/invoices/1"
+    },
+    {
+        "status":  200,
+        "path":  "/ar/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/ar/payments"
+    },
+    {
+        "status":  200,
+        "path":  "/ar/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/assets/"
+    },
+    {
+        "status":  404,
+        "path":  "/assets/1"
+    },
+    {
+        "status":  200,
+        "path":  "/assets/depreciation/entries"
+    },
+    {
+        "status":  200,
+        "path":  "/assets/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/assets/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/audit/"
+    },
+    {
+        "status":  404,
+        "path":  "/audit/1"
+    },
+    {
+        "status":  200,
+        "path":  "/audit/export/csv"
+    },
+    {
+        "status":  200,
+        "path":  "/audit/stats"
+    },
+    {
+        "status":  200,
+        "path":  "/auth/me"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/accounts"
+    },
+    {
+        "status":  404,
+        "path":  "/banking/accounts/1"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/cheque-books"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/cheques"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/cheques/report"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/reconciliations"
+    },
+    {
+        "status":  404,
+        "path":  "/banking/reconciliations/1"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/reports/reconciliation"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/banking/transactions"
+    },
+    {
+        "status":  404,
+        "path":  "/banking/transactions/1/matches"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/add-ons"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/invoices"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/payment-methods"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/payment-request"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/plans"
+    },
+    {
+        "status":  200,
+        "path":  "/billing/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/accounts"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/allocation-rules"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/allocation-runs"
+    },
+    {
+        "status":  404,
+        "path":  "/budget-cost/allocation-runs/1"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/budgets"
+    },
+    {
+        "status":  404,
+        "path":  "/budget-cost/budgets/1"
+    },
+    {
+        "status":  404,
+        "path":  "/budget-cost/budgets/1/vs-actual"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/cost-centres"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/forecasts"
+    },
+    {
+        "status":  404,
+        "path":  "/budget-cost/forecasts/1"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/product-costings"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/profitability"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/profit-centres"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/budget-cost/variances"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-flow"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/accounts"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/collections"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/forecasts"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/my-permissions"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/payments"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/positions"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/summary"
+    },
+    {
+        "status":  200,
+        "path":  "/cash-treasury/transfers"
+    },
+    {
+        "status":  200,
+        "path":  "/crm/activities"
+    },
+    {
+        "status":  200,
+        "path":  "/crm/communications"
+    },
+    {
+        "status":  200,
+        "path":  "/crm/leads"
+    },
+    {
+        "status":  200,
+        "path":  "/crm/opportunities"
+    },
+    {
+        "status":  200,
+        "path":  "/crm/quotations"
+    }
+]

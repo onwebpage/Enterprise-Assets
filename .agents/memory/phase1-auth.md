@@ -20,7 +20,7 @@ description: OmniERP full-stack auth setup — JWT, bcryptjs, seed data, protect
 
 ## Render env vars needed
 - `NODE_ENV=production`
-- `DATABASE_URL` (Postgres connection string)
+- `SUPABASE_DATABASE_URL` (Supabase Postgres connection string)
 - `SESSION_SECRET` (random 64-char string, e.g. `openssl rand -hex 32`)
 
 ## Environment constraint

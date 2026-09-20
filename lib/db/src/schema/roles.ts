@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { organizations } from "./organizations";
 
 export const roles = pgTable("roles", {

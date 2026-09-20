@@ -25,7 +25,7 @@ description: Schema, API routes, hooks, and frontend for the Manufacturing modul
 - Work centers with active WOs cannot be deleted
 
 ## Schema push method
-**Why:** `drizzle-kit push` hangs indefinitely on this project (infinite "Pulling schema" spinner). Always use raw `psql "$DATABASE_URL" << 'EOF' ... EOF` to apply new tables directly.
+**Why:** `drizzle-kit push` hangs indefinitely on this project (infinite "Pulling schema" spinner). Always use raw `psql "$SUPABASE_DATABASE_URL" << 'EOF' ... EOF` to apply new tables directly.
 
 ## Frontend
 - Page: `artifacts/omni-erp/src/pages/app/manufacturing.tsx` — full CRUD, 3 tabs (Work Orders / BOM / Work Centers)

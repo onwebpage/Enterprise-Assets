@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "qa:inventory": "tsx ./src/generate-qa-inventory.ts",
+    "qa:get-sweep": "tsx ./src/run-qa-get-sweep.ts",
+    "qa:mutation-probes": "tsx ./src/run-qa-mutation-probes.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

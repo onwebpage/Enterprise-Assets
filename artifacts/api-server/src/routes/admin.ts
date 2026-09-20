@@ -73,7 +73,7 @@ function textField(value: unknown, maxLength: number): string | null {
 async function runDatabaseBackup(id: number, name: string, type: string, initiatedBy: string) {
   const outputPath = path.join(backupDirectory, `${name}.dump`);
   try {
-    const databaseUrl = process.env.SUPABASE_DB_URL ?? process.env.DATABASE_URL;
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL;
     if (!databaseUrl) throw new Error("Database connection is not configured");
     await mkdir(backupDirectory, { recursive: true });
     const args = ["--dbname", databaseUrl, "--format=custom", "--file", outputPath];
