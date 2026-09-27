@@ -11,7 +11,7 @@ import {
 
 const inputClass = 'mt-1 bg-white/[0.04] border-white/[0.1] text-white';
 const statusClass: Record<string, string> = { pending: 'bg-amber-500/12 text-amber-400 border-amber-500/25', cleared: 'bg-emerald-500/12 text-emerald-400 border-emerald-500/25', bounced: 'bg-red-500/12 text-red-400 border-red-500/25', cancelled: 'bg-white/[0.06] text-white/35 border-white/[0.1]' };
-const money = (value: string) => '$' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (value: string) => '₹' + Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block text-xs text-white/60">{label}{children}</label>; }
 

@@ -20,7 +20,7 @@ const STATUS_COLORS: Record<ReconciliationStatus, string> = {
 
 function fmt(v: string) {
   const n = parseFloat(v);
-  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n < 0 ? '-₹' : '₹') + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function TableSkeleton() {

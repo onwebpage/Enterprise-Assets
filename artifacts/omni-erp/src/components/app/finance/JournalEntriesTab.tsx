@@ -138,10 +138,10 @@ function JEDetailPanel({ je, onClose }: { je: JournalEntry; onClose: () => void 
                       </td>
                       <td className="px-3 py-2 text-xs text-white/50">{line.description || '—'}</td>
                       <td className="px-3 py-2 text-xs tabular-nums text-emerald-400 font-medium">
-                        {parseFloat(line.debit) > 0 ? `$${parseFloat(line.debit).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
+                        {parseFloat(line.debit) > 0 ? `₹${parseFloat(line.debit).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
                       </td>
                       <td className="px-3 py-2 text-xs tabular-nums text-red-400 font-medium">
-                        {parseFloat(line.credit) > 0 ? `$${parseFloat(line.credit).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
+                        {parseFloat(line.credit) > 0 ? `₹${parseFloat(line.credit).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
                       </td>
                     </tr>
                   ))}

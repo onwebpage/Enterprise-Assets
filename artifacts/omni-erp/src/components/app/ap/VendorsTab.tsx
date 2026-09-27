@@ -156,7 +156,7 @@ export default function VendorsTab() {
                 <td className="px-4 py-3">
                   <span className={cn('text-sm font-semibold tabular-nums',
                     parseFloat(v.totalOutstanding ?? '0') > 0 ? 'text-amber-400' : 'text-white/40')}>
-                    ${parseFloat(v.totalOutstanding ?? '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{parseFloat(v.totalOutstanding ?? '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   {(v.billCount ?? 0) > 0 && <div className="text-[11px] text-white/25">{v.billCount} bill{v.billCount !== 1 ? 's' : ''}</div>}
                 </td>

@@ -10,7 +10,7 @@ function fmtMoney(v: string | number, parens = false): string {
   const n = typeof v === 'string' ? parseFloat(v) : v;
   const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (parens && n < 0) return `(${abs})`;
-  return `$${abs}`;
+  return `₹${abs}`;
 }
 
 // ── Row components ────────────────────────────────────────────────────────────

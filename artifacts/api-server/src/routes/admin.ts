@@ -12,7 +12,7 @@ import { getAllCanonicalModuleKeys } from "../lib/rbac";
 const router = Router();
 router.use(requireAdminAuth);
 const execFileAsync = promisify(execFile);
-const backupDirectory = process.env.ADMIN_BACKUP_DIR ?? "/tmp/omnierp-backups";
+const backupDirectory = process.env.ADMIN_BACKUP_DIR ?? "/tmp/zorvanierp-backups";
 const tenantStatuses = new Set(["active", "suspended", "inactive"]);
 const userStatuses = new Set(["active", "inactive", "suspended"]);
 const subscriptionStatuses = new Set(["active", "trial", "suspended", "cancelled"]);

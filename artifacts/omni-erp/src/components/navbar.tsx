@@ -195,7 +195,7 @@ export function Navbar() {
               <div className="w-3.5 h-3.5 border-2 border-white rounded-sm rotate-45 group-hover:rotate-90 transition-transform duration-500 ease-out" />
             </div>
             <span className="text-[17px] font-bold tracking-tight text-white">
-              OmniERP
+              ZorvanI ERP
             </span>
           </Link>
 

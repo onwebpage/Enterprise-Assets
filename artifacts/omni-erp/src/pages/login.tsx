@@ -65,7 +65,7 @@ export default function Login() {
                 <rect x="13" y="13" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.9" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">OmniERP</span>
+            <span className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">ZorvanI ERP</span>
           </Link>
         </motion.div>
 
@@ -120,7 +120,7 @@ export default function Login() {
               <rect x="13" y="13" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.9" />
             </svg>
           </div>
-          <span className="text-lg font-bold tracking-tight">OmniERP</span>
+          <span className="text-lg font-bold tracking-tight">ZorvanI ERP</span>
         </div>
 
         <motion.div
@@ -130,9 +130,9 @@ export default function Login() {
           className="w-full max-w-[400px] relative z-10"
         >
           <div className="mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Sign in to OmniERP</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Sign in to ZorvanI ERP</h1>
             <p className="text-sm text-muted-foreground/60">
-              New to OmniERP?{' '}
+              New to ZorvanI ERP?{' '}
               <Link href="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors">
                 Start a free trial
               </Link>
@@ -225,7 +225,7 @@ export default function Login() {
         </motion.div>
 
         <p className="absolute bottom-6 text-[11px] text-muted-foreground/30 text-center">
-          © 2025 OmniERP Inc. ·{' '}
+          © 2025 ZorvanI ERP ·{' '}
           <span className="hover:text-muted-foreground/50 cursor-pointer transition-colors">Privacy</span>
           {' · '}
           <span className="hover:text-muted-foreground/50 cursor-pointer transition-colors">Terms</span>

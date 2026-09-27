@@ -63,7 +63,7 @@ function number(value: unknown, fractionDigits = 2) {
 }
 
 function money(value: unknown) {
-  return `$${number(value)}`;
+  return `₹${number(value)}`;
 }
 
 function readableError(error: unknown) {

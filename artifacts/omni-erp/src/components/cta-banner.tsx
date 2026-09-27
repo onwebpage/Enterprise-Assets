@@ -30,7 +30,7 @@ export function CTABanner() {
             enterprise operations?
           </h2>
           <p className="text-[17px] text-slate-400 mb-10 max-w-xl mx-auto leading-relaxed">
-            Join 10,000+ businesses running on OmniERP. Start your free trial
+            Join 10,000+ businesses running on ZorvanI ERP. Start your free trial
             today — full access, no credit card required.
           </p>
 

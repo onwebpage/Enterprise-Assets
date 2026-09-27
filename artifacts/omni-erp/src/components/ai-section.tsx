@@ -64,7 +64,7 @@ export function AISection() {
           className="text-center mb-16"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-accent/20 bg-accent/10 text-accent text-[11px] uppercase tracking-[0.15em] font-medium mb-6">
-            OmniERP AI
+            ZorvanI ERP AI
           </div>
           <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight text-white">
             An intelligence layer that
@@ -90,7 +90,7 @@ export function AISection() {
                 </div>
                 <div>
                   <div className="text-[14px] font-semibold text-white">
-                    OmniERP AI
+                    ZorvanI ERP AI
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -164,7 +164,7 @@ export function AISection() {
               <div className="bg-white/5 border border-white/10 rounded-lg flex items-center px-3 py-2">
                 <input
                   type="text"
-                  placeholder="Ask OmniERP AI..."
+                  placeholder="Ask ZorvanI ERP AI..."
                   className="bg-transparent border-none outline-none text-[13px] text-white w-full placeholder:text-slate-500"
                   disabled
                 />

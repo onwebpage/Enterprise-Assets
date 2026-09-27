@@ -187,10 +187,10 @@ export default function TrialBalanceTab() {
             )}>
               <td className="px-4 py-3 text-sm font-bold text-white" colSpan={3}>Totals</td>
               <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">
-                ${parseFloat(totalDebit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{parseFloat(totalDebit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
               <td className="px-4 py-3 text-sm font-bold text-white tabular-nums text-right">
-                ${parseFloat(totalCredit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₹{parseFloat(totalCredit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
             {!balanced && (

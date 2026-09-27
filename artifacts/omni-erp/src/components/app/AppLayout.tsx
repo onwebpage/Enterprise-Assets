@@ -198,7 +198,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
               exit={{ opacity: 0, width: 0 }}
               className="font-bold text-white text-lg tracking-tight overflow-hidden whitespace-nowrap"
             >
-              OmniERP
+              ZorvanI ERP
             </motion.span>
           )}
         </AnimatePresence>

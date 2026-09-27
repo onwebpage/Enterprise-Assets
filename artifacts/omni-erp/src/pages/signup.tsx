@@ -78,7 +78,7 @@ export default function Signup() {
                 <rect x="13" y="13" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.9" />
               </svg>
             </div>
-            <span className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">OmniERP</span>
+            <span className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">ZorvanI ERP</span>
           </Link>
         </motion.div>
 
@@ -121,7 +121,7 @@ export default function Signup() {
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
             <div className="w-4 h-4 border-2 border-white rounded-sm rotate-45" />
           </div>
-          <span className="text-lg font-bold tracking-tight">OmniERP</span>
+          <span className="text-lg font-bold tracking-tight">ZorvanI ERP</span>
         </div>
 
         <motion.div
@@ -131,7 +131,7 @@ export default function Signup() {
           className="w-full max-w-[440px] relative z-10"
         >
           <div className="mb-7">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Create your OmniERP account</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">Create your ZorvanI ERP account</h1>
             <p className="text-sm text-muted-foreground/60">
               Already have an account?{' '}
               <Link href="/login" className="text-primary hover:text-primary/80 font-medium transition-colors">
@@ -258,12 +258,12 @@ export default function Signup() {
           </form>
 
           <p className="text-[11px] text-muted-foreground/40 text-center leading-relaxed mt-5">
-            By creating an account, you agree to OmniERP&apos;s Terms of Service and Privacy Policy.
+            By creating an account, you agree to ZorvanI ERP&apos;s Terms of Service and Privacy Policy.
           </p>
         </motion.div>
 
         <p className="absolute bottom-6 text-[11px] text-muted-foreground/30 text-center">
-          © 2025 OmniERP Inc. · Privacy · Terms · Security
+          © 2025 ZorvanI ERP · Privacy · Terms · Security
         </p>
       </div>
     </div>

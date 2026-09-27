@@ -1,5 +1,5 @@
 /**
- * /api/ai — OmniERP AI Assistant
+ * /api/ai — ZorvanI ERP AI Assistant
  *
  * A custom rule-based AI engine that understands natural language queries,
  * fetches live ERP data, and returns intelligent formatted responses.
@@ -218,7 +218,7 @@ async function fetchOverview(orgId: number): Promise<string> {
   const bank = bankData[0];
   const po = poData[0];
 
-  return `📊 **OmniERP Business Overview** — ${today()}
+  return `📊 **ZorvanI ERP Business Overview** — ${today()}
 
 **Financial Summary**
 • Total Revenue: ${fmt(revenue)} | Collected: ${fmt(parseFloat(arData[0]?.paid ?? "0"))}
@@ -901,7 +901,7 @@ Ask me about vendor bills, payment schedules, or purchase orders for specific ve
 }
 
 function helpResponse(): string {
-  return `🤖 **OmniERP AI Assistant** — Here's what I can help you with:
+  return `🤖 **ZorvanI ERP AI Assistant** — Here's what I can help you with:
 
 **📊 Finance & Accounting**
 • "Show me the P&L summary" — Profit & Loss overview
@@ -934,7 +934,7 @@ Just type your question in natural language — I'll fetch the live data for you
 }
 
 function greetResponse(): string {
-  return `👋 **Hello! I'm OmniERP AI Assistant.**
+  return `👋 **Hello! I'm ZorvanI ERP AI Assistant.**
 
 I'm connected to your live ERP data and ready to help you get insights instantly.
 

@@ -10,7 +10,7 @@ import { useBalanceSheet, type BSRow } from '@/hooks/useGeneralLedger';
 function fmtAmt(v: string | number): string {
   const n = typeof v === 'string' ? parseFloat(v) : v;
   const abs = Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return n < 0 ? `(${abs})` : `$${abs}`;
+  return n < 0 ? `(${abs})` : `₹${abs}`;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────

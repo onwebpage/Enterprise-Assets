@@ -29,7 +29,7 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 function fmt(v: string) {
-  return '$' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '₹' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function TableSkeleton() {

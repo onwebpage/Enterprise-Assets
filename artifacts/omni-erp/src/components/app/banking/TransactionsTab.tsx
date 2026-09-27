@@ -21,7 +21,7 @@ const STATUS_COLORS: Record<BankTransactionStatus, string> = {
 };
 
 function fmt(v: string) {
-  return '$' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '₹' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function TableSkeleton() {

@@ -101,7 +101,7 @@ export default function ReconciliationFormModal({ open, onClose, onSubmit, isSub
                       <p className="text-[11px] text-white/40">{txn.transactionDate}</p>
                     </div>
                     <span className={cn('text-xs font-semibold tabular-nums ml-auto', txn.type === 'credit' ? 'text-emerald-400' : 'text-red-400')}>
-                      {txn.type === 'debit' ? '-' : '+'}${parseFloat(txn.amount).toFixed(2)}
+                      {txn.type === 'debit' ? '-' : '+'}₹{parseFloat(txn.amount).toFixed(2)}
                     </span>
                   </button>
                 ))}

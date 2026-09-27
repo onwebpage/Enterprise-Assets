@@ -190,7 +190,7 @@ export async function ensureAuthSchema(): Promise<void> {
     ON CONFLICT (slug) DO NOTHING;
 
     INSERT INTO billing_plans (name, slug, description, price_monthly, price_yearly, max_users, max_modules, max_storage_gb, max_api_calls_monthly, features, is_active, is_popular, sort_order)
-    VALUES ('Enterprise', 'enterprise', 'Full OmniERP access', 0, 0, 9999, 999, 1000, 10000000, '[]'::jsonb, true, true, 0)
+    VALUES ('Enterprise', 'enterprise', 'Full ZorvanI ERP access', 0, 0, 9999, 999, 1000, 10000000, '[]'::jsonb, true, true, 0)
     ON CONFLICT (slug) DO NOTHING;
 
     -- Enable all saas_features for existing plans

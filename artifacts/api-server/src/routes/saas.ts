@@ -834,7 +834,7 @@ router.post("/whitelabel", async (req, res) => {
       .insert(saasWhitelabel)
       .values({
         orgId: parseInt(orgId),
-        productName: productName || "OmniERP",
+        productName: productName || "ZorvanI ERP",
         logoUrl, faviconUrl,
         primaryColor: primaryColor || "#2563EB",
         accentColor: accentColor || "#06B6D4",

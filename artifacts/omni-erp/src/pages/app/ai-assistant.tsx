@@ -387,7 +387,7 @@ export default function AIAssistant() {
                 <Bot className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="font-semibold text-white">OmniERP AI</p>
+                <p className="font-semibold text-white">ZorvanI ERP AI</p>
                 <p className="text-xs text-white/40 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full inline-block animate-pulse" />
                   Online · Powered by live ERP data
@@ -419,7 +419,7 @@ export default function AIAssistant() {
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2">How can I help you today?</h2>
                 <p className="text-white/40 text-sm max-w-sm mb-8">
-                  I have full access to your live OmniERP data. Ask me anything about finance, sales, inventory, HR, and more.
+                  I have full access to your live ZorvanI ERP data. Ask me anything about finance, sales, inventory, HR, and more.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl w-full">
                   {suggestions.map((s) => (
@@ -511,7 +511,7 @@ export default function AIAssistant() {
               </button>
             </div>
             <p className="text-[10px] text-white/20 text-center mt-2">
-              OmniERP AI reads live data from your database. Ask in plain English.
+              ZorvanI ERP AI reads live data from your database. Ask in plain English.
             </p>
           </div>
         </div>

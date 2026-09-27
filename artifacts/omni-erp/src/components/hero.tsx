@@ -67,7 +67,7 @@ export function Hero() {
             </h1>
 
             <p className="text-[17px] text-slate-400 leading-relaxed max-w-lg">
-              OmniERP unifies finance, operations, supply chain, HR, and CRM
+              ZorvanI ERP unifies finance, operations, supply chain, HR, and CRM
               into a single AI-powered command center — built for the scale,
               security, and complexity of modern enterprise.
             </p>
@@ -97,7 +97,7 @@ export function Hero() {
                 </div>
               </div>
               <div>
-                <div className="text-3xl font-bold tabular-nums">$2T+</div>
+                <div className="text-3xl font-bold tabular-nums">₹2T+</div>
                 <div className="text-[13px] text-slate-400 mt-1">Processed</div>
               </div>
               <div>
@@ -138,7 +138,7 @@ export function Hero() {
                   <div className="bg-white/5 rounded-md px-3 py-1 flex items-center gap-2 w-full max-w-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                     <span className="text-[11px] text-slate-400 font-mono">
-                      app.omnierp.io/dashboard
+                      zorvanierp.in/app/dashboard
                     </span>
                   </div>
                 </div>
@@ -150,7 +150,7 @@ export function Hero() {
                 <div className="w-[180px] bg-[#0a0f1e] border-r border-white/[0.06] flex flex-col py-4">
                   <div className="px-4 mb-6 flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-accent" />
-                    <span className="font-bold text-[14px]">OmniERP</span>
+                    <span className="font-bold text-[14px]">ZorvanI ERP</span>
                   </div>
                   <div className="flex-1 flex flex-col gap-1 px-2">
                     {sidebarItems.map((item, i) => (

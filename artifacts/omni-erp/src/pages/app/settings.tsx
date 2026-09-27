@@ -68,7 +68,7 @@ export default function SettingsPage() {
       <div className="p-6 max-w-[1200px] mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Settings</h1>
-          <p className="text-white/40 text-sm mt-0.5">Configure your OmniERP workspace</p>
+          <p className="text-white/40 text-sm mt-0.5">Configure your ZorvanI ERP workspace</p>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
@@ -664,7 +664,7 @@ function IntegrationsTab() {
   return (
     <div className="space-y-4">
       <div className="bg-[#0a0f1e] border border-white/[0.07] rounded-xl p-4">
-        <p className="text-xs text-white/40">Connect third-party services to automate workflows, sync data, and enhance your OmniERP experience.</p>
+        <p className="text-xs text-white/40">Connect third-party services to automate workflows, sync data, and enhance your ZorvanI ERP experience.</p>
       </div>
       <div className="grid grid-cols-1 gap-3">
         {INTEGRATIONS.map((intg) => (

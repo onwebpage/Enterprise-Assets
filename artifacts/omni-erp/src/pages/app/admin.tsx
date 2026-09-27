@@ -193,7 +193,7 @@ function DashboardTab() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KPI icon={Building2} label="Total Tenants" value={d?.tenants ?? 0} color="text-blue-400" />
         <KPI icon={Users} label="Total Users" value={d?.users ?? 0} color="text-purple-400" />
-        <KPI icon={DollarSign} label="Monthly Revenue" value={`$${fmt(d?.monthlyRevenue ?? 0)}`} color="text-emerald-400" />
+        <KPI icon={DollarSign} label="Monthly Revenue" value={`₹${fmt(d?.monthlyRevenue ?? 0)}`} color="text-emerald-400" />
         <KPI icon={CreditCard} label="Active Subscriptions" value={d?.activeSubscriptions ?? 0} color="text-cyan-400" />
         <KPI icon={HeadphonesIcon} label="Open Tickets" value={d?.openTickets ?? 0} color="text-orange-400" />
       </div>
@@ -608,8 +608,8 @@ function PlansSubsTab() {
             rows={plans.map(p => [
               <span className="font-medium text-white/80">{p.name}</span>,
               <span className="text-xs font-mono text-white/40">{p.slug}</span>,
-              `$${parseFloat(p.price_monthly).toFixed(2)}`,
-              `$${parseFloat(p.price_yearly).toFixed(2)}`,
+              `₹${parseFloat(p.price_monthly).toFixed(2)}`,
+              `₹${parseFloat(p.price_yearly).toFixed(2)}`,
               p.max_users ?? '∞',
               p.sub_count,
               p.is_active ? <StatusBadge s="active" /> : <StatusBadge s="inactive" />,
@@ -636,7 +636,7 @@ function PlansSubsTab() {
               s.org_name, s.plan_name,
               <StatusBadge s={s.status} />,
               s.billing_cycle,
-              `$${parseFloat(s.mrr).toFixed(2)}`,
+              `₹${parseFloat(s.mrr).toFixed(2)}`,
               s.current_users,
               fmtDate(s.started_at),
               fmtDate(s.expires_at),
@@ -685,10 +685,10 @@ function BillingTab() {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPI icon={TrendingUp} label="MRR" value={`$${fmt(overview?.mrr ?? 0)}`} color="text-emerald-400" />
-        <KPI icon={BarChart3} label="ARR" value={`$${fmt(overview?.arr ?? 0)}`} color="text-blue-400" />
+        <KPI icon={TrendingUp} label="MRR" value={`₹${fmt(overview?.mrr ?? 0)}`} color="text-emerald-400" />
+        <KPI icon={BarChart3} label="ARR" value={`₹${fmt(overview?.arr ?? 0)}`} color="text-blue-400" />
         <KPI icon={FileText} label="Total Invoices" value={overview?.totalInvoices ?? 0} color="text-purple-400" />
-        <KPI icon={DollarSign} label="Paid Revenue" value={`$${fmt(overview?.paidRevenue ?? 0)}`} color="text-cyan-400" />
+        <KPI icon={DollarSign} label="Paid Revenue" value={`₹${fmt(overview?.paidRevenue ?? 0)}`} color="text-cyan-400" />
       </div>
       <SectionHeader title="Invoices" desc="All billing invoices across tenants" />
       <DataTable loading={isLoading}
@@ -697,7 +697,7 @@ function BillingTab() {
           <span className="font-mono text-xs text-white/60">{inv.invoice_number}</span>,
           inv.org_name,
           <StatusBadge s={inv.status} />,
-          <span className="font-medium">${parseFloat(inv.total).toFixed(2)}</span>,
+          <span className="font-medium">₹{parseFloat(inv.total).toFixed(2)}</span>,
           inv.currency,
           fmtDate(inv.created_at),
           fmtDate(inv.paid_at),
@@ -987,7 +987,7 @@ function WhiteLabelTab() {
               <div><Label className="text-white/60 text-xs">Accent Color</Label><div className="flex gap-2 mt-1"><Input type="color" value={form.accentColor} onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))} className="w-10 h-9 p-1 bg-white/[0.04] border-white/[0.08] rounded-lg cursor-pointer" /><Input value={form.accentColor} onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))} className="flex-1 bg-white/[0.04] border-white/[0.08] text-white font-mono text-sm" /></div></div>
             </div>
             <div><Label className="text-white/60 text-xs">Logo URL</Label><Input value={form.logoUrl} onChange={e => setForm(f => ({ ...f, logoUrl: e.target.value }))} placeholder="https://..." className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
-            <div className="flex items-center gap-3"><Switch checked={form.hidePoweredBy} onCheckedChange={v => setForm(f => ({ ...f, hidePoweredBy: v }))} /><Label className="text-white/60">Hide "Powered by OmniERP"</Label></div>
+            <div className="flex items-center gap-3"><Switch checked={form.hidePoweredBy} onCheckedChange={v => setForm(f => ({ ...f, hidePoweredBy: v }))} /><Label className="text-white/60">Hide "Powered by ZorvanI ERP"</Label></div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)} className="text-white/50">Cancel</Button>
@@ -1039,7 +1039,7 @@ function AgenciesTab() {
           a.country ?? '—',
           `${a.commission_rate}%`,
           a.client_count,
-          a.total_commission ? `$${parseFloat(a.total_commission).toFixed(2)}` : '$0.00',
+          a.total_commission ? `₹${parseFloat(a.total_commission).toFixed(2)}` : '₹0.00',
           <StatusBadge s={a.status} />,
           <Button size="sm" variant="ghost" className="h-7 px-2 text-white/50 hover:text-white" onClick={() => openEdit(a)}><Pencil className="w-3.5 h-3.5" /></Button>
         ])}
@@ -1317,7 +1317,7 @@ function AnalyticsTab() {
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `omnierp-usage-analytics-${period}.csv`;
+    link.download = `zorvanierp-usage-analytics-${period}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -1351,7 +1351,7 @@ function AnalyticsTab() {
             <KPI icon={Users} label="Total Users" value={data.summary.users} sub={`${data.summary.active_users} active`} color="text-purple-400" />
             <KPI icon={Activity} label="Tracked Actions" value={fmt(data.summary.tracked_actions)} color="text-cyan-400" />
             <KPI icon={CreditCard} label="Active Subscriptions" value={data.summary.active_subscriptions} color="text-emerald-400" />
-            <KPI icon={DollarSign} label="Monthly Revenue" value={`$${fmt(parseFloat(data.summary.monthly_revenue))}`} color="text-orange-400" />
+            <KPI icon={DollarSign} label="Monthly Revenue" value={`₹${fmt(parseFloat(data.summary.monthly_revenue))}`} color="text-orange-400" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <Card className="bg-[#0a0f1e] border-white/[0.07]">
@@ -1382,7 +1382,7 @@ function AnalyticsTab() {
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="plan_name" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
                     <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} />
-                    <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} formatter={(v) => [`$${v}`, 'Revenue']} />
+                    <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} formatter={(v) => [`₹${v}`, 'Revenue']} />
                     <Bar dataKey="revenue" fill="#2563EB" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

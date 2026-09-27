@@ -128,7 +128,7 @@ export default function APPaymentsTab() {
                 <td className="px-4 py-3 text-sm text-white/75">{p.vendorName ?? '—'}</td>
                 <td className="px-4 py-3">
                   <span className="text-sm font-semibold text-amber-400 tabular-nums">
-                    ${parseFloat(p.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{parseFloat(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -191,7 +191,7 @@ export default function APPaymentsTab() {
         open={!!deletePayment} onClose={() => setDeletePayment(null)} onConfirm={handleDelete}
         isDeleting={deleteMut.isPending}
         title="Delete Payment"
-        description={`Delete this payment of $${parseFloat(deletePayment?.amount ?? '0').toLocaleString()}? The bill balance will be restored.`}
+        description={`Delete this payment of ₹${parseFloat(deletePayment?.amount ?? '0').toLocaleString()}? The bill balance will be restored.`}
         error={deleteError}
       />
     </>

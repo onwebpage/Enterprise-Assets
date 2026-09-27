@@ -100,13 +100,13 @@ export default function PaymentFormModal({ open, onClose, onSubmit, isSubmitting
               <option value={0} className="bg-[#0d1225]">— Select invoice —</option>
               {invoices.map((inv) => (
                 <option key={inv.id} value={inv.id} className="bg-[#0d1225]">
-                  {inv.invoiceNumber} · {inv.customerName} · ${parseFloat(inv.totalAmount).toLocaleString()} (bal: ${(parseFloat(inv.totalAmount) - parseFloat(inv.amountPaid)).toFixed(2)})
+                  {inv.invoiceNumber} · {inv.customerName} · ₹{parseFloat(inv.totalAmount).toLocaleString('en-IN')} (bal: ₹{(parseFloat(inv.totalAmount) - parseFloat(inv.amountPaid)).toFixed(2)})
                 </option>
               ))}
             </select>
             {errors.invoiceId && <p className={errorCls}>{errors.invoiceId.message}</p>}
             {remaining && !isEdit && (
-              <p className="text-[11px] text-white/35 mt-1">Remaining balance: <span className="text-white/60">${remaining}</span></p>
+              <p className="text-[11px] text-white/35 mt-1">Remaining balance: <span className="text-white/60">₹{remaining}</span></p>
             )}
           </div>
 
@@ -120,7 +120,7 @@ export default function PaymentFormModal({ open, onClose, onSubmit, isSubmitting
             <div>
               <label className={labelCls}>Amount *</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">₹</span>
                 <Input {...register('amount')} placeholder="0.00" className={cn(inputCls, 'pl-6')} />
               </div>
               {errors.amount && <p className={errorCls}>{errors.amount.message}</p>}

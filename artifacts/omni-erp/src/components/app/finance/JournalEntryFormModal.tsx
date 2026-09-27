@@ -30,8 +30,8 @@ function parseMoney(s: string): number {
 
 function fmtBalance(n: number): string {
   if (n === 0) return '—';
-  return n < 0 ? `($${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` :
-    `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return n < 0 ? `(₹${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` :
+    `₹${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -321,10 +321,10 @@ export default function JournalEntryFormModal({ open, onClose, editEntry }: Prop
                 <tr className="border-t border-white/[0.08] bg-white/[0.02]">
                   <td className="px-3 py-2.5 text-xs font-semibold text-white/50" colSpan={2}>Totals</td>
                   <td className="px-3 py-2.5 text-sm font-semibold text-emerald-400 tabular-nums">
-                    {totalDebit > 0 ? `$${totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                    {totalDebit > 0 ? `₹${totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                   </td>
                   <td className="px-3 py-2.5 text-sm font-semibold text-red-400 tabular-nums">
-                    {totalCredit > 0 ? `$${totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                    {totalCredit > 0 ? `₹${totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                   </td>
                   <td className="px-3 py-2.5">
                     {totalDebit > 0 && (

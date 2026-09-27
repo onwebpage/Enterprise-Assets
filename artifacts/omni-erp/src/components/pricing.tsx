@@ -149,7 +149,7 @@ export function Pricing() {
                 {plan.price.monthly !== null ? (
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-white tabular-nums tracking-tight">
-                      ${isYearly ? plan.price.yearly : plan.price.monthly}
+                      ₹{isYearly ? plan.price.yearly : plan.price.monthly}
                     </span>
                     <span className="text-slate-500 text-[14px]">/mo</span>
                   </div>

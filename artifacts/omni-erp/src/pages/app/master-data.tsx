@@ -214,7 +214,7 @@ export default function MasterData() {
     const csv = [columns.join(","), ...filteredRows.map((row) => columns.map((key) => `"${String((row as unknown as Record<string, unknown>)[key] ?? "").replaceAll('"', '""')}"`).join(","))].join("\n");
     const link = document.createElement("a");
     link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-    link.download = `omnierp-${entity}.csv`;
+    link.download = `zorvanierp-${entity}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };

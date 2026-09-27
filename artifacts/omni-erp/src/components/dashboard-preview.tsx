@@ -129,7 +129,7 @@ export function DashboardPreview() {
                           fontSize={10}
                           tickLine={false}
                           axisLine={false}
-                          tickFormatter={(v) => `$${v}`}
+                          tickFormatter={(v) => `₹${v}`}
                         />
                         <Area
                           type="monotone"

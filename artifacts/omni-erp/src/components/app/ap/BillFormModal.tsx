@@ -206,12 +206,12 @@ export default function BillFormModal({ open, onClose, onSubmit, isSubmitting, b
                       disabled={!canEditLines}
                       className={cn(inputCls, 'h-8 text-xs text-center', !canEditLines && 'opacity-50')} />
                     <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">$</span>
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-xs">₹</span>
                       <Input {...register(`lines.${idx}.unitPrice`)} placeholder="0.00"
                         disabled={!canEditLines}
                         className={cn(inputCls, 'h-8 text-xs pl-5', !canEditLines && 'opacity-50')} />
                     </div>
-                    <span className="text-xs text-white/60 tabular-nums text-right">${amt}</span>
+                    <span className="text-xs text-white/60 tabular-nums text-right">₹{amt}</span>
                     {canEditLines && fields.length > 1 ? (
                       <button type="button" onClick={() => remove(idx)}
                         className="p-1 rounded hover:bg-white/[0.07] text-white/20 hover:text-red-400 transition-colors">
@@ -236,7 +236,7 @@ export default function BillFormModal({ open, onClose, onSubmit, isSubmitting, b
             <div>
               <label className={labelCls}>Tax Amount</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">₹</span>
                 <Input {...register('taxAmount')} placeholder="0.00" className={cn(inputCls, 'pl-6')} />
               </div>
               {errors.taxAmount && <p className={errorCls}>{errors.taxAmount.message}</p>}
@@ -244,15 +244,15 @@ export default function BillFormModal({ open, onClose, onSubmit, isSubmitting, b
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-4 py-3 space-y-1.5">
               <div className="flex justify-between text-xs text-white/40">
                 <span>Subtotal</span>
-                <span className="tabular-nums">${subtotal.toFixed(2)}</span>
+                <span className="tabular-nums">₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs text-white/40">
                 <span>Tax</span>
-                <span className="tabular-nums">${taxAmt.toFixed(2)}</span>
+                <span className="tabular-nums">₹{taxAmt.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-white border-t border-white/[0.06] pt-1.5">
                 <span>Total</span>
-                <span className="tabular-nums">${totalAmount.toFixed(2)}</span>
+                <span className="tabular-nums">₹{totalAmount.toFixed(2)}</span>
               </div>
             </div>
           </div>

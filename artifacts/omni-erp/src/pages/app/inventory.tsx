@@ -880,7 +880,7 @@ export default function Inventory() {
   };
 
   // KPI data
-  const fmt = (v?: string) => v ? `$${parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '$0';
+  const fmt = (v?: string) => v ? `₹${parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '₹0';
   const kpis = [
     {
       label: 'Total SKUs',

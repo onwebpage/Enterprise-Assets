@@ -970,8 +970,8 @@ function PlansTab() {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <p className="text-2xl font-bold text-white">${Number(plan.priceMonthly).toLocaleString()}<span className="text-xs font-normal text-white/40">/mo</span></p>
-            <p className="text-xs text-white/30 mt-0.5">${Number(plan.priceYearly).toLocaleString()}/yr</p>
+            <p className="text-2xl font-bold text-white">₹{Number(plan.priceMonthly).toLocaleString()}<span className="text-xs font-normal text-white/40">/mo</span></p>
+            <p className="text-xs text-white/30 mt-0.5">₹{Number(plan.priceYearly).toLocaleString()}/yr</p>
             <div className="mt-3 space-y-1.5 mb-4">
               {[
                 { label: 'Users', val: plan.maxUsers === -1 ? 'Unlimited' : String(plan.maxUsers) },
@@ -1150,7 +1150,7 @@ function OnboardingTab() {
                   <h4 className={`font-bold ${PLAN_COLORS[plan.slug] ?? 'text-white'}`}>{plan.name}</h4>
                   {form.planId === String(plan.id) && <CheckCircle className="w-4 h-4 text-[#2563EB]" />}
                 </div>
-                <p className="text-xl font-bold text-white">${Number(plan.priceMonthly).toLocaleString()}<span className="text-xs font-normal text-white/40">/mo</span></p>
+                <p className="text-xl font-bold text-white">₹{Number(plan.priceMonthly).toLocaleString()}<span className="text-xs font-normal text-white/40">/mo</span></p>
                 <div className="mt-3 space-y-1">
                   {(plan.features ?? []).slice(0, 3).map(f => (
                     <div key={f} className="flex items-center gap-1.5"><CheckCircle className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" /><span className="text-[10px] text-white/50">{f}</span></div>
@@ -1251,7 +1251,7 @@ function WhiteLabelPreview({ form, orgName }: { form: WLForm; orgName: string })
   const pc = form.primaryColor || '#2563EB';
   const ac = form.accentColor || '#06B6D4';
   const bg = form.loginBackgroundColor || '#050816';
-  const name = form.productName || orgName || 'OmniERP';
+  const name = form.productName || orgName || 'ZorvanI ERP';
 
   return (
     <div className="space-y-4 sticky top-0">
@@ -1321,7 +1321,7 @@ function WhiteLabelPreview({ form, orgName }: { form: WLForm; orgName: string })
             </div>
           </div>
           {!form.hidePoweredBy && (
-            <p className="text-[8px] text-white/20 text-center mt-2">Powered by OmniERP</p>
+            <p className="text-[8px] text-white/20 text-center mt-2">Powered by ZorvanI ERP</p>
           )}
         </div>
       </div>
@@ -1639,7 +1639,7 @@ function WhiteLabelTab() {
                   )}
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-white/30">
-                      {cfg.hidePoweredBy ? 'Branding hidden' : 'Powered by OmniERP'}
+                      {cfg.hidePoweredBy ? 'Branding hidden' : 'Powered by ZorvanI ERP'}
                     </span>
                     <Badge className={`${cfg.isEnabled ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' : 'bg-white/10 text-white/30 border-white/10'} text-[9px]`}>
                       {cfg.isEnabled ? 'Active' : 'Inactive'}
@@ -1783,7 +1783,7 @@ function WhiteLabelTab() {
                   {activeSection === 'domain' && (
                     <div className="space-y-4">
                       <h4 className="font-semibold text-white flex items-center gap-2"><Globe className="w-4 h-4 text-white/40" />Custom Domain</h4>
-                      <F label="Custom Domain" hint="Point your DNS CNAME to erp.omnierp.io">
+                      <F label="Custom Domain" hint="Point your DNS CNAME to erp.zorvanierp.in">
                         <div className="flex items-center gap-2">
                           <TextIn field="customDomain" placeholder="erp.yourcompany.com" />
                           {currentConfig?.customDomain && (
@@ -1809,7 +1809,7 @@ function WhiteLabelTab() {
                             <div className="bg-[#050816] rounded p-3 font-mono text-[10px] text-white/60 space-y-1">
                               <p><span className="text-white/30">Type:</span> CNAME</p>
                               <p><span className="text-white/30">Name:</span> {currentConfig.customDomain.split('.')[0]}</p>
-                              <p><span className="text-white/30">Value:</span> erp.omnierp.io</p>
+                              <p><span className="text-white/30">Value:</span> erp.zorvanierp.in</p>
                               <p><span className="text-white/30">TTL:</span> 3600</p>
                             </div>
                           </div>
@@ -1861,10 +1861,10 @@ function WhiteLabelTab() {
                         <div className="bg-[#050816] rounded p-3 space-y-1">
                           <p className="text-[11px] text-white/70">
                             <span className="text-white/30">From: </span>
-                            {form.emailSenderName || 'OmniERP'} &lt;{form.emailReplyTo || 'noreply@omnierp.io'}&gt;
+                            {form.emailSenderName || 'ZorvanI ERP'} &lt;{form.emailReplyTo || 'noreply@zorvanierp.in'}&gt;
                           </p>
                           <p className="text-[11px] text-white/70">
-                            <span className="text-white/30">Subject: </span>Invoice INV-1042 from {form.productName || 'OmniERP'}
+                            <span className="text-white/30">Subject: </span>Invoice INV-1042 from {form.productName || 'ZorvanI ERP'}
                           </p>
                         </div>
                       </div>
@@ -1877,8 +1877,8 @@ function WhiteLabelTab() {
                       <h4 className="font-semibold text-white flex items-center gap-2"><Type className="w-4 h-4 text-white/40" />UI Options</h4>
                       <div className="flex items-center justify-between p-3 bg-white/[0.03] rounded-lg border border-white/[0.05]">
                         <div>
-                          <p className="text-sm font-medium text-white">Hide "Powered by OmniERP"</p>
-                          <p className="text-xs text-white/40 mt-0.5">Remove OmniERP attribution from login and footer</p>
+                          <p className="text-sm font-medium text-white">Hide "Powered by ZorvanI ERP"</p>
+                          <p className="text-xs text-white/40 mt-0.5">Remove ZorvanI ERP attribution from login and footer</p>
                         </div>
                         <button onClick={() => setForm(x => ({ ...x, hidePoweredBy: !x.hidePoweredBy }))}
                           className={`transition-colors ${form.hidePoweredBy ? 'text-[#2563EB]' : 'text-white/30'}`}>
@@ -2097,7 +2097,7 @@ function ConvertDialog({ trial, plans, onClose, onSubmit, loading }: {
                     <p className="text-xs text-white/40 mt-0.5">{(p.features as string[]).slice(0, 2).join(' · ')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-white">${Number(p.priceMonthly).toLocaleString()}/mo</p>
+                    <p className="text-sm font-bold text-white">₹{Number(p.priceMonthly).toLocaleString()}/mo</p>
                     {planId === p.id && <CheckCircle className="w-4 h-4 text-[#2563EB] ml-auto mt-1" />}
                   </div>
                 </button>
@@ -2898,7 +2898,7 @@ function TenantDashboardTab({ id, onBack }: { id: number | null; onBack: () => v
               { label: 'Plan', value: d.planName ?? '—', colored: true },
               { label: 'Status', value: statusKey, capitalize: true },
               { label: 'Billing', value: d.billingCycle ?? '—', capitalize: true },
-              { label: 'Price', value: d.billingCycle === 'yearly' && d.priceYearly ? `$${Number(d.priceYearly).toLocaleString()}/yr` : d.priceMonthly ? `$${Number(d.priceMonthly).toLocaleString()}/mo` : '—' },
+              { label: 'Price', value: d.billingCycle === 'yearly' && d.priceYearly ? `₹${Number(d.priceYearly).toLocaleString()}/yr` : d.priceMonthly ? `₹${Number(d.priceMonthly).toLocaleString()}/mo` : '—' },
               { label: 'Started', value: d.startedAt ? new Date(d.startedAt).toLocaleDateString() : '—' },
               { label: 'Expires', value: d.expiresAt ? new Date(d.expiresAt).toLocaleDateString() : '—' },
               ...(isTrial && d.trialEndsAt ? [{ label: 'Trial Ends', value: new Date(d.trialEndsAt).toLocaleDateString(), colored: false, capitalize: false }] : []),
@@ -3717,7 +3717,7 @@ function AgencyDrawer({
                       <Input type="number" step="0.01" value={payoutForm.commissionAmount}
                         onChange={e => setPayoutForm(x => ({ ...x, commissionAmount: e.target.value }))}
                         className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm"
-                        placeholder={payoutForm.totalMrr ? fmt((parseFloat(payoutForm.totalMrr) * Number(agency.commissionRate)) / 100).replace('$', '') : '—'} />
+                        placeholder={payoutForm.totalMrr ? fmt((parseFloat(payoutForm.totalMrr) * Number(agency.commissionRate)) / 100).replace('₹', '') : '—'} />
                     </div>
                   </div>
                   <div>

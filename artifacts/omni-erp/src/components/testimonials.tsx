@@ -5,14 +5,14 @@ const testimonials = [
     company: "Apex Manufacturing",
     metric: "47% faster month-end close",
     quote:
-      "OmniERP transformed how we run our manufacturing business. The level of integration and real-time visibility is unmatched.",
+      "ZorvanI ERP transformed how we run our manufacturing business. The level of integration and real-time visibility is unmatched.",
     author: "Rachel Martinez",
     role: "CFO",
     initial: "RM",
   },
   {
     company: "Horizon Logistics",
-    metric: "$850k saved in carrying costs",
+    metric: "₹850k saved in carrying costs",
     quote:
       "The AI-powered insights have given us a competitive edge. We can now predict inventory needs with 94% accuracy.",
     author: "David Chen",
@@ -23,7 +23,7 @@ const testimonials = [
     company: "Quantum Solutions",
     metric: "Zero downtime migration",
     quote:
-      "We evaluated SAP, Oracle, and Salesforce. OmniERP was the only platform that felt built for this decade. The mobile experience alone justified the switch.",
+      "We evaluated SAP, Oracle, and Salesforce. ZorvanI ERP was the only platform that felt built for this decade. The mobile experience alone justified the switch.",
     author: "Sarah Thompson",
     role: "CTO",
     initial: "ST",
@@ -41,7 +41,7 @@ const testimonials = [
     company: "Atlas Group",
     metric: "Active in 40+ countries",
     quote:
-      "As a multi-national corporation, we needed something that could handle complex tax scenarios across borders. OmniERP handles it effortlessly.",
+      "As a multi-national corporation, we needed something that could handle complex tax scenarios across borders. ZorvanI ERP handles it effortlessly.",
     author: "Elena Rodriguez",
     role: "Global Controller",
     initial: "ER",
@@ -59,7 +59,7 @@ const testimonials = [
     company: "Tata Nexus Enterprises",
     metric: "₹12Cr saved in operational costs",
     quote:
-      "OmniERP has been a game-changer for our operations across India. The GST compliance module and multi-language support made rollout seamless across our 18 regional offices. Our finance team now closes books in 2 days instead of 3 weeks.",
+      "ZorvanI ERP has been a game-changer for our operations across India. The GST compliance module and multi-language support made rollout seamless across our 18 regional offices. Our finance team now closes books in 2 days instead of 3 weeks.",
     author: "Arjun Mehta",
     role: "Chief Operating Officer",
     initial: "AM",

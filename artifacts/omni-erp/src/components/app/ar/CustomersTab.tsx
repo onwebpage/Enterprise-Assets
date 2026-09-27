@@ -156,7 +156,7 @@ export default function CustomersTab() {
                 <td className="px-4 py-3">
                   <span className={cn('text-sm font-semibold tabular-nums',
                     parseFloat(c.totalOutstanding ?? '0') > 0 ? 'text-amber-400' : 'text-white/40')}>
-                    ${parseFloat(c.totalOutstanding ?? '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    ₹{parseFloat(c.totalOutstanding ?? '0').toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                   {(c.invoiceCount ?? 0) > 0 && <div className="text-[11px] text-white/25">{c.invoiceCount} invoice{c.invoiceCount !== 1 ? 's' : ''}</div>}
                 </td>

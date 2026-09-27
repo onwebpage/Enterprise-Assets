@@ -51,7 +51,7 @@ export function Footer() {
                 <div className="w-2.5 h-2.5 border border-white rounded-sm rotate-45" />
               </div>
               <span className="text-[18px] font-bold text-white tracking-tight">
-                OmniERP
+                ZorvanI ERP
               </span>
             </Link>
             <p className="text-[14px] text-slate-400 mb-8 max-w-sm leading-relaxed">
@@ -96,7 +96,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/[0.05] flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-[13px] text-slate-500">
-            © {new Date().getFullYear()} OmniERP Technologies, Inc. All rights
+            © {new Date().getFullYear()} ZorvanI ERP All rights
             reserved.
           </p>
 

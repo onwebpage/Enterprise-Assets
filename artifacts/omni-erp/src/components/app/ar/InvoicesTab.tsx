@@ -29,7 +29,7 @@ const STATUS_COLORS: Record<ARInvoiceStatus, string> = {
 const PAGE_LIMIT = 25;
 
 function fmt(v: string) {
-  return '$' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return '₹' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function printText(value: unknown) {

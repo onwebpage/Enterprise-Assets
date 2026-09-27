@@ -30,7 +30,7 @@ const EMPTY_FORM: PeriodFormValues = {
 
 function money(value: string | number) {
   const amount = typeof value === "number" ? value : Number(value);
-  return `$${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function dateLabel(value: string | null) {
