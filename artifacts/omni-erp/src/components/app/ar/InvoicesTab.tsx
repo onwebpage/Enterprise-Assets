@@ -36,7 +36,19 @@ function printText(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] ?? character));
 }
 
-function printInvoice(invoice: ARInvoice, printWindow: Window) {
+function printInvoice(invoice: ARInvoice) {
+  const printFrame = document.createElement('iframe');
+  printFrame.title = `Print ${invoice.invoiceNumber}`;
+  printFrame.setAttribute('aria-hidden', 'true');
+  printFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0';
+  document.body.appendChild(printFrame);
+
+  const printWindow = printFrame.contentWindow;
+  if (!printWindow) {
+    printFrame.remove();
+    throw new Error('Could not prepare invoice for printing');
+  }
+  const printDocument = printWindow.document;
   const lines = (invoice.lines ?? []).map((line) => `
     <tr>
       <td>${printText(line.description)}</td>
@@ -46,7 +58,8 @@ function printInvoice(invoice: ARInvoice, printWindow: Window) {
     </tr>`).join('');
   const balance = (parseFloat(invoice.totalAmount) - parseFloat(invoice.amountPaid)).toFixed(2);
 
-  printWindow.document.write(`<!doctype html><html><head><title>${printText(invoice.invoiceNumber)}</title>
+  printDocument.open();
+  printDocument.write(`<!doctype html><html><head><title>${printText(invoice.invoiceNumber)}</title>
     <style>
       @page { size: A4; margin: 16mm; }
       * { box-sizing: border-box; }
@@ -83,10 +96,11 @@ function printInvoice(invoice: ARInvoice, printWindow: Window) {
       ${invoice.notes ? `<div class="notes"><div class="label">Notes</div><div style="margin-top:6px">${printText(invoice.notes)}</div></div>` : ''}
       <footer>Thank you for your business.</footer>
     </main></body></html>`);
-  printWindow.document.close();
-  printWindow.opener = null;
+  printDocument.close();
+  printWindow.addEventListener('afterprint', () => printFrame.remove(), { once: true });
+  window.setTimeout(() => printFrame.remove(), 60_000);
   printWindow.focus();
-  printWindow.setTimeout(() => printWindow.print(), 250);
+  printWindow.print();
 }
 
 function downloadInvoicePdf(invoice: ARInvoice) {
@@ -386,15 +400,9 @@ export default function InvoicesTab() {
                         </button>
                       )}
                       <button onClick={() => {
-                        const printWindow = window.open('', '_blank');
-                        if (!printWindow) {
-                          toast({ title: 'Allow pop-ups to print this invoice', variant: 'destructive' });
-                          return;
-                        }
                         try {
-                          printInvoice(inv, printWindow);
+                          printInvoice(inv);
                         } catch (error) {
-                          printWindow.close();
                           toast({ title: 'Could not open invoice for printing', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
                         }
                       }}
