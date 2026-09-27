@@ -84,6 +84,7 @@ function printInvoice(invoice: ARInvoice, printWindow: Window) {
       <footer>Thank you for your business.</footer>
     </main></body></html>`);
   printWindow.document.close();
+  printWindow.opener = null;
   printWindow.focus();
   printWindow.setTimeout(() => printWindow.print(), 250);
 }
@@ -382,7 +383,6 @@ export default function InvoicesTab() {
                           toast({ title: 'Allow pop-ups to print this invoice', variant: 'destructive' });
                           return;
                         }
-                        printWindow.opener = null;
                         void api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`)
                           .then((response) => printInvoice(response.data, printWindow))
                           .catch((error: unknown) => {
