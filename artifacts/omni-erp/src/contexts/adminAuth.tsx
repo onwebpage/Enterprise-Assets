@@ -14,7 +14,7 @@ interface AdminAuthContextType {
   admin: AdminUser | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   getToken: () => string | null;
 }
 
@@ -80,13 +80,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     setAdmin(r.data.admin);
   }
 
-  function logout() {
+  async function logout() {
     const token = localStorage.getItem(ADMIN_TOKEN_KEY);
     if (token) {
-      fetch(`${BASE}/api/admin/auth/logout`, {
+      await fetch(`${BASE}/api/admin/auth/logout`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-      }).catch(() => {});
+      }).catch(() => undefined);
     }
     localStorage.removeItem(ADMIN_TOKEN_KEY);
     setAdmin(null);

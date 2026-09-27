@@ -134,6 +134,10 @@ router.post("/login", async (req, res) => {
 // POST /api/admin/auth/logout
 router.post("/logout", requireAdminAuth, async (req: AdminRequest, res) => {
   try {
+    await pool.query(
+      "UPDATE super_admins SET session_version = session_version + 1, updated_at = NOW() WHERE id = $1",
+      [req.admin!.adminId]
+    );
     const ip = req.socket.remoteAddress ?? "unknown";
     await pool.query(
       "INSERT INTO admin_audit_logs (admin_id, admin_username, action, resource, ip_address) VALUES ($1, $2, $3, $4, $5)",

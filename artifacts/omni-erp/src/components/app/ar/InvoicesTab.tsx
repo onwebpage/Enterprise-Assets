@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard, Printer } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard, Printer, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 import {
   useARInvoices, useARCustomers, useARInvoice,
   useCreateARInvoice, useUpdateARInvoice, useDeleteARInvoice,
@@ -34,10 +36,7 @@ function printText(value: unknown) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] ?? character));
 }
 
-function printInvoice(invoice: ARInvoice) {
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer');
-  if (!printWindow) return;
-
+function printInvoice(invoice: ARInvoice, printWindow: Window) {
   const lines = (invoice.lines ?? []).map((line) => `
     <tr>
       <td>${printText(line.description)}</td>
@@ -89,6 +88,113 @@ function printInvoice(invoice: ARInvoice) {
   printWindow.setTimeout(() => printWindow.print(), 250);
 }
 
+function downloadInvoicePdf(invoice: ARInvoice) {
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 16;
+  let y = 20;
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(20);
+  pdf.setTextColor(37, 99, 235);
+  pdf.text('INVOICE', margin, y);
+  pdf.setTextColor(23, 32, 51);
+  pdf.setFontSize(17);
+  pdf.text(invoice.invoiceNumber, pageWidth - margin, y, { align: 'right' });
+  y += 9;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  pdf.setTextColor(71, 85, 105);
+  pdf.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - margin, y, { align: 'right' });
+  y += 13;
+
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(23, 32, 51);
+  pdf.text('Bill To', margin, y);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(invoice.customerName || 'Customer', margin, y + 6);
+  pdf.text(`Invoice date: ${invoice.issueDate}`, pageWidth - margin, y, { align: 'right' });
+  pdf.text(`Due date: ${invoice.dueDate}`, pageWidth - margin, y + 6, { align: 'right' });
+  y += 17;
+
+  const drawTableHeader = () => {
+    pdf.setFillColor(23, 32, 51);
+    pdf.rect(margin, y, pageWidth - margin * 2, 9, 'F');
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text('Description', margin + 3, y + 6);
+    pdf.text('Qty', 130, y + 6, { align: 'right' });
+    pdf.text('Unit price', 164, y + 6, { align: 'right' });
+    pdf.text('Amount', pageWidth - margin - 3, y + 6, { align: 'right' });
+    y += 9;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(23, 32, 51);
+  };
+
+  drawTableHeader();
+  for (const line of invoice.lines ?? []) {
+    const descriptionLines = pdf.splitTextToSize(line.description || '', 86);
+    const rowHeight = Math.max(8, descriptionLines.length * 4.5 + 3);
+    if (y + rowHeight > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+      drawTableHeader();
+    }
+    pdf.setFontSize(9);
+    pdf.text(descriptionLines, margin + 3, y + 5);
+    pdf.text(String(line.quantity), 130, y + 5, { align: 'right' });
+    pdf.text(fmt(line.unitPrice), 164, y + 5, { align: 'right' });
+    pdf.text(fmt(line.amount), pageWidth - margin - 3, y + 5, { align: 'right' });
+    y += rowHeight;
+    pdf.setDrawColor(226, 232, 240);
+    pdf.line(margin, y, pageWidth - margin, y);
+  }
+
+  if (y + 38 > pageHeight - margin) {
+    pdf.addPage();
+    y = margin;
+  }
+  y += 8;
+  const totalLabelX = pageWidth - margin - 62;
+  const totalValueX = pageWidth - margin;
+  const totals = [
+    ['Subtotal', fmt(invoice.subtotal)],
+    ['Tax', fmt(invoice.taxAmount)],
+    ['Total', fmt(invoice.totalAmount)],
+    ['Paid', fmt(invoice.amountPaid)],
+    ['Balance due', fmt((parseFloat(invoice.totalAmount) - parseFloat(invoice.amountPaid)).toFixed(2))],
+  ];
+  totals.forEach(([label, value], index) => {
+    if (index === 2) {
+      pdf.setDrawColor(23, 32, 51);
+      pdf.line(totalLabelX, y - 3, totalValueX, y - 3);
+      pdf.setFont('helvetica', 'bold');
+    }
+    if (index === 4) pdf.setTextColor(37, 99, 235);
+    pdf.text(label, totalLabelX, y);
+    pdf.text(value, totalValueX, y, { align: 'right' });
+    y += 6;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(23, 32, 51);
+  });
+
+  if (invoice.notes) {
+    y += 8;
+    const notes = pdf.splitTextToSize(`Notes: ${invoice.notes}`, pageWidth - margin * 2);
+    if (y + notes.length * 5 > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+    }
+    pdf.setFontSize(9);
+    pdf.text(notes, margin, y);
+  }
+
+  const safeName = invoice.invoiceNumber.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'invoice';
+  pdf.save(`${safeName}.pdf`);
+}
+
 function TableSkeleton() {
   return (
     <>
@@ -106,6 +212,7 @@ function TableSkeleton() {
 }
 
 export default function InvoicesTab() {
+  const { toast } = useToast();
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage]               = useState(1);
@@ -262,19 +369,37 @@ export default function InvoicesTab() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-0.5">
                       {canPay && (
                         <button onClick={() => { setPayError(null); setPayInvoice(inv); }}
                           className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-emerald-400 transition-colors" title="Record payment">
                           <CreditCard className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <button onClick={async () => {
-                        const response = await api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`);
-                        printInvoice(response.data);
+                      <button onClick={() => {
+                        const printWindow = window.open('', '_blank');
+                        if (!printWindow) {
+                          toast({ title: 'Allow pop-ups to print this invoice', variant: 'destructive' });
+                          return;
+                        }
+                        printWindow.opener = null;
+                        void api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`)
+                          .then((response) => printInvoice(response.data, printWindow))
+                          .catch((error: unknown) => {
+                            printWindow.close();
+                            toast({ title: 'Could not open invoice for printing', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+                          });
                       }}
                         className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors" title="Print Invoice">
                         <Printer className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => {
+                        void api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`)
+                          .then((response) => downloadInvoicePdf(response.data))
+                          .catch((error: unknown) => toast({ title: 'Could not download invoice PDF', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }));
+                      }}
+                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors" title="Download PDF">
+                        <Download className="w-3.5 h-3.5" />
                       </button>
                       {canEdit && (
                         <button onClick={() => openEdit(inv)}
