@@ -58,10 +58,10 @@ async function seedAR() {
 
   // ── Customers ─────────────────────────────────────────────────────────────
   const customerRows = await db.insert(arCustomers).values([
-    { orgId, name: "Stratford Industries",  email: "ap@stratford.com",    phone: "+1 312 555 0101", city: "Chicago",      country: "USA",    creditLimit: "500000", currency: "USD", status: "active" },
-    { orgId, name: "Apex Global Inc.",      email: "billing@apexglobal.io", phone: "+1 212 555 0202", city: "New York",   country: "USA",    creditLimit: "750000", currency: "USD", status: "active" },
-    { orgId, name: "Meridian Corp",         email: "finance@meridian.com", phone: "+1 512 555 0303", city: "Austin",      country: "USA",    creditLimit: "250000", currency: "USD", status: "active" },
-    { orgId, name: "BlueSky Technologies",  email: "ar@bluesky.tech",      phone: "+1 415 555 0404", city: "San Francisco", country: "USA",  creditLimit: "300000", currency: "USD", status: "active" },
+    { orgId, name: "Stratford Industries",  email: "ap@stratford.com",    phone: "+1 312 555 0101", city: "Chicago",      country: "USA",    creditLimit: "500000", currency: "INR", status: "active" },
+    { orgId, name: "Apex Global Inc.",      email: "billing@apexglobal.io", phone: "+1 212 555 0202", city: "New York",   country: "USA",    creditLimit: "750000", currency: "INR", status: "active" },
+    { orgId, name: "Meridian Corp",         email: "finance@meridian.com", phone: "+1 512 555 0303", city: "Austin",      country: "USA",    creditLimit: "250000", currency: "INR", status: "active" },
+    { orgId, name: "BlueSky Technologies",  email: "ar@bluesky.tech",      phone: "+1 415 555 0404", city: "San Francisco", country: "USA",  creditLimit: "300000", currency: "INR", status: "active" },
     { orgId, name: "Vertex Solutions GmbH", email: "rechnungen@vertex.de", phone: "+49 30 555 0505", city: "Berlin",      country: "Germany", creditLimit: "200000", currency: "EUR", status: "active" },
     { orgId, name: "NovaTech Ltd",          email: "accounts@novatech.io", phone: "+44 20 5550 0606", city: "London",     country: "UK",     creditLimit: "150000", currency: "GBP", status: "inactive" },
   ]).onConflictDoNothing().returning();

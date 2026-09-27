@@ -146,7 +146,7 @@ async function main() {
   // ── Forecasts ──────────────────────────────────────────────────────────────
   const [forecast] = await db.insert(forecasts).values({
     orgId, forecastNumber: "FCST-0001", name: "FY2027 Revenue & Cost Forecast", method: "manual",
-    status: "approved", currency: "USD", notes: "12-month rolling forecast",
+    status: "approved", currency: "INR", notes: "12-month rolling forecast",
   }).returning();
 
   const now = new Date();

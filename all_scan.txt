@@ -1,0 +1,25 @@
+=== ALL FILES DETAILED SCAN ===
+
+USD -> artifacts\omni-erp\src\components\app\ap\VendorFormModal.tsx:160: {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+USD -> artifacts\omni-erp\src\components\app\ar\CustomerFormModal.tsx:149: {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+USD -> artifacts\omni-erp\src\pages\app\customer-portal.tsx:335: {['INR', 'USD', 'EUR', 'GBP'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+USD -> artifacts\omni-erp\src\pages\app\saas.tsx:1131: {['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map(c => <option key={c} value={c}>{c}</option>)}
+USD -> artifacts\omni-erp\src\pages\app\settings.tsx:196: {['INR','USD','EUR','GBP','AUD','CAD','SGD','AED','JPY'].map(c => (
+USD -> lib\db\drizzle\0000_previous_miss_america.sql:19: "currency" text DEFAULT 'USD',
+USD -> lib\db\drizzle\0000_previous_miss_america.sql:173: "currency" text DEFAULT 'USD' NOT NULL,
+USD -> lib\db\drizzle\0000_previous_miss_america.sql:276: "currency" text DEFAULT 'USD' NOT NULL,
+USD -> lib\db\drizzle\0000_previous_miss_america.sql:291: "currency" text DEFAULT 'USD' NOT NULL,
+BRANDING -> lib\db\src\seed-financial-controls.ts:91: const orgId = org?.id ?? (await db.select({ id: users.orgId }).from(users).where(eq(users.email, "admin@omnierp.io")).limit(1))[0]?.id;
+BRANDING -> lib\db\src\seed-financial-controls.ts:95: getUserId(orgId, "admin@zorvani.io").then(id => id ?? getUserId(orgId, "admin@omnierp.io")),
+BRANDING -> lib\db\src\seed.ts:147: { orgId, email: "admin@omnierp.io",  passwordHash: await pw("Admin@1234"),  firstName: "James",  lastName: "Doyle",   roleId: adminRoleId, status: "active", mfaEnabled: true  },
+BRANDING -> QA_REPORT_FINAL_CERTIFICATION.md:1: # OmniERP Final Production Certification Audit
+BRANDING -> QA_REPORT_PRODUCTION.md:1: # OmniERP Production QA Audit Report
+BRANDING -> QA_REPORT_PRODUCTION.md:10: A comprehensive end-to-end QA audit was performed on the deployed OmniERP application across all ERP modules, APIs, authentication, RBAC, feature management, Super Admin panel, and integrations.
+BRANDING -> QA_REPORT_PRODUCTION.md:336: The OmniERP application is **production-ready** with robust authentication, working RBAC, functional ERP modules, and proper data persistence. All critical systems are operational. The minor issues identified are mostly by design (permission enforcement, routing) and do not impact core functionality.
+BRANDING -> replit.md:1: # OmniERP / BizOS
+USD -> scripts\find-currency-branding.js:34: // Check for USD or US Dollar or Dollar in text
+BRANDING -> scripts\find-currency-branding.js:46: if (/OmniERP|Omni ERP|BizOS|Kepwe/i.test(line)) {
+USD -> scripts\find-currency-branding.js:55: output += `\nFound ${usdMatches.length} USD / dollar matches:\n`;
+USD -> scripts\setup-multi-currency.sql:18: ('USD', 'US Dollar', '$', 2, 'active', true),
+BRANDING -> scripts\src\run-qa-get-sweep.ts:15: body: JSON.stringify({ email: "admin@omnierp.io", password: "Admin@1234" }),
+BRANDING -> scripts\src\run-qa-mutation-probes.ts:9: const loginResponse = await fetch(`${base}/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "admin@omnierp.io", password: "Admin@1234" }) });

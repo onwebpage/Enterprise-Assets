@@ -87,12 +87,12 @@ async function findOrCreateRun(value: {
 }
 
 async function seed() {
-  const [org] = await db.select({ id: users.orgId }).from(users).where(eq(users.email, "admin@omnierp.io")).limit(1);
-  const orgId = org?.id;
+  const [org] = await db.select({ id: users.orgId }).from(users).where(eq(users.email, "admin@zorvani.io")).limit(1);
+  const orgId = org?.id ?? (await db.select({ id: users.orgId }).from(users).where(eq(users.email, "admin@omnierp.io")).limit(1))[0]?.id;
   if (!orgId) throw new Error("Seed the core organization and admin user before financial controls.");
 
   const [adminId, accountantId, reviewerId] = await Promise.all([
-    getUserId(orgId, "admin@omnierp.io"),
+    getUserId(orgId, "admin@zorvani.io").then(id => id ?? getUserId(orgId, "admin@omnierp.io")),
     getUserId(orgId, "r.shaw@apexglobal.io"),
     getUserId(orgId, "a.park@apexglobal.io"),
   ]);

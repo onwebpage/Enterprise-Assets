@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS forecasts (
   name text NOT NULL,
   method text NOT NULL DEFAULT 'manual',
   status text NOT NULL DEFAULT 'draft',
-  currency text NOT NULL DEFAULT 'USD',
+  currency text NOT NULL DEFAULT 'INR',
   notes text,
   created_by integer,
   created_at timestamp NOT NULL DEFAULT now(),

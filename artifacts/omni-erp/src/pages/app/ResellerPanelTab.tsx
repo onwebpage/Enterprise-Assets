@@ -521,7 +521,7 @@ function DealForm({ resellers, onClose, onSave }: {
                 className="bg-[#0a0f1e] border-white/[0.08] text-white h-9 text-sm" placeholder="cto@prospect.com" />
             </div>
             <div>
-              <label className="text-xs text-white/40 mb-1 block">Est. MRR ($)</label>
+              <label className="text-xs text-white/40 mb-1 block">Est. MRR (₹)</label>
               <Input value={form.estimatedMrr} onChange={f('estimatedMrr')} type="number"
                 className="bg-[#0a0f1e] border-white/[0.08] text-white h-9 text-sm" placeholder="2500" />
             </div>
@@ -627,7 +627,7 @@ function TierForm({ initial, onClose, onSave }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-white/40 mb-1 block">Min MRR ($)</label>
+              <label className="text-xs text-white/40 mb-1 block">Min MRR (₹)</label>
               <Input value={form.minMrrRequired} onChange={f('minMrrRequired')} type="number"
                 className="bg-[#0a0f1e] border-white/[0.08] text-white h-9 text-sm" placeholder="15000" />
             </div>

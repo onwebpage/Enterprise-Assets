@@ -61,7 +61,7 @@ export const saasWhitelabel = pgTable("saas_whitelabel", {
   id: serial("id").primaryKey(),
   orgId: integer("org_id").notNull().unique().references(() => organizations.id),
   isEnabled: boolean("is_enabled").notNull().default(true),
-  productName: text("product_name").notNull().default("OmniERP"),
+  productName: text("product_name").notNull().default("ZorvanI ERP"),
   logoUrl: text("logo_url"),
   faviconUrl: text("favicon_url"),
   primaryColor: text("primary_color").notNull().default("#2563EB"),

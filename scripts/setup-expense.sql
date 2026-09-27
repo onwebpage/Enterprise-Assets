@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS expense_items (
   expense_date text NOT NULL,
   description text NOT NULL,
   amount numeric(15,2) NOT NULL DEFAULT 0,
-  currency text NOT NULL DEFAULT 'USD',
+  currency text NOT NULL DEFAULT 'INR',
   payment_method text,
   vendor text,
   receipt_number text,

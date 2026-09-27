@@ -70,7 +70,7 @@ async function main() {
     orgId, claimNumber: "EXP-0001", employeeId: emp1.id, employeeName: `${emp1.firstName} ${emp1.lastName}`,
     department: "Engineering", title: "Client visit to Austin", description: "Travel and accommodation for client meeting",
     claimDate: "2026-08-10", totalAmount: "1250", status: "reimbursed",
-    submittedDate: "2026-08-12", approvedDate: "2026-08-14", approvedBy: "admin@omnierp.io",
+    submittedDate: "2026-08-12", approvedDate: "2026-08-14", approvedBy: "admin@zorvani.io",
     reimbursedDate: "2026-08-16", reimbursementMethod: "bank_transfer",
     notes: "Client meeting at Austin R&D Center",
   }).returning();
@@ -85,7 +85,7 @@ async function main() {
     orgId, claimNumber: "EXP-0002", employeeId: emp2.id, employeeName: `${emp2.firstName} ${emp2.lastName}`,
     department: "Sales & Marketing", title: "Sales conference travel", description: "Travel to industry conference",
     claimDate: "2026-08-15", totalAmount: "850", status: "approved",
-    submittedDate: "2026-08-16", approvedDate: "2026-08-18", approvedBy: "admin@omnierp.io",
+    submittedDate: "2026-08-16", approvedDate: "2026-08-18", approvedBy: "admin@zorvani.io",
     notes: "Annual industry conference",
   }).returning();
 

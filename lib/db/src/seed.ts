@@ -1,5 +1,5 @@
 /**
- * Seed script — populates demo data for OmniERP.
+ * Seed script — populates demo data for ZorvanI ERP.
  * Run: pnpm --filter @workspace/db run seed
  * Safe to re-run: skips inserts on conflict.
  */
@@ -28,7 +28,7 @@ async function seed() {
     foundedYear: 2014,
     employeeCount: 342,
     status: "active",
-    currency: "USD",
+    currency: "INR",
     fiscalYearStart: "Jan",
     type: "Parent",
     country: "USA",
@@ -79,12 +79,12 @@ async function seed() {
 
   // ── Departments ───────────────────────────────────────────────────────────
   await db.insert(departments).values([
-    { orgId, name: "Engineering",         headName: "Anna Park",    budget: "$9.8M",  costCenter: "CC-ENG",   employeeCount: 84 },
-    { orgId, name: "Sales & Marketing",   headName: "Sarah Kim",    budget: "$7.6M",  costCenter: "CC-SALES", employeeCount: 93 },
-    { orgId, name: "Finance & Accounts",  headName: "Linda Chen",   budget: "$2.8M",  costCenter: "CC-FIN",   employeeCount: 28 },
-    { orgId, name: "Operations",          headName: "Mike Roberts", budget: "$6.4M",  costCenter: "CC-OPS",   employeeCount: 94 },
-    { orgId, name: "HR & Admin",          headName: "James Doyle",  budget: "$1.9M",  costCenter: "CC-HR",    employeeCount: 24 },
-    { orgId, name: "Customer Success",    headName: "Tom Brown",    budget: "$1.6M",  costCenter: "CC-CS",    employeeCount: 19 },
+    { orgId, name: "Engineering",         headName: "Anna Park",    budget: "₹9.8M",  costCenter: "CC-ENG",   employeeCount: 84 },
+    { orgId, name: "Sales & Marketing",   headName: "Sarah Kim",    budget: "₹7.6M",  costCenter: "CC-SALES", employeeCount: 93 },
+    { orgId, name: "Finance & Accounts",  headName: "Linda Chen",   budget: "₹2.8M",  costCenter: "CC-FIN",   employeeCount: 28 },
+    { orgId, name: "Operations",          headName: "Mike Roberts", budget: "₹6.4M",  costCenter: "CC-OPS",   employeeCount: 94 },
+    { orgId, name: "HR & Admin",          headName: "James Doyle",  budget: "₹1.9M",  costCenter: "CC-HR",    employeeCount: 24 },
+    { orgId, name: "Customer Success",    headName: "Tom Brown",    budget: "₹1.6M",  costCenter: "CC-CS",    employeeCount: 19 },
   ]).onConflictDoNothing();
   console.log("✓ Departments seeded");
 
@@ -143,6 +143,7 @@ async function seed() {
   const pw = async (p: string) => bcrypt.hash(p, 10);
 
   await db.insert(users).values([
+    { orgId, email: "admin@zorvani.io",  passwordHash: await pw("Admin@1234"),  firstName: "James",  lastName: "Doyle",   roleId: adminRoleId, status: "active", mfaEnabled: true  },
     { orgId, email: "admin@omnierp.io",  passwordHash: await pw("Admin@1234"),  firstName: "James",  lastName: "Doyle",   roleId: adminRoleId, status: "active", mfaEnabled: true  },
     { orgId, email: "s.kim@apexglobal.io",  passwordHash: await pw("Pass@1234"), firstName: "Sarah",  lastName: "Kim",     roleId: salesMgrId,  status: "active", mfaEnabled: true  },
     { orgId, email: "a.park@apexglobal.io", passwordHash: await pw("Pass@1234"), firstName: "Anna",   lastName: "Park",    roleId: devId,        status: "active", mfaEnabled: false },
@@ -155,7 +156,7 @@ async function seed() {
   console.log("✓ Users seeded");
 
   console.log("\n✅ Seed complete!");
-  console.log("   Login: admin@omnierp.io / Admin@1234");
+  console.log("   Login: admin@zorvani.io / Admin@1234");
 
   await pool.end();
 }

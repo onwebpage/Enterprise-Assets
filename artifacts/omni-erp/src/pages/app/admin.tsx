@@ -658,8 +658,8 @@ function PlansSubsTab() {
               <div><Label className="text-white/60 text-xs">Slug</Label><Input value={form.slug} onChange={e => setForm(f => ({ ...f, slug: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label className="text-white/60 text-xs">Monthly Price ($)</Label><Input type="number" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
-              <div><Label className="text-white/60 text-xs">Yearly Price ($)</Label><Input type="number" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              <div><Label className="text-white/60 text-xs">Monthly Price (₹)</Label><Input type="number" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+              <div><Label className="text-white/60 text-xs">Yearly Price (₹)</Label><Input type="number" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label className="text-white/60 text-xs">Max Users</Label><Input type="number" value={form.maxUsers} onChange={e => setForm(f => ({ ...f, maxUsers: e.target.value }))} placeholder="∞" className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
@@ -1413,7 +1413,7 @@ function AnalyticsTab() {
                   <YAxis yAxisId="right" orientation="right" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 11 }} />
                   <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }} />
                   <Legend />
-                  <Bar yAxisId="left" dataKey="mrr" name="MRR ($)" fill="#2563EB" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="left" dataKey="mrr" name="MRR (₹)" fill="#2563EB" radius={[4, 4, 0, 0]} />
                   <Bar yAxisId="right" dataKey="subs" name="New Subs" fill="#06B6D4" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

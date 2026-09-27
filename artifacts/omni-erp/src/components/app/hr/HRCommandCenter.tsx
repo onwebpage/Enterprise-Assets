@@ -535,7 +535,7 @@ export function HRCommandCenter({ data, summary, isLoading, onRefresh, onTab }: 
 
             <footer className="flex flex-col items-start justify-between gap-2 px-1 pb-3 pt-5 text-[10px] text-slate-600 sm:flex-row sm:items-center">
               <span className="inline-flex items-center gap-2"><UserRound className="h-3.5 w-3.5" /> Built for people managers</span>
-              <span className="font-mono">OMNI / HR-OPS / COMMAND-CENTER</span>
+              <span className="font-mono">ZORVANI / HR-OPS / COMMAND-CENTER</span>
             </footer>
           </>
         )}

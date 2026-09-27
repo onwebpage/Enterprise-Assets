@@ -905,7 +905,7 @@ function PlansTab() {
             ))}
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {[{ f: 'priceMonthly', l: 'Monthly Price ($)' }, { f: 'priceYearly', l: 'Yearly Price ($)' }].map(({ f, l }) => (
+            {[{ f: 'priceMonthly', l: 'Monthly Price (₹)' }, { f: 'priceYearly', l: 'Yearly Price (₹)' }].map(({ f, l }) => (
               <div key={f}>
                 <label className="text-xs text-white/40 mb-1 block">{l}</label>
                 <Input value={(form as any)[f]} onChange={e => setForm(x => ({ ...x, [f]: e.target.value }))}
@@ -3708,12 +3708,12 @@ function AgencyDrawer({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-white/40 mb-1 block">Total MRR ($)</label>
+                      <label className="text-xs text-white/40 mb-1 block">Total MRR (₹)</label>
                       <Input type="number" step="0.01" value={payoutForm.totalMrr} onChange={e => setPayoutForm(x => ({ ...x, totalMrr: e.target.value }))}
                         className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm" />
                     </div>
                     <div>
-                      <label className="text-xs text-white/40 mb-1 block">Commission ($) <span className="text-white/20 font-normal">auto</span></label>
+                      <label className="text-xs text-white/40 mb-1 block">Commission (₹) <span className="text-white/20 font-normal">auto</span></label>
                       <Input type="number" step="0.01" value={payoutForm.commissionAmount}
                         onChange={e => setPayoutForm(x => ({ ...x, commissionAmount: e.target.value }))}
                         className="bg-[#0a0f1e] border-white/[0.08] text-white h-8 text-sm"

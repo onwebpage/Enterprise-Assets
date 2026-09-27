@@ -31,11 +31,11 @@ async function main() {
   await db.delete(treasuryAccounts).where(eq(treasuryAccounts.orgId, orgId));
 
   const accounts = await db.insert(treasuryAccounts).values([
-    { orgId, name: "Operations Checking", accountNumber: "**** 4521", bankName: "Chase", bankBranch: "Chicago HQ", currency: "USD", currentBalance: "1284500.00", availableBalance: "1268000.00", accountType: "checking", status: "active", isPrimary: true, notes: "Primary operating account" },
-    { orgId, name: "Payroll Account", accountNumber: "**** 8874", bankName: "Wells Fargo", bankBranch: "New York", currency: "USD", currentBalance: "420000.00", availableBalance: "420000.00", accountType: "checking", status: "active", isPrimary: false, notes: "Payroll disbursements" },
-    { orgId, name: "Reserve Fund", accountNumber: "**** 0192", bankName: "Bank of America", bankBranch: "Chicago", currency: "USD", currentBalance: "2500000.00", availableBalance: "2500000.00", accountType: "savings", status: "active", isPrimary: false, notes: "Cash reserve" },
-    { orgId, name: "Short-term Investments", accountNumber: "**** 3345", bankName: "Vanguard", bankBranch: "Online", currency: "USD", currentBalance: "1800000.00", availableBalance: "1800000.00", accountType: "investment", status: "active", isPrimary: false, notes: "T-bill ladder" },
-    { orgId, name: "Petty Cash Desk", accountNumber: "CASH-01", bankName: "Onsite", bankBranch: "Chicago HQ", currency: "USD", currentBalance: "5000.00", availableBalance: "5000.00", accountType: "petty_cash", status: "active", isPrimary: false, notes: "Office petty cash" },
+    { orgId, name: "Operations Checking", accountNumber: "**** 4521", bankName: "Chase", bankBranch: "Chicago HQ", currency: "INR", currentBalance: "1284500.00", availableBalance: "1268000.00", accountType: "checking", status: "active", isPrimary: true, notes: "Primary operating account" },
+    { orgId, name: "Payroll Account", accountNumber: "**** 8874", bankName: "Wells Fargo", bankBranch: "New York", currency: "INR", currentBalance: "420000.00", availableBalance: "420000.00", accountType: "checking", status: "active", isPrimary: false, notes: "Payroll disbursements" },
+    { orgId, name: "Reserve Fund", accountNumber: "**** 0192", bankName: "Bank of America", bankBranch: "Chicago", currency: "INR", currentBalance: "2500000.00", availableBalance: "2500000.00", accountType: "savings", status: "active", isPrimary: false, notes: "Cash reserve" },
+    { orgId, name: "Short-term Investments", accountNumber: "**** 3345", bankName: "Vanguard", bankBranch: "Online", currency: "INR", currentBalance: "1800000.00", availableBalance: "1800000.00", accountType: "investment", status: "active", isPrimary: false, notes: "T-bill ladder" },
+    { orgId, name: "Petty Cash Desk", accountNumber: "CASH-01", bankName: "Onsite", bankBranch: "Chicago HQ", currency: "INR", currentBalance: "5000.00", availableBalance: "5000.00", accountType: "petty_cash", status: "active", isPrimary: false, notes: "Office petty cash" },
   ]).returning();
   console.log("Accounts seeded");
 
@@ -54,7 +54,7 @@ async function main() {
     const inflow = 120000 + i * 3500;
     const outflow = 98000 + i * 1200;
     const net = inflow - outflow;
-    positions.push({ orgId, accountId: checking.id, positionDate: date, openingBalance: String(985000 + i * 15000), closingBalance: String(985000 + i * 15000 + net), netCashflow: String(net), currency: "USD", notes: i === 0 ? "Today's position" : null });
+    positions.push({ orgId, accountId: checking.id, positionDate: date, openingBalance: String(985000 + i * 15000), closingBalance: String(985000 + i * 15000 + net), netCashflow: String(net), currency: "INR", notes: i === 0 ? "Today's position" : null });
   }
   await db.insert(treasuryPositions).values(positions);
   console.log("Positions seeded");

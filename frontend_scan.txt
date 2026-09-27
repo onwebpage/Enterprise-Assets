@@ -1,0 +1,100 @@
+=== FRONTEND UI SCAN ===
+
+DOLLAR_SIGN -> artifacts\omni-erp\src\App.tsx:241: <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\APPaymentFormModal.tsx:15: paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\APPaymentFormModal.tsx:16: amount:      z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid amount required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\BillFormModal.tsx:15: quantity:    z.string().regex(/^\d+(\.\d{1,4})?$/, 'Valid qty'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\BillFormModal.tsx:16: unitPrice:   z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid price'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\BillFormModal.tsx:23: issueDate:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\BillFormModal.tsx:24: dueDate:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ap\BillFormModal.tsx:26: taxAmount:  z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid amount').optional(),
+USD -> artifacts\omni-erp\src\components\app\ap\VendorFormModal.tsx:160: {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\AppLayout.tsx:254: className={`flex items-center gap-3 px-3 py-2 rounded-lg mb-0.5 cursor-pointer transition-all group ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\CustomerFormModal.tsx:20: creditLimit: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount').optional(),
+USD -> artifacts\omni-erp\src\components\app\ar\CustomerFormModal.tsx:149: {['INR', 'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'].map((c) => (
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\InvoiceFormModal.tsx:15: quantity:    z.string().regex(/^\d+(\.\d{1,4})?$/, 'Valid qty'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\InvoiceFormModal.tsx:16: unitPrice:   z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid price'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\InvoiceFormModal.tsx:23: issueDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\InvoiceFormModal.tsx:24: dueDate:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\InvoiceFormModal.tsx:26: taxAmount:     z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid amount').optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\PaymentFormModal.tsx:15: paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\ar\PaymentFormModal.tsx:16: amount:      z.string().regex(/^\d+(\.\d{1,2})?$/, 'Valid amount required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\assets\DepreciationTab.tsx:115: <Button onClick={handleRun} disabled={runMut.isPending || !runPeriod.match(/^\d{4}-\d{2}$/)} className="bg-[#2563EB] hover:bg-[#1d4ed8] h-9">
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\finance\ManagementAccountingTab.tsx:702: className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-medium transition-colors ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\finance\MultiCurrencyTab.tsx:77: currency: /^[A-Z]{3}$/.test(currency) ? currency : "INR",
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\finance\MultiCurrencyTab.tsx:265: if (!/^[A-Z]{3}$/.test(data.code)) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\GSTReturnFormModal.tsx:12: const amountPattern = /^\d+(\.\d{1,2})?$/;
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\GSTReturnFormModal.tsx:18: dueDate:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\GSTReturnFormModal.tsx:19: submissionDate:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TaxPaymentFormModal.tsx:12: const amtStr = z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount').optional().default('0');
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TaxPaymentFormModal.tsx:17: paymentDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TaxPaymentFormModal.tsx:18: amount:        z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TaxRateFormModal.tsx:15: rate:        z.string().regex(/^\d+(\.\d{1,4})?$/, 'Must be a valid percentage'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TDSEntryFormModal.tsx:24: transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TDSEntryFormModal.tsx:25: grossAmount:     z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TDSEntryFormModal.tsx:26: taxRate:         z.string().regex(/^\d+(\.\d{1,4})?$/, 'Must be a valid percentage'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst\TDSEntryFormModal.tsx:27: depositDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\gst-returns\EntryFormModal.tsx:116: className={`px-2.5 py-1 rounded-md border text-[11px] font-medium transition-all ${
+BRANDING -> artifacts\omni-erp\src\components\app\hr\HRCommandCenter.tsx:538: <span className="font-mono">OMNI / HR-OPS / COMMAND-CENTER</span>
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseGRNFormModal.tsx:18: receivedQty: z.string().regex(/^\d+(\.\d{1,4})?$/, 'Invalid'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseGRNFormModal.tsx:19: acceptedQty: z.string().regex(/^\d+(\.\d{1,4})?$/, 'Invalid'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseGRNFormModal.tsx:20: rejectedQty: z.string().regex(/^\d+(\.\d{1,4})?$/, 'Invalid'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseGRNFormModal.tsx:28: receiptDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:20: quantity:    z.string().regex(/^\d+(\.\d{1,4})?$/, 'Invalid qty'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:21: unitPrice:   z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid price'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:22: taxRate:     z.string().regex(/^\d+(\.\d{1,4})?$/).optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:27: orderDate:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:28: expectedDelivery: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().or(z.literal('')),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseOrderFormModal.tsx:32: taxAmount:        z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseRFQFormModal.tsx:16: rfqDate:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseRFQFormModal.tsx:17: dueDate:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional().or(z.literal('')),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseRFQFormModal.tsx:19: estimatedValue:   z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional().or(z.literal('')),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\purchase\PurchaseVendorFormModal.tsx:29: creditLimit:  z.string().regex(/^\d+(\.\d{1,2})?$/).nullable().optional().or(z.literal('')),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSEntryFormModal.tsx:17: transactionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSEntryFormModal.tsx:18: grossAmount:     z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSEntryFormModal.tsx:19: taxRate:         z.string().regex(/^\d+(\.\d{1,4})?$/, 'Must be a valid percentage'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSEntryFormModal.tsx:20: depositDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSPaymentFormModal.tsx:15: paymentDate:   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD required'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSPaymentFormModal.tsx:16: amount:        z.string().regex(/^\d+(\.\d{1,2})?$/, 'Must be a valid amount'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSPaymentFormModal.tsx:17: interest:      z.string().regex(/^\d+(\.\d{1,2})?$/).optional().default('0'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\app\tds\TDSPaymentFormModal.tsx:18: penalty:       z.string().regex(/^\d+(\.\d{1,2})?$/).optional().default('0'),
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\hero.tsx:159: className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\modules-showcase.tsx:206: className={`relative pl-6 py-4 text-left transition-colors duration-200 group ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\navbar.tsx:184: className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\pricing.tsx:131: className={`relative bg-[#0a0f1e] border rounded-2xl p-8 flex flex-col ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\pricing.tsx:166: className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 text-center ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\pricing.tsx:176: className={`w-full py-3 rounded-lg text-[14px] font-medium transition-colors mb-8 ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\components\ui\chart.tsx:83: ${colorConfig
+DOLLAR_SIGN -> artifacts\omni-erp\src\contexts\adminAuth.tsx:4: const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\admin.tsx:661: <div><Label className="text-white/60 text-xs">Monthly Price ($)</Label><Input type="number" value={form.priceMonthly} onChange={e => setForm(f => ({ ...f, priceMonthly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\admin.tsx:662: <div><Label className="text-white/60 text-xs">Yearly Price ($)</Label><Input type="number" value={form.priceYearly} onChange={e => setForm(f => ({ ...f, priceYearly: e.target.value }))} className="bg-white/[0.04] border-white/[0.08] text-white mt-1" /></div>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\admin.tsx:1416: <Bar yAxisId="left" dataKey="mrr" name="MRR ($)" fill="#2563EB" radius={[4, 4, 0, 0]} />
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\admin.tsx:1998: className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-left ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\ai-assistant.tsx:135: ${msg.role === 'assistant'
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\ai-assistant.tsx:146: ${msg.role === 'assistant'
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\audit-logs.tsx:295: className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\audit-logs.tsx:302: <span className={`px-1 py-0.5 rounded text-[10px] font-semibold ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\audit-logs.tsx:333: className={`flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs border transition-colors ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\audit-logs.tsx:436: className={`grid grid-cols-[1fr_1.4fr_100px_90px_80px_36px] gap-3 px-4 py-3 hover:bg-white/[0.03] cursor-pointer transition-colors group ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\billing.tsx:20: const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+USD -> artifacts\omni-erp\src\pages\app\customer-portal.tsx:335: {['INR', 'USD', 'EUR', 'GBP'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\customer-portal.tsx:572: <div className={`rounded-xl px-3 py-2 text-sm ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\customer-portal.tsx:1092: <div className={`w-2 h-8 rounded-full flex-shrink-0 ${
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\LicenseManagementTab.tsx:12: const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\master-data.tsx:95: if (form.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\master-data.tsx:98: if (entity === "customers" && (!/^\d+(\.\d{1,4})?$/.test(form.creditLimit || "0"))) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\master-data.tsx:102: if (!/^\d+(\.\d{1,2})?$/.test(form.costPrice || "0") || !/^\d+(\.\d{1,2})?$/.test(form.sellingPrice || "0")) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\master-data.tsx:105: if (!/^\d+$/.test(form.reorderPoint || "0") || !/^\d+$/.test(form.reorderQty || "0")) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\master-data.tsx:109: if (entity === "warehouses" && !/^\d+$/.test(form.capacity || "0")) {
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\projects.tsx:40: {open && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"><form onSubmit={e => { e.preventDefault(); save.mutate(form); }} className="w-full max-w-lg space-y-4 rounded-xl border border-white/[0.1] bg-[#0a0f1e] p-6"><h2 className="text-lg font-semibold text-white">{editing ? "Edit project" : "New project"}</h2><div className="grid grid-cols-2 gap-3"><div><Label>Code</Label><Input required maxLength={50} value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} /></div><div><Label>Name</Label><Input required maxLength={200} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div></div><div><Label>Description</Label><textarea value={form.description ?? ""} onChange={e => setForm({ ...form, description: e.target.value })} className="min-h-20 w-full rounded-md border border-white/[0.1] bg-white/[0.04] p-2 text-sm text-white" /></div><div className="grid grid-cols-2 gap-3"><div><Label>Status</Label><select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="h-9 w-full rounded-md border border-white/[0.1] bg-white/[0.04] px-2 text-sm text-white">{statuses.map(value => <option key={value} value={value}>{value.replace("_", " ")}</option>)}</select></div><div><Label>Budget</Label><Input required pattern="^\d+(\.\d{1,2})?$" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} /></div></div><div className="grid grid-cols-2 gap-3"><div><Label>Start date</Label><Input type="date" value={form.startDate ?? ""} onChange={e => setForm({ ...form, startDate: e.target.value })} /></div><div><Label>End date</Label><Input type="date" value={form.endDate ?? ""} onChange={e => setForm({ ...form, endDate: e.target.value })} /></div></div><div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={save.isPending}>{save.isPending ? "Saving..." : "Save project"}</Button></div>{save.isError && <p className="text-sm text-red-400">{save.error instanceof Error ? save.error.message : "Unable to save project"}</p>}</form></div>}
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\ResellerPanelTab.tsx:22: const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\ResellerPanelTab.tsx:524: <label className="text-xs text-white/40 mb-1 block">Est. MRR ($)</label>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\ResellerPanelTab.tsx:630: <label className="text-xs text-white/40 mb-1 block">Min MRR ($)</label>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\saas.tsx:30: const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\saas.tsx:908: {[{ f: 'priceMonthly', l: 'Monthly Price ($)' }, { f: 'priceYearly', l: 'Yearly Price ($)' }].map(({ f, l }) => (
+USD -> artifacts\omni-erp\src\pages\app\saas.tsx:1131: {['INR', 'USD', 'EUR', 'GBP', 'AUD', 'CAD'].map(c => <option key={c} value={c}>{c}</option>)}
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\saas.tsx:3711: <label className="text-xs text-white/40 mb-1 block">Total MRR ($)</label>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\saas.tsx:3716: <label className="text-xs text-white/40 mb-1 block">Commission ($) <span className="text-white/20 font-normal">auto</span></label>
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\settings.tsx:79: className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left ${
+USD -> artifacts\omni-erp\src\pages\app\settings.tsx:196: {['INR','USD','EUR','GBP','AUD','CAD','SGD','AED','JPY'].map(c => (
+DOLLAR_SIGN -> artifacts\omni-erp\src\pages\app\settings.tsx:574: className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all ${
