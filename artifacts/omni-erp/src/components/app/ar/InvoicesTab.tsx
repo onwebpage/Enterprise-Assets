@@ -193,7 +193,15 @@ function downloadInvoicePdf(invoice: ARInvoice) {
   }
 
   const safeName = invoice.invoiceNumber.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'invoice';
-  pdf.save(`${safeName}.pdf`);
+  const pdfUrl = URL.createObjectURL(pdf.output('blob'));
+  const downloadLink = document.createElement('a');
+  downloadLink.href = pdfUrl;
+  downloadLink.download = `${safeName}.pdf`;
+  downloadLink.style.display = 'none';
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 }
 
 function TableSkeleton() {
