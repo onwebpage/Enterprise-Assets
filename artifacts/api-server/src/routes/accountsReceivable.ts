@@ -4,7 +4,7 @@
  * All routes require authentication + "Accounts Receivable" module permission.
  */
 import { Router } from "express";
-import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
+import { eq, and, ilike, or, sql, desc, inArray } from "drizzle-orm";
 import {
   db, permissions, roles,
   arCustomers, arInvoices, arInvoiceLines, arPayments,
@@ -287,7 +287,23 @@ router.get("/invoices", requirePermission(MODULE, "view"), async (req: AuthReque
         .where(where),
     ]);
 
-    res.json({ success: true, data: rows, total, page, limit, totalPages: Math.ceil(total / limit) });
+    const lines = rows.length > 0
+      ? await db.select().from(arInvoiceLines)
+        .where(inArray(arInvoiceLines.invoiceId, rows.map((row) => row.id)))
+        .orderBy(arInvoiceLines.invoiceId, arInvoiceLines.sequence)
+      : [];
+    const linesByInvoice = new Map<number, typeof lines>();
+    for (const line of lines) {
+      const invoiceLines = linesByInvoice.get(line.invoiceId) ?? [];
+      invoiceLines.push(line);
+      linesByInvoice.set(line.invoiceId, invoiceLines);
+    }
+
+    res.json({
+      success: true,
+      data: rows.map((row) => ({ ...row, lines: linesByInvoice.get(row.id) ?? [] })),
+      total, page, limit, totalPages: Math.ceil(total / limit),
+    });
   } catch {
     res.status(500).json({ success: false, error: "Failed to fetch invoices" });
   }

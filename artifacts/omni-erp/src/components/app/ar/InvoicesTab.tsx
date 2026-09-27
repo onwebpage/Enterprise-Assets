@@ -383,20 +383,22 @@ export default function InvoicesTab() {
                           toast({ title: 'Allow pop-ups to print this invoice', variant: 'destructive' });
                           return;
                         }
-                        void api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`)
-                          .then((response) => printInvoice(response.data, printWindow))
-                          .catch((error: unknown) => {
-                            printWindow.close();
-                            toast({ title: 'Could not open invoice for printing', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
-                          });
+                        try {
+                          printInvoice(inv, printWindow);
+                        } catch (error) {
+                          printWindow.close();
+                          toast({ title: 'Could not open invoice for printing', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+                        }
                       }}
                         className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors" title="Print Invoice">
                         <Printer className="w-3.5 h-3.5" />
                       </button>
                       <button onClick={() => {
-                        void api.get<ApiResponse<ARInvoice>>(`/ar/invoices/${inv.id}`)
-                          .then((response) => downloadInvoicePdf(response.data))
-                          .catch((error: unknown) => toast({ title: 'Could not download invoice PDF', description: error instanceof Error ? error.message : undefined, variant: 'destructive' }));
+                        try {
+                          downloadInvoicePdf(inv);
+                        } catch (error) {
+                          toast({ title: 'Could not download invoice PDF', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+                        }
                       }}
                         className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors" title="Download PDF">
                         <Download className="w-3.5 h-3.5" />
