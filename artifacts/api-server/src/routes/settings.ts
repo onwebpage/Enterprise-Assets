@@ -148,8 +148,17 @@ router.put("/org", async (req: AuthRequest, res) => {
     if (!orgId) { res.status(404).json({ success: false, error: "No organization found" }); return; }
     const {
       name, legalName, taxId, industry, foundedYear,
-      employeeCount, currency, fiscalYearStart, country, gstin,
+      employeeCount, currency, fiscalYearStart, country, gstin, upiId,
     } = req.body;
+    // UPI ID (VPA) for the invoice payment QR: "name@handle", or empty to clear it.
+    let normalizedUpiId: string | null | undefined;
+    if (upiId !== undefined) {
+      normalizedUpiId = typeof upiId === "string" && upiId.trim() ? upiId.trim() : null;
+      if (normalizedUpiId && !/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z][a-zA-Z0-9.-]{1,63}$/.test(normalizedUpiId)) {
+        res.status(400).json({ success: false, error: "Enter a valid UPI ID, for example business@okhdfcbank" });
+        return;
+      }
+    }
     const [org] = await db
       .update(organizations)
       .set({
@@ -163,6 +172,7 @@ router.put("/org", async (req: AuthRequest, res) => {
         ...(fiscalYearStart !== undefined && { fiscalYearStart }),
         ...(country !== undefined && { country }),
         ...(gstin !== undefined && { gstin }),
+        ...(normalizedUpiId !== undefined && { upiId: normalizedUpiId }),
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, orgId))

@@ -52,6 +52,8 @@ export const arInvoices = pgTable("ar_invoices", {
   dueDate:        text("due_date").notNull(),
   status:         text("status").notNull().default("draft"), // ARInvoiceStatus
   subtotal:       numeric("subtotal",    { precision: 15, scale: 2 }).notNull().default("0"),
+  // Invoice-level discount, deducted from the subtotal before tax: total = subtotal - discount + tax
+  discountAmount: numeric("discount_amount", { precision: 15, scale: 2 }).notNull().default("0"),
   taxAmount:      numeric("tax_amount",  { precision: 15, scale: 2 }).notNull().default("0"),
   totalAmount:    numeric("total_amount",{ precision: 15, scale: 2 }).notNull().default("0"),
   amountPaid:     numeric("amount_paid", { precision: 15, scale: 2 }).notNull().default("0"),
@@ -131,6 +133,7 @@ export const insertARInvoiceSchema = z.object({
   issueDate:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   dueDate:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status:        z.enum(AR_INVOICE_STATUSES).optional().default("draft"),
+  discountAmount: amountStr.optional().default("0"),
   taxAmount:     amountStr.optional().default("0"),
   notes:         z.string().max(1000).nullable().optional(),
   lines:         z.array(insertARInvoiceLineSchema).min(1, "At least 1 line required"),
@@ -141,6 +144,7 @@ export const updateARInvoiceSchema = z.object({
   issueDate:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dueDate:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   status:     z.enum(AR_INVOICE_STATUSES).optional(),
+  discountAmount: amountStr.optional(),
   taxAmount:  amountStr.optional(),
   notes:      z.string().max(1000).nullable().optional(),
   lines:      z.array(insertARInvoiceLineSchema).min(1).optional(),

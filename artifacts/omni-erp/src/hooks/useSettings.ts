@@ -30,6 +30,8 @@ export interface Organization {
   fiscalYearStart: string | null;
   country: string | null;
   gstin: string | null;
+  /** UPI ID (VPA) used for the payment QR on printed invoices. */
+  upiId?: string | null;
   logoUrl: string | null;
   status: string;
   type: string | null;

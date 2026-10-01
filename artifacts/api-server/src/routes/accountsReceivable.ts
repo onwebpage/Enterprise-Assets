@@ -270,7 +270,7 @@ router.get("/invoices", requirePermission(MODULE, "view"), async (req: AuthReque
       db.select({
         id: arInvoices.id, orgId: arInvoices.orgId, customerId: arInvoices.customerId,
         invoiceNumber: arInvoices.invoiceNumber, issueDate: arInvoices.issueDate, dueDate: arInvoices.dueDate,
-        status: arInvoices.status, subtotal: arInvoices.subtotal, taxAmount: arInvoices.taxAmount,
+        status: arInvoices.status, subtotal: arInvoices.subtotal, discountAmount: arInvoices.discountAmount, taxAmount: arInvoices.taxAmount,
         totalAmount: arInvoices.totalAmount, amountPaid: arInvoices.amountPaid, notes: arInvoices.notes,
         createdBy: arInvoices.createdBy, createdAt: arInvoices.createdAt, updatedAt: arInvoices.updatedAt,
         customerName: arCustomers.name,
@@ -317,7 +317,7 @@ router.get("/invoices/:id", requirePermission(MODULE, "view"), async (req: AuthR
     const [row] = await db.select({
       id: arInvoices.id, orgId: arInvoices.orgId, customerId: arInvoices.customerId,
       invoiceNumber: arInvoices.invoiceNumber, issueDate: arInvoices.issueDate, dueDate: arInvoices.dueDate,
-      status: arInvoices.status, subtotal: arInvoices.subtotal, taxAmount: arInvoices.taxAmount,
+      status: arInvoices.status, subtotal: arInvoices.subtotal, discountAmount: arInvoices.discountAmount, taxAmount: arInvoices.taxAmount,
       totalAmount: arInvoices.totalAmount, amountPaid: arInvoices.amountPaid, notes: arInvoices.notes,
       createdBy: arInvoices.createdBy, createdAt: arInvoices.createdAt, updatedAt: arInvoices.updatedAt,
       customerName: arCustomers.name,
@@ -367,13 +367,19 @@ router.post("/invoices", requirePermission(MODULE, "create"), async (req: AuthRe
       const price = parseFloat(l.unitPrice ?? "0");
       return sum + qty * price;
     }, 0);
+    const discountAmount = parseFloat(data.discountAmount ?? "0");
+    if (discountAmount > subtotal + 0.005) {
+      res.status(422).json({ success: false, error: "Discount cannot exceed the invoice subtotal" });
+      return;
+    }
     const taxAmount   = parseFloat(data.taxAmount ?? "0");
-    const totalAmount = subtotal + taxAmount;
+    const totalAmount = subtotal - discountAmount + taxAmount;
 
     const [invoice] = await db.insert(arInvoices).values({
       orgId, customerId: data.customerId, invoiceNumber, issueDate: data.issueDate, dueDate: data.dueDate,
       status: data.status ?? "draft",
-      subtotal: subtotal.toFixed(2), taxAmount: taxAmount.toFixed(2), totalAmount: totalAmount.toFixed(2),
+      subtotal: subtotal.toFixed(2), discountAmount: discountAmount.toFixed(2),
+      taxAmount: taxAmount.toFixed(2), totalAmount: totalAmount.toFixed(2),
       amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.userId,
     }).returning();
 
@@ -425,9 +431,15 @@ router.put("/invoices/:id", requirePermission(MODULE, "edit"), async (req: AuthR
       const subtotal = data.lines.reduce((sum, l) => {
         return sum + parseFloat(l.quantity ?? "1") * parseFloat(l.unitPrice ?? "0");
       }, 0);
+      const discountAmount = parseFloat(data.discountAmount ?? existing.discountAmount);
+      if (discountAmount > subtotal + 0.005) {
+        res.status(422).json({ success: false, error: "Discount cannot exceed the invoice subtotal" });
+        return;
+      }
       const taxAmount   = parseFloat(data.taxAmount ?? existing.taxAmount);
-      const totalAmount = subtotal + taxAmount;
+      const totalAmount = subtotal - discountAmount + taxAmount;
       updatePayload.subtotal    = subtotal.toFixed(2);
+      updatePayload.discountAmount = discountAmount.toFixed(2);
       updatePayload.taxAmount   = taxAmount.toFixed(2);
       updatePayload.totalAmount = totalAmount.toFixed(2);
 

@@ -52,6 +52,8 @@ export interface ARInvoice {
   dueDate: string;
   status: ARInvoiceStatus;
   subtotal: string;
+  /** Invoice-level discount, deducted from the subtotal before tax. */
+  discountAmount?: string;
   taxAmount: string;
   totalAmount: string;
   amountPaid: string;
@@ -122,6 +124,7 @@ export interface ARInvoiceFormValues {
   issueDate: string;
   dueDate: string;
   status?: ARInvoiceStatus;
+  discountAmount?: string;
   taxAmount?: string;
   notes?: string | null;
   lines: ARInvoiceLineFormValues[];
@@ -196,6 +199,17 @@ export function useARCustomers(params: ARCustomersParams = {}) {
   return useQuery<ARListResponse<ARCustomer>>({
     queryKey: QK.customers(params),
     queryFn:  () => api.get(`/ar/customers?${qs}`),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+/** One customer by id (full billing details). */
+export function useARCustomer(id: number | null) {
+  return useQuery<ApiResponse<ARCustomer>>({
+    queryKey: ["ar", "customers", "detail", id],
+    queryFn:  () => api.get(`/ar/customers/${id}`),
+    enabled: id !== null,
     staleTime: 15_000,
     retry: 1,
   });

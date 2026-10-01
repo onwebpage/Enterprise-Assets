@@ -7,6 +7,8 @@ import { pool } from "@workspace/db";
 export async function ensureAuthSchema(): Promise<void> {
   await pool.query(`
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id integer;
+    ALTER TABLE organizations ADD COLUMN IF NOT EXISTS upi_id text;
+    ALTER TABLE IF EXISTS ar_invoices ADD COLUMN IF NOT EXISTS discount_amount numeric(15,2) DEFAULT 0 NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending' NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version integer DEFAULT 0 NOT NULL;
     CREATE TABLE IF NOT EXISTS tenants (
@@ -285,4 +287,4 @@ export async function ensureAuthSchema(): Promise<void> {
     WHERE p.role_id = r.id
       AND lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner');
   `);
-}
+}

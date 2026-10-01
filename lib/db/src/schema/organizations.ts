@@ -18,6 +18,8 @@ export const organizations = pgTable("organizations", {
   type: text("type").default("Parent"), // Parent, Subsidiary
   country: text("country"),
   gstin: text("gstin"),
+  // UPI ID (VPA) printed as a payment QR on invoices, e.g. "business@okhdfcbank"
+  upiId: text("upi_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -1,21 +1,25 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard, Printer, Download } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { Plus, Search, Edit, Trash2, RefreshCw, Eye, CreditCard, Printer, Download, Loader2 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
-  useARInvoices, useARCustomers, useARInvoice,
+  useARInvoices, useARInvoice,
   useCreateARInvoice, useUpdateARInvoice, useDeleteARInvoice,
   useARPermissions, useCreateARPayment,
   type ARInvoice, type ARInvoiceStatus, type ARInvoiceFormValues,
 } from '@/hooks/useAccountsReceivable';
-import { api, type ApiResponse } from '@/lib/api';
+import { invoicePrintSourceQuery } from '@/hooks/useInvoicePrint';
+import {
+  INVOICE_PRINT_FORMAT_SPECS, buildInvoicePrintModel, getStoredInvoicePrintFormat,
+} from '@/lib/invoice-print/model';
 import InvoiceFormModal from './InvoiceFormModal';
 import PaymentFormModal from './PaymentFormModal';
 import ARDeleteDialog from './ARDeleteDialog';
+import InvoicePrintDialog from './InvoicePrintDialog';
 
 const STATUS_COLORS: Record<ARInvoiceStatus, string> = {
   draft:   'bg-white/[0.06] text-white/45 border-white/[0.1]',
@@ -30,192 +34,6 @@ const PAGE_LIMIT = 25;
 
 function fmt(v: string) {
   return '₹' + parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function printText(value: unknown) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] ?? character));
-}
-
-function printInvoice(invoice: ARInvoice) {
-  const printFrame = document.createElement('iframe');
-  printFrame.title = `Print ${invoice.invoiceNumber}`;
-  printFrame.setAttribute('aria-hidden', 'true');
-  printFrame.style.cssText = 'position:fixed;left:-10000px;top:0;width:210mm;height:297mm;border:0';
-  document.body.appendChild(printFrame);
-
-  const printWindow = printFrame.contentWindow;
-  if (!printWindow) {
-    printFrame.remove();
-    throw new Error('Could not prepare invoice for printing');
-  }
-  const printDocument = printWindow.document;
-  const lines = (invoice.lines ?? []).map((line) => `
-    <tr>
-      <td>${printText(line.description)}</td>
-      <td class="number">${printText(line.quantity)}</td>
-      <td class="number">${fmt(line.unitPrice)}</td>
-      <td class="number">${fmt(line.amount)}</td>
-    </tr>`).join('');
-  const balance = (parseFloat(invoice.totalAmount) - parseFloat(invoice.amountPaid)).toFixed(2);
-
-  printDocument.open();
-  printDocument.write(`<!doctype html><html><head><title>${printText(invoice.invoiceNumber)}</title>
-    <style>
-      @page { size: A4; margin: 16mm; }
-      * { box-sizing: border-box; }
-      body { margin: 0; color: #172033; font-family: Arial, Helvetica, sans-serif; font-size: 12px; }
-      .page { max-width: 780px; margin: 0 auto; }
-      .header { display: flex; justify-content: space-between; gap: 32px; padding-bottom: 26px; border-bottom: 3px solid #2563eb; }
-      .brand { color: #2563eb; font-size: 24px; font-weight: 800; letter-spacing: .02em; }
-      .label { color: #64748b; font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-      h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: .02em; text-align: right; }
-      .meta { color: #475569; line-height: 1.7; text-align: right; }
-      .summary { display: flex; justify-content: space-between; gap: 32px; padding: 26px 0; }
-      .customer { flex: 1; }
-      .customer-name { margin-top: 7px; font-size: 16px; font-weight: 700; }
-      .dates { min-width: 220px; }
-      .date-row { display: flex; justify-content: space-between; gap: 22px; padding: 4px 0; }
-      table { width: 100%; border-collapse: collapse; }
-      th { padding: 10px 12px; color: #fff; background: #172033; font-size: 10px; letter-spacing: .08em; text-align: left; text-transform: uppercase; }
-      td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-      .number { text-align: right; white-space: nowrap; }
-      .totals { display: flex; justify-content: flex-end; padding-top: 18px; }
-      .totals table { width: 280px; }
-      .totals td { padding: 7px 0 7px 18px; border: 0; }
-      .total td { border-top: 2px solid #172033; color: #172033; font-size: 15px; font-weight: 800; }
-      .balance td { color: #2563eb; font-weight: 700; }
-      .notes { margin-top: 36px; padding: 14px 16px; background: #f8fafc; border-left: 3px solid #cbd5e1; white-space: pre-wrap; }
-      footer { margin-top: 48px; padding-top: 14px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 10px; text-align: center; }
-    </style></head><body><main class="page">
-      <header class="header"><div><div class="brand">INVOICE</div><div class="label" style="margin-top:8px">Accounts Receivable</div></div>
-        <div><h1>${printText(invoice.invoiceNumber)}</h1><div class="meta">Status: ${printText(invoice.status.toUpperCase())}<br>Issued: ${printText(invoice.issueDate)}</div></div></header>
-      <section class="summary"><div class="customer"><div class="label">Bill To</div><div class="customer-name">${printText(invoice.customerName || 'Customer')}</div></div>
-        <div class="dates"><div class="date-row"><span class="label">Invoice date</span><strong>${printText(invoice.issueDate)}</strong></div><div class="date-row"><span class="label">Due date</span><strong>${printText(invoice.dueDate)}</strong></div></div></section>
-      <table><thead><tr><th>Description</th><th class="number">Quantity</th><th class="number">Unit price</th><th class="number">Amount</th></tr></thead><tbody>${lines}</tbody></table>
-      <section class="totals"><table><tr><td>Subtotal</td><td class="number">${fmt(invoice.subtotal)}</td></tr><tr><td>Tax</td><td class="number">${fmt(invoice.taxAmount)}</td></tr><tr class="total"><td>Total</td><td class="number">${fmt(invoice.totalAmount)}</td></tr><tr><td>Paid</td><td class="number">${fmt(invoice.amountPaid)}</td></tr><tr class="balance"><td>Balance due</td><td class="number">${fmt(balance)}</td></tr></table></section>
-      ${invoice.notes ? `<div class="notes"><div class="label">Notes</div><div style="margin-top:6px">${printText(invoice.notes)}</div></div>` : ''}
-      <footer>Thank you for your business.</footer>
-    </main></body></html>`);
-  printDocument.close();
-  printWindow.addEventListener('afterprint', () => printFrame.remove(), { once: true });
-  window.setTimeout(() => printFrame.remove(), 60_000);
-  printWindow.focus();
-  printWindow.print();
-}
-
-function downloadInvoicePdf(invoice: ARInvoice) {
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 16;
-  let y = 20;
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.setFontSize(20);
-  pdf.setTextColor(37, 99, 235);
-  pdf.text('INVOICE', margin, y);
-  pdf.setTextColor(23, 32, 51);
-  pdf.setFontSize(17);
-  pdf.text(invoice.invoiceNumber, pageWidth - margin, y, { align: 'right' });
-  y += 9;
-  pdf.setFont('helvetica', 'normal');
-  pdf.setFontSize(10);
-  pdf.setTextColor(71, 85, 105);
-  pdf.text(`Status: ${invoice.status.toUpperCase()}`, pageWidth - margin, y, { align: 'right' });
-  y += 13;
-
-  pdf.setFont('helvetica', 'bold');
-  pdf.setTextColor(23, 32, 51);
-  pdf.text('Bill To', margin, y);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(invoice.customerName || 'Customer', margin, y + 6);
-  pdf.text(`Invoice date: ${invoice.issueDate}`, pageWidth - margin, y, { align: 'right' });
-  pdf.text(`Due date: ${invoice.dueDate}`, pageWidth - margin, y + 6, { align: 'right' });
-  y += 17;
-
-  const drawTableHeader = () => {
-    pdf.setFillColor(23, 32, 51);
-    pdf.rect(margin, y, pageWidth - margin * 2, 9, 'F');
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(8);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text('Description', margin + 3, y + 6);
-    pdf.text('Qty', 130, y + 6, { align: 'right' });
-    pdf.text('Unit price', 164, y + 6, { align: 'right' });
-    pdf.text('Amount', pageWidth - margin - 3, y + 6, { align: 'right' });
-    y += 9;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(23, 32, 51);
-  };
-
-  drawTableHeader();
-  for (const line of invoice.lines ?? []) {
-    const descriptionLines = pdf.splitTextToSize(line.description || '', 86);
-    const rowHeight = Math.max(8, descriptionLines.length * 4.5 + 3);
-    if (y + rowHeight > pageHeight - margin) {
-      pdf.addPage();
-      y = margin;
-      drawTableHeader();
-    }
-    pdf.setFontSize(9);
-    pdf.text(descriptionLines, margin + 3, y + 5);
-    pdf.text(String(line.quantity), 130, y + 5, { align: 'right' });
-    pdf.text(fmt(line.unitPrice), 164, y + 5, { align: 'right' });
-    pdf.text(fmt(line.amount), pageWidth - margin - 3, y + 5, { align: 'right' });
-    y += rowHeight;
-    pdf.setDrawColor(226, 232, 240);
-    pdf.line(margin, y, pageWidth - margin, y);
-  }
-
-  if (y + 38 > pageHeight - margin) {
-    pdf.addPage();
-    y = margin;
-  }
-  y += 8;
-  const totalLabelX = pageWidth - margin - 62;
-  const totalValueX = pageWidth - margin;
-  const totals = [
-    ['Subtotal', fmt(invoice.subtotal)],
-    ['Tax', fmt(invoice.taxAmount)],
-    ['Total', fmt(invoice.totalAmount)],
-    ['Paid', fmt(invoice.amountPaid)],
-    ['Balance due', fmt((parseFloat(invoice.totalAmount) - parseFloat(invoice.amountPaid)).toFixed(2))],
-  ];
-  totals.forEach(([label, value], index) => {
-    if (index === 2) {
-      pdf.setDrawColor(23, 32, 51);
-      pdf.line(totalLabelX, y - 3, totalValueX, y - 3);
-      pdf.setFont('helvetica', 'bold');
-    }
-    if (index === 4) pdf.setTextColor(37, 99, 235);
-    pdf.text(label, totalLabelX, y);
-    pdf.text(value, totalValueX, y, { align: 'right' });
-    y += 6;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(23, 32, 51);
-  });
-
-  if (invoice.notes) {
-    y += 8;
-    const notes = pdf.splitTextToSize(`Notes: ${invoice.notes}`, pageWidth - margin * 2);
-    if (y + notes.length * 5 > pageHeight - margin) {
-      pdf.addPage();
-      y = margin;
-    }
-    pdf.setFontSize(9);
-    pdf.text(notes, margin, y);
-  }
-
-  const safeName = invoice.invoiceNumber.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') || 'invoice';
-  const pdfUrl = URL.createObjectURL(pdf.output('blob'));
-  const downloadLink = document.createElement('a');
-  downloadLink.href = pdfUrl;
-  downloadLink.download = `${safeName}.pdf`;
-  downloadLink.style.display = 'none';
-  document.body.appendChild(downloadLink);
-  downloadLink.click();
-  downloadLink.remove();
-  window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 }
 
 function TableSkeleton() {
@@ -236,6 +54,7 @@ function TableSkeleton() {
 
 export default function InvoicesTab() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage]               = useState(1);
@@ -244,6 +63,8 @@ export default function InvoicesTab() {
   const [editInvoiceId, setEditInvoiceId] = useState<number | null>(null);
   const [payInvoice, setPayInvoice]   = useState<ARInvoice | null>(null);
   const [deleteInvoice, setDeleteInvoice] = useState<ARInvoice | null>(null);
+  const [printInvoice, setPrintInvoice] = useState<ARInvoice | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [formError, setFormError]     = useState<string | null>(null);
   const [payError, setPayError]       = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -251,7 +72,6 @@ export default function InvoicesTab() {
   const { data: list, isLoading, isFetching, refetch } = useARInvoices({
     search: search || undefined, status: statusFilter || undefined, page, limit: PAGE_LIMIT,
   });
-  const { data: customersRes } = useARCustomers({ limit: 200 });
   const { data: invoiceDetail } = useARInvoice(editInvoiceId);
   const { data: permsRes }     = useARPermissions();
 
@@ -263,7 +83,6 @@ export default function InvoicesTab() {
   const invoices   = list?.data ?? [];
   const total      = list?.total ?? 0;
   const totalPages = list?.totalPages ?? 1;
-  const customers  = customersRes?.data ?? [];
   const perms      = permsRes?.data ?? { canView: true, canCreate: false, canEdit: false, canDelete: false };
 
   // Open invoices eligible for payment
@@ -304,6 +123,22 @@ export default function InvoicesTab() {
     setPayError(null);
     try { await paymentMut.mutateAsync(values); setPayInvoice(null); }
     catch (e: any) { setPayError(e?.message ?? 'Failed to record payment'); }
+  }
+
+  /** One-click PDF in the print format last chosen in the print dialog. */
+  async function handleDownloadPdf(inv: ARInvoice) {
+    setDownloadingId(inv.id);
+    try {
+      const [source, { downloadInvoicePdf }] = await Promise.all([
+        queryClient.fetchQuery(invoicePrintSourceQuery(inv.id)),
+        import('@/lib/invoice-print/pdf'),
+      ]);
+      await downloadInvoicePdf(buildInvoicePrintModel(source), getStoredInvoicePrintFormat());
+    } catch (error) {
+      toast({ title: 'Could not download invoice PDF', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
+    } finally {
+      setDownloadingId(null);
+    }
   }
 
   const STATUSES: ARInvoiceStatus[] = ['draft', 'sent', 'partial', 'paid', 'overdue', 'void'];
@@ -399,25 +234,14 @@ export default function InvoicesTab() {
                           <CreditCard className="w-3.5 h-3.5" />
                         </button>
                       )}
-                      <button onClick={() => {
-                        try {
-                          printInvoice(inv);
-                        } catch (error) {
-                          toast({ title: 'Could not open invoice for printing', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
-                        }
-                      }}
-                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors" title="Print Invoice">
+                      <button onClick={() => setPrintInvoice(inv)}
+                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-[#2563EB] transition-colors" title="Print Invoice (A4 / A5 / 80mm)">
                         <Printer className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => {
-                        try {
-                          downloadInvoicePdf(inv);
-                        } catch (error) {
-                          toast({ title: 'Could not download invoice PDF', description: error instanceof Error ? error.message : undefined, variant: 'destructive' });
-                        }
-                      }}
-                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors" title="Download PDF">
-                        <Download className="w-3.5 h-3.5" />
+                      <button onClick={() => handleDownloadPdf(inv)} disabled={downloadingId === inv.id}
+                        className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors disabled:opacity-60"
+                        title={`Download PDF (${INVOICE_PRINT_FORMAT_SPECS[getStoredInvoicePrintFormat()].label})`}>
+                        {downloadingId === inv.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                       </button>
                       {canEdit && (
                         <button onClick={() => openEdit(inv)}
@@ -466,13 +290,14 @@ export default function InvoicesTab() {
 
       {/* Modals */}
       <InvoiceFormModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate}
-        isSubmitting={createMut.isPending} customers={customers} error={formError} />
+        isSubmitting={createMut.isPending} error={formError} />
       <InvoiceFormModal open={!!editInvoice} onClose={() => { setEditInvoice(null); setEditInvoiceId(null); }}
         onSubmit={handleUpdate} isSubmitting={updateMut.isPending}
-        invoice={editWithLines ?? null} customers={customers} error={formError} />
+        invoice={editWithLines ?? null} error={formError} />
       <PaymentFormModal open={!!payInvoice} onClose={() => setPayInvoice(null)} onSubmit={handlePayment}
         isSubmitting={paymentMut.isPending} invoices={payInvoice ? [payInvoice] : openInvoices}
         defaultInvoiceId={payInvoice?.id} error={payError} />
+      <InvoicePrintDialog invoice={printInvoice} onClose={() => setPrintInvoice(null)} />
       <ARDeleteDialog
         open={!!deleteInvoice} onClose={() => setDeleteInvoice(null)} onConfirm={handleDelete}
         isDeleting={deleteMut.isPending}

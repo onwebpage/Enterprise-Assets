@@ -116,7 +116,7 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
   const [form, setForm] = useState({
     name: '', legalName: '', taxId: '', industry: '',
     foundedYear: '', employeeCount: '', currency: 'INR',
-    fiscalYearStart: 'Jan', country: '', gstin: '',
+    fiscalYearStart: 'Jan', country: '', gstin: '', upiId: '',
   });
 
   useEffect(() => {
@@ -132,6 +132,7 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
         fiscalYearStart: org.fiscalYearStart ?? 'Jan',
         country: org.country ?? '',
         gstin: org.gstin ?? '',
+        upiId: org.upiId ?? '',
       });
     }
   }, [org]);
@@ -209,6 +210,17 @@ function GeneralTab({ toast }: { toast: ReturnType<typeof useToast>['toast'] }) 
               ))}
             </select>
           </Field>
+        </div>
+      </Section>
+
+      <Section title="Invoice Payments">
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="UPI ID">
+            <Input value={form.upiId} onChange={f('upiId')} className={inputCls} placeholder="business@okhdfcbank" />
+          </Field>
+          <p className="text-xs text-white/35 self-end pb-2">
+            Printed invoices with a balance due show a UPI QR code for this ID. Leave empty to print invoices without a QR code.
+          </p>
         </div>
       </Section>
 
