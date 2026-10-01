@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 const ADMIN_TOKEN_KEY = 'admin_token';
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+import { API_ORIGIN } from '@/lib/api';
+// API_ORIGIN is empty on the web (same-origin API) and the backend origin in the Android app.
+const BASE = API_ORIGIN || import.meta.env.BASE_URL.replace(/\/$/, '');
 
 export interface AdminUser {
   id: number;

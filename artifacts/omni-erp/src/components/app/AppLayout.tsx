@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { api, type ApiListResponse } from '@/lib/api';
+import BrandLogo from '@/components/BrandLogo';
 
 const navGroups = [
   {
@@ -124,10 +125,16 @@ const navGroups = [
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  /**
+   * For app-like screens (e.g. chat) that manage their own scrolling: the content
+   * area is sized to exactly the space above the mobile bottom navigation and
+   * does not scroll itself.
+   */
+  fillHeight?: boolean;
   breadcrumbs?: { label: string; path?: string }[];
 }
 
-export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps) {
+export default function AppLayout({ children, breadcrumbs = [], fillHeight = false }: AppLayoutProps) {
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -187,9 +194,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={`flex items-center gap-3 px-4 py-5 border-b border-white/[0.07] ${!sidebarOpen ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#2563EB] to-[#06B6D4] flex items-center justify-center flex-shrink-0">
-          <Building className="w-4 h-4 text-white" />
-        </div>
+        <BrandLogo className="w-8 h-8 rounded-lg flex-shrink-0" />
         <AnimatePresence>
           {sidebarOpen && (
             <motion.span
@@ -302,7 +307,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
   );
 
   return (
-    <div className="flex h-screen bg-[#050816] overflow-hidden">
+    <div className="app-shell flex bg-[#050816] overflow-hidden">
       {/* Desktop Sidebar */}
       <motion.aside
         animate={{ width: sidebarOpen ? 240 : 64 }}
@@ -373,9 +378,7 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
               ))}
             </div>
             <div className="flex min-w-0 items-center gap-2 md:hidden">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#06B6D4]">
-                <Building className="h-4 w-4 text-white" />
-              </div>
+              <BrandLogo className="h-8 w-8 flex-shrink-0 rounded-lg" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-white">{breadcrumbs.at(-1)?.label ?? 'Dashboard'}</p>
                 <p className="truncate text-[10px] text-white/35">{currentOrganization.name}</p>
@@ -493,7 +496,8 @@ export default function AppLayout({ children, breadcrumbs = [] }: AppLayoutProps
         </header>
 
         {/* Content */}
-        <main className="app-content flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+        {/* The bottom navigation is visible below lg, so its clearance must apply below lg too. */}
+        <main className={`app-content flex-1 min-h-0 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0${fillHeight ? ' app-content-fill' : ''}`}>
           {children}
         </main>
       </div>

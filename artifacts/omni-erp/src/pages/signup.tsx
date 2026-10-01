@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { ArrowRight, Eye, EyeOff, ShieldCheck, Zap, Activity } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import BrandLogo from '@/components/BrandLogo';
 
 const trustItems = [
   { icon: ShieldCheck, label: 'ISO 27001 Certified' },
@@ -70,14 +71,7 @@ export default function Signup() {
           className="relative z-10"
         >
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.9" />
-                <rect x="13" y="3" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.5" />
-                <rect x="3" y="13" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.5" />
-                <rect x="13" y="13" width="8" height="8" rx="1.5" fill="white" fillOpacity="0.9" />
-              </svg>
-            </div>
+            <BrandLogo className="w-9 h-9 rounded-xl shadow-lg shadow-primary/20" />
             <span className="text-lg font-bold tracking-tight group-hover:text-primary transition-colors">ZorvanI ERP</span>
           </Link>
         </motion.div>
@@ -118,9 +112,7 @@ export default function Signup() {
         <div className="absolute top-0 inset-x-0 h-64 bg-gradient-to-b from-primary/[0.04] to-transparent pointer-events-none" />
 
         <div className="lg:hidden mb-8 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-            <div className="w-4 h-4 border-2 border-white rounded-sm rotate-45" />
-          </div>
+          <BrandLogo className="w-9 h-9 rounded-xl shadow-lg shadow-primary/20" />
           <span className="text-lg font-bold tracking-tight">ZorvanI ERP</span>
         </div>
 

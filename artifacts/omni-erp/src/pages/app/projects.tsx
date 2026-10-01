@@ -5,7 +5,7 @@ import AppLayout from "@/components/app/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, getToken } from "@/lib/api";
+import { api, getToken, API_BASE } from "@/lib/api";
 
 type Project = { id: number; code: string; name: string; description: string | null; status: string; managerId: number | null; startDate: string | null; endDate: string | null; budget: string; isArchived: boolean };
 type FormState = Omit<Project, "id" | "isArchived">;
@@ -25,7 +25,7 @@ export default function Projects() {
   const remove = useMutation({ mutationFn: (id: number) => api.delete(`/projects/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }) });
 
   function edit(project: Project) { setEditing(project.id); setForm({ code: project.code, name: project.name, description: project.description ?? "", status: project.status, managerId: project.managerId, startDate: project.startDate ?? "", endDate: project.endDate ?? "", budget: project.budget }); setOpen(true); }
-  async function exportCsv() { const response = await fetch("/api/projects/export/csv", { headers: { Authorization: `Bearer ${getToken()}` } }); if (!response.ok) return; const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "projects.csv"; link.click(); URL.revokeObjectURL(url); }
+  async function exportCsv() { const response = await fetch(`${API_BASE}/projects/export/csv`, { headers: { Authorization: `Bearer ${getToken()}` } }); if (!response.ok) return; const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = "projects.csv"; link.click(); URL.revokeObjectURL(url); }
 
   return (
     <AppLayout breadcrumbs={[{ label: "Business" }, { label: "Projects" }]}>

@@ -9,7 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+import { API_ORIGIN } from '@/lib/api';
+
+// API_ORIGIN is empty on the web (same-origin API) and the backend origin in the Android app.
+const BASE = API_ORIGIN || import.meta.env.BASE_URL.replace(/\/$/, '');
 const api = (path: string) => `${BASE}/api${path}`;
 
 function authFetch(url: string, init: RequestInit = {}) {

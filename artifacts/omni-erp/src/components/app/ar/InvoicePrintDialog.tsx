@@ -13,6 +13,8 @@ import {
 } from '@/lib/invoice-print/model';
 import { THERMAL_PAGE_STYLE_ID, mmToPx, renderInvoiceDocument, thermalPageRule } from '@/lib/invoice-print/html';
 import { downloadInvoicePdf } from '@/lib/invoice-print/pdf';
+import { isNativeApp, printHtmlNatively } from '@/lib/native';
+import { getBrandLogoDataUrl } from '@/lib/brand-logo';
 
 interface Props {
   /** Invoice to print; the dialog is open while this is set. */
@@ -41,7 +43,10 @@ export default function InvoicePrintDialog({ invoice, onClose }: Props) {
   const { data: source, isLoading, isFetching, error, refetch } = useInvoicePrintSource(invoice?.id ?? null);
 
   const model = useMemo(() => (source ? buildInvoicePrintModel(source) : null), [source]);
-  const html = useMemo(() => (model ? renderInvoiceDocument(model, format) : ''), [model, format]);
+  // The logo is embedded as a data URL so the printed document is self-contained.
+  const [brandLogo, setBrandLogo] = useState('');
+  useEffect(() => { void getBrandLogoDataUrl().then(setBrandLogo); }, []);
+  const html = useMemo(() => (model ? renderInvoiceDocument(model, format, { brandLogo }) : ''), [model, format, brandLogo]);
   const spec = INVOICE_PRINT_FORMAT_SPECS[format];
 
   // The measured height belongs to one rendering; drop it when the document changes.
@@ -77,7 +82,33 @@ export default function InvoicePrintDialog({ invoice, onClose }: Props) {
     setContentHeight(height);
   };
 
+  // Android WebViews have no window.print(): the same document goes to the Android print service.
+  const printOnAndroid = useCallback(async () => {
+    if (!model || !html) return;
+    try {
+      await printHtmlNatively({
+        html,
+        jobName: `${model.invoiceNumber} - ZorvanI ERP`,
+        paper: format === 'a5' ? 'a5-landscape' : format === 'thermal80' ? 'receipt80' : 'a4',
+        heightMm: contentHeight ? Math.ceil(contentHeight / mmToPx(1)) + 4 : undefined,
+      });
+    } catch {
+      // No print service on this device: fall back to the PDF, which can be printed or shared.
+      toast({ title: 'Printing is not available on this device', description: 'Opening the invoice PDF instead.' });
+      try {
+        await downloadInvoicePdf(model, format);
+      } catch (pdfError) {
+        toast({
+          title: 'Could not create the invoice PDF',
+          description: pdfError instanceof Error ? pdfError.message : undefined,
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [model, html, format, contentHeight, toast]);
+
   const handlePrint = useCallback(() => {
+    if (isNativeApp) { void printOnAndroid(); return; }
     const frameWindow = frameRef.current?.contentWindow;
     if (!frameWindow) {
       toast({ title: 'Invoice preview is not ready yet', variant: 'destructive' });
@@ -95,7 +126,7 @@ export default function InvoicePrintDialog({ invoice, onClose }: Props) {
         variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [toast, printOnAndroid]);
 
   // Ctrl/Cmd+P while the dialog is open prints the invoice, not the dashboard behind it.
   useEffect(() => {

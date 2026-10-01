@@ -119,6 +119,8 @@ export interface InvoicePrintModel {
     email: string;
     gstin: string;
   };
+  /** Delivery address; null when the invoice has no Ship To (then nothing is printed). */
+  shipTo: { name: string; addressLines: string[]; phone: string } | null;
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
@@ -350,6 +352,15 @@ export function buildInvoicePrintModel(source: InvoicePrintSource): InvoicePrint
     ...(cityLine ? [cityLine] : []),
   ];
 
+  const shipToCityLine = [invoice.shipToCity, invoice.shipToCountry].map((part) => part?.trim()).filter(Boolean).join(', ');
+  const shipToLines = [
+    ...(invoice.shipToAddress ?? '').split(/\r?\n/).map((part) => part.trim()).filter(Boolean),
+    ...(shipToCityLine ? [shipToCityLine] : []),
+  ];
+  const shipTo = shipToLines.length > 0
+    ? { name: invoice.shipToName?.trim() || customer?.name || invoice.customerName || '', addressLines: shipToLines, phone: invoice.shipToPhone?.trim() ?? '' }
+    : null;
+
   return {
     brand: PRODUCT_BRAND,
     documentTitle: sellerGstin ? 'Tax Invoice' : 'Invoice',
@@ -367,6 +378,7 @@ export function buildInvoicePrintModel(source: InvoicePrintSource): InvoicePrint
       email: customer?.email?.trim() ?? '',
       gstin: buyerGstin || (customer?.taxId?.trim() ?? ''),
     },
+    shipTo,
     invoiceNumber: invoice.invoiceNumber,
     issueDate: formatInvoiceDate(invoice.issueDate),
     dueDate: formatInvoiceDate(invoice.dueDate),

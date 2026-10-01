@@ -32,6 +32,33 @@ export interface ARCustomer {
   totalOutstanding?: string;
 }
 
+/** A delivery address saved against a customer. */
+export interface ARShippingAddress {
+  id: number;
+  customerId: number;
+  label: string;
+  recipientName: string | null;
+  address: string;
+  city: string | null;
+  country: string | null;
+  phone: string | null;
+}
+
+export interface ARShippingAddressFormValues {
+  label: string;
+  recipientName?: string | null;
+  address: string;
+  city?: string | null;
+  country?: string | null;
+  phone?: string | null;
+}
+
+/** Ship To choice sent with an invoice: none, the billing address, or a saved shipping address. */
+export type ARInvoiceShipToInput =
+  | null
+  | { source: 'billing' }
+  | { source: 'saved'; addressId: number };
+
 export interface ARInvoiceLine {
   id: number;
   invoiceId: number;
@@ -58,6 +85,14 @@ export interface ARInvoice {
   totalAmount: string;
   amountPaid: string;
   notes: string | null;
+  /** Optional Ship To, copied onto the invoice when it was saved. All null when not set. */
+  shipToSource?: 'billing' | 'saved' | null;
+  shipToAddressId?: number | null;
+  shipToName?: string | null;
+  shipToAddress?: string | null;
+  shipToCity?: string | null;
+  shipToCountry?: string | null;
+  shipToPhone?: string | null;
   createdBy: number | null;
   createdAt: string;
   updatedAt: string;
@@ -127,6 +162,8 @@ export interface ARInvoiceFormValues {
   discountAmount?: string;
   taxAmount?: string;
   notes?: string | null;
+  /** Omitted = leave unchanged (edit), null = no Ship To. */
+  shipTo?: ARInvoiceShipToInput;
   lines: ARInvoiceLineFormValues[];
 }
 
@@ -212,6 +249,42 @@ export function useARCustomer(id: number | null) {
     enabled: id !== null,
     staleTime: 15_000,
     retry: 1,
+  });
+}
+
+export function useARShippingAddresses(customerId: number | null) {
+  return useQuery<ApiResponse<ARShippingAddress[]>>({
+    queryKey: ["ar", "customers", "detail", customerId, "shipping-addresses"],
+    queryFn:  () => api.get(`/ar/customers/${customerId}/shipping-addresses`),
+    enabled: customerId !== null,
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useCreateARShippingAddress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ customerId, data }: { customerId: number; data: ARShippingAddressFormValues }) =>
+      api.post<ApiResponse<ARShippingAddress>>(`/ar/customers/${customerId}/shipping-addresses`, data),
+    onSuccess: (result, { customerId }) => {
+      const key = ["ar", "customers", "detail", customerId, "shipping-addresses"];
+      // Show the new address immediately, so it can be selected before the refetch lands.
+      qc.setQueryData<ApiResponse<ARShippingAddress[]>>(key, (current) =>
+        current ? { ...current, data: [...current.data.filter((a) => a.id !== result.data.id), result.data] } : current);
+      qc.invalidateQueries({ queryKey: key });
+    },
+  });
+}
+
+export function useDeleteARShippingAddress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ customerId, addressId }: { customerId: number; addressId: number }) =>
+      api.delete<ApiResponse<{ id: number }>>(`/ar/customers/${customerId}/shipping-addresses/${addressId}`),
+    onSuccess: (_result, { customerId }) => {
+      qc.invalidateQueries({ queryKey: ["ar", "customers", "detail", customerId, "shipping-addresses"] });
+    },
   });
 }
 

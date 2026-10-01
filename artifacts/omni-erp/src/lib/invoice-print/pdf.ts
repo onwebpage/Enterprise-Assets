@@ -8,6 +8,8 @@
 import type { jsPDF as JsPdf } from 'jspdf';
 import { encodeQr } from './qr';
 import { invoiceFileName, type InvoicePrintFormat, type InvoicePrintModel, type PaymentStatusTone } from './model';
+import { saveFileNatively } from '@/lib/native';
+import { getBrandLogoDataUrl } from '@/lib/brand-logo';
 
 type Rgb = [number, number, number];
 
@@ -106,7 +108,7 @@ class Pen {
 
 // ── A4 portrait / A5 landscape ────────────────────────────────────────────────
 
-function drawSheet(pen: Pen, model: InvoicePrintModel, format: 'a4' | 'a5') {
+function drawSheet(pen: Pen, model: InvoicePrintModel, format: 'a4' | 'a5', brandLogo: string) {
   const { doc } = pen;
   const a5 = format === 'a5';
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -173,7 +175,10 @@ function drawSheet(pen: Pen, model: InvoicePrintModel, format: 'a4' | 'a5') {
   const qrSize = 21;
   const showA5Pay = a5 && !!model.upi;
   const payBlockWidth = showA5Pay ? qrSize + 34 : 0;
-  const billWidth = metaLeft - left - (showA5Pay ? payBlockWidth + 8 : 6);
+  const partiesWidth = metaLeft - left - (showA5Pay ? payBlockWidth + 8 : 6);
+  // A4 gives Ship To its own column beside Bill To; the half-sheet prints it as one line under Bill To.
+  const shipToColumn = !a5 && !!model.shipTo;
+  const billWidth = shipToColumn ? (partiesWidth - 6) / 2 : partiesWidth;
   let billY = label('Bill to', left, y) + 0.4;
   billY = pen.text(pen.wrap(model.customer.name, billWidth, { size: a5 ? 9.5 : 11.5, bold: true }), left, billY, { size: a5 ? 9.5 : 11.5, bold: true });
   const customerLines = a5
@@ -184,6 +189,19 @@ function drawSheet(pen: Pen, model: InvoicePrintModel, format: 'a4' | 'a5') {
     billY = pen.text(pen.wrap(line, billWidth, { size: base }), left, billY, { size: base, color: MUTED });
   }
   if (model.customer.gstin) billY = pen.text(`GSTIN ${model.customer.gstin}`, left, billY, { size: base });
+
+  if (model.shipTo && shipToColumn) {
+    const shipLeft = left + billWidth + 6;
+    let shipY = label('Ship to', shipLeft, y) + 0.4;
+    shipY = pen.text(pen.wrap(model.shipTo.name, billWidth, { size: 11.5, bold: true }), shipLeft, shipY, { size: 11.5, bold: true });
+    for (const line of [...model.shipTo.addressLines, model.shipTo.phone].filter(Boolean)) {
+      shipY = pen.text(pen.wrap(line, billWidth, { size: base }), shipLeft, shipY, { size: base, color: MUTED });
+    }
+    billY = Math.max(billY, shipY);
+  } else if (model.shipTo) {
+    const shipLine = ['Ship to:', [model.shipTo.name, ...model.shipTo.addressLines, model.shipTo.phone].filter(Boolean).join(', ')].join(' ');
+    billY = pen.text(pen.wrap(shipLine, billWidth, { size: base }), left, billY, { size: base });
+  }
 
   let payY = y;
   if (showA5Pay && model.upi) {
@@ -335,7 +353,13 @@ function drawSheet(pen: Pen, model: InvoicePrintModel, format: 'a4' | 'a5') {
   pen.text('This is a computer-generated invoice.', left, y, { size: labelSize, color: LABEL });
   const brandWidth = pen.width(model.brand, { size: labelSize, bold: true });
   pen.text(model.brand, right, y, { size: labelSize, bold: true, color: ACCENT, align: 'right' });
-  pen.text('Generated with ', right - brandWidth, y, { size: labelSize, color: LABEL, align: 'right' });
+  const logoSize = brandLogo ? (a5 ? 3.4 : 4) : 0;
+  if (brandLogo) {
+    try {
+      doc.addImage(brandLogo, 'PNG', right - brandWidth - logoSize - 1, y - (logoSize - pen.lineHeight(labelSize)) / 2, logoSize, logoSize);
+    } catch { /* the PDF is still valid without the logo */ }
+  }
+  pen.text('Generated with ', right - brandWidth - (brandLogo ? logoSize + 2 : 0), y, { size: labelSize, color: LABEL, align: 'right' });
 
   // Page footer on every page.
   const pages = doc.getNumberOfPages();
@@ -406,6 +430,7 @@ function drawReceipt(pen: Pen, model: InvoicePrintModel, allowPageBreaks: boolea
   pair('Phone', model.customer.phone);
   pair('GSTIN', model.customer.gstin);
   pair('Place of supply', model.placeOfSupply);
+  if (model.shipTo) pair('Ship to', [model.shipTo.name, ...model.shipTo.addressLines, model.shipTo.phone].filter(Boolean).join(', '));
   rule();
   pen.text('ITEM / QTY × RATE', left, y, { size: small, bold: true, color: BLACK });
   y = pen.text('AMOUNT', right, y, { size: small, bold: true, color: BLACK, align: 'right' });
@@ -476,7 +501,7 @@ function drawReceipt(pen: Pen, model: InvoicePrintModel, allowPageBreaks: boolea
 // ── Entry points ──────────────────────────────────────────────────────────────
 
 export async function createInvoicePdf(model: InvoicePrintModel, format: InvoicePrintFormat): Promise<Blob> {
-  const [{ jsPDF }, fonts] = await Promise.all([import('jspdf'), import('./pdf-fonts')]);
+  const [{ jsPDF }, fonts, brandLogo] = await Promise.all([import('jspdf'), import('./pdf-fonts'), getBrandLogoDataUrl()]);
 
   const create = (pageFormat: string | [number, number], orientation: 'portrait' | 'landscape') => {
     const doc = new jsPDF({ unit: 'mm', format: pageFormat, orientation });
@@ -500,7 +525,7 @@ export async function createInvoicePdf(model: InvoicePrintModel, format: Invoice
   }
 
   const doc = create(format, format === 'a5' ? 'landscape' : 'portrait');
-  drawSheet(new Pen(doc, fonts.INVOICE_PDF_FONT_FAMILY), model, format);
+  drawSheet(new Pen(doc, fonts.INVOICE_PDF_FONT_FAMILY), model, format, brandLogo);
   return doc.output('blob');
 }
 
@@ -508,10 +533,13 @@ const PDF_SUFFIX: Record<InvoicePrintFormat, string> = { a4: 'A4', a5: 'A5', the
 
 export async function downloadInvoicePdf(model: InvoicePrintModel, format: InvoicePrintFormat): Promise<void> {
   const blob = await createInvoicePdf(model, format);
+  const filename = `${invoiceFileName(model.invoiceNumber)}-${PDF_SUFFIX[format]}.pdf`;
+  // Android app: WebViews ignore download links, so hand the PDF to the share/save sheet.
+  if (await saveFileNatively(blob, filename)) return;
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${invoiceFileName(model.invoiceNumber)}-${PDF_SUFFIX[format]}.pdf`;
+  link.download = filename;
   link.style.display = 'none';
   document.body.appendChild(link);
   link.click();

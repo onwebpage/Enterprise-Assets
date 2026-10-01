@@ -307,8 +307,8 @@ export default function AIAssistant() {
   const showEmptyState = messages.length === 0 && !isThinking;
 
   return (
-    <AppLayout breadcrumbs={[{ label: 'Intelligence' }, { label: 'AI Assistant' }]}>
-      <div className="ai-assistant-page flex h-full overflow-hidden">
+    <AppLayout fillHeight breadcrumbs={[{ label: 'Intelligence' }, { label: 'AI Assistant' }]}>
+      <div className="ai-assistant-page flex h-full min-h-0 overflow-hidden">
 
         {/* ── Sidebar ─────────────────────────────────────────────────── */}
         <div className="w-72 flex-shrink-0 border-r border-white/[0.07] flex flex-col hidden xl:flex">
@@ -378,10 +378,10 @@ export default function AIAssistant() {
         </div>
 
         {/* ── Chat Area ────────────────────────────────────────────────── */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
 
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] flex-shrink-0">
+          <div className="ai-chat-header flex items-center justify-between px-6 py-4 border-b border-white/[0.07] flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#06B6D4] flex items-center justify-center">
                 <Bot className="w-5 h-5 text-white" />
@@ -406,7 +406,7 @@ export default function AIAssistant() {
           </div>
 
           {/* Messages */}
-          <div className="ai-message-list flex-1 overflow-auto p-6 space-y-5">
+          <div className="ai-message-list flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 space-y-5">
 
             {/* Empty state */}
             {showEmptyState && (
@@ -468,7 +468,7 @@ export default function AIAssistant() {
 
           {/* Quick suggestions (visible when few messages) */}
           {messages.length > 0 && messages.length <= 3 && (
-            <div className="px-6 pb-2 flex-shrink-0">
+            <div className="ai-quick-actions px-6 pb-2 flex-shrink-0">
               <p className="text-xs text-white/25 mb-2">Quick actions:</p>
               <div className="flex flex-wrap gap-2">
                 {suggestions.slice(0, 3).map((s) => (

@@ -9,6 +9,35 @@ export async function ensureAuthSchema(): Promise<void> {
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id integer;
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS upi_id text;
     ALTER TABLE IF EXISTS ar_invoices ADD COLUMN IF NOT EXISTS discount_amount numeric(15,2) DEFAULT 0 NOT NULL;
+    DO $$
+    BEGIN
+      -- Customer shipping addresses + optional Ship To on invoices (only once the AR tables exist).
+      IF to_regclass('public.ar_customers') IS NOT NULL AND to_regclass('public.ar_invoices') IS NOT NULL THEN
+        CREATE TABLE IF NOT EXISTS ar_customer_shipping_addresses (
+          id serial PRIMARY KEY,
+          org_id integer REFERENCES organizations(id) ON DELETE CASCADE,
+          customer_id integer NOT NULL REFERENCES ar_customers(id) ON DELETE CASCADE,
+          label text NOT NULL,
+          recipient_name text,
+          address text NOT NULL,
+          city text,
+          country text,
+          phone text,
+          created_at timestamp DEFAULT now() NOT NULL,
+          updated_at timestamp DEFAULT now() NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS ar_customer_shipping_addresses_customer_idx
+          ON ar_customer_shipping_addresses (customer_id);
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_source text;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_address_id integer
+          REFERENCES ar_customer_shipping_addresses(id) ON DELETE SET NULL;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_name text;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_address text;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_city text;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_country text;
+        ALTER TABLE ar_invoices ADD COLUMN IF NOT EXISTS ship_to_phone text;
+      END IF;
+    END $$;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending' NOT NULL;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version integer DEFAULT 0 NOT NULL;
     CREATE TABLE IF NOT EXISTS tenants (
@@ -287,4 +316,4 @@ export async function ensureAuthSchema(): Promise<void> {
     WHERE p.role_id = r.id
       AND lower(r.name) IN ('admin', 'administrator', 'company admin', 'owner');
   `);
-}
+}

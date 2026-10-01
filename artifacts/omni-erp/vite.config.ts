@@ -1,7 +1,8 @@
+import fs from 'fs';
 import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -18,11 +19,35 @@ if (!isBuild && (Number.isNaN(port) || port <= 0)) {
 
 const basePath = process.env.BASE_PATH ?? '/';
 
+// The official logo lives in attached_assets/logo.png (single source of truth).
+// Components import it through the @assets alias; this plugin also publishes the
+// same file at /logo.png for link previews (og:image), without keeping a copy.
+const brandLogoPath = path.resolve(import.meta.dirname, '..', '..', 'attached_assets', 'logo.png');
+function brandLogoPlugin(): Plugin {
+  return {
+    name: 'zorvani-brand-logo',
+    configureServer(server) {
+      server.middlewares.use('/logo.png', (_req, res) => {
+        res.setHeader('Content-Type', 'image/png');
+        fs.createReadStream(brandLogoPath).pipe(res);
+      });
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: 'logo.png', source: fs.readFileSync(brandLogoPath) });
+    },
+  };
+}
+
+// CAPACITOR_BUILD=1 (set by mobile/setup-android.ps1) swaps the no-op web bridge
+// for the Capacitor implementation. Normal web builds never touch Capacitor.
+const isCapacitorBuild = process.env.CAPACITOR_BUILD === '1';
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
+    brandLogoPlugin(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' &&
     process.env.REPL_ID !== undefined
@@ -40,6 +65,10 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@native-bridge': path.resolve(
+        import.meta.dirname,
+        isCapacitorBuild ? 'mobile/bridge.capacitor.ts' : 'src/lib/native/bridge.web.ts',
+      ),
       '@': path.resolve(import.meta.dirname, 'src'),
       '@assets': path.resolve(
         import.meta.dirname,
@@ -52,7 +81,8 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
+    // The Android build goes to its own folder so it can never replace the website build.
+    outDir: path.resolve(import.meta.dirname, isCapacitorBuild ? 'dist/android' : 'dist/public'),
     emptyOutDir: true,
   },
   server: {

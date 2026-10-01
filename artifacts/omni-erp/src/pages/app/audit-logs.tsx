@@ -7,6 +7,7 @@ import {
   ChevronDown, Eye, Loader2,
 } from 'lucide-react';
 import AppLayout from '@/components/app/AppLayout';
+import { API_BASE } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -249,7 +250,7 @@ export default function AuditLogsPage() {
     if (filters.action)   params.set('action',   filters.action);
     if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
     if (filters.dateTo)   params.set('dateTo',   filters.dateTo);
-    window.open(`/api/audit/export/csv?${params.toString()}`, '_blank');
+    window.open(`${API_BASE}/audit/export/csv?${params.toString()}`, '_blank');
   }
 
   return (

@@ -18,6 +18,7 @@ import {
   Search,
   Settings,
 } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
 /* ─── Data ─────────────────────────────────────────────────────────── */
 const revenueData: { m: string; v: number }[] = [];
@@ -149,7 +150,7 @@ export function Hero() {
                 {/* Sidebar */}
                 <div className="w-[180px] bg-[#0a0f1e] border-r border-white/[0.06] flex flex-col py-4">
                   <div className="px-4 mb-6 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded bg-gradient-to-br from-primary to-accent" />
+                    <BrandLogo className="w-6 h-6 rounded" />
                     <span className="font-bold text-[14px]">ZorvanI ERP</span>
                   </div>
                   <div className="flex-1 flex flex-col gap-1 px-2">

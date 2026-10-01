@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ZorvanI ERP</string>
+    <string name="title_activity_main">ZorvanI ERP</string>
+    <string name="package_name">com.zorvani.erp</string>
+    <string name="custom_url_scheme">com.zorvani.erp</string>
+</resources>

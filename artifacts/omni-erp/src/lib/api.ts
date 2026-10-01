@@ -1,4 +1,10 @@
-const API_BASE = "/api";
+/**
+ * Origin of the backend. Empty on the website, where the API is same-origin
+ * ("/api"). The Android build sets VITE_API_BASE_URL (e.g. https://zorvanierp.in)
+ * because the app's pages are served from inside the APK, not from the server.
+ */
+export const API_ORIGIN = String(import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+export const API_BASE = `${API_ORIGIN}/api`;
 
 // ── Token storage ────────────────────────────────────────────────────────────
 
@@ -35,7 +41,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (organizationId) headers["x-organization-id"] = organizationId;
   } catch {}
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    // fetch only rejects when the request never reached the server (offline, DNS, blocked).
+    throw new ApiError(0, "Can't reach the server. Check your internet connection and try again.");
+  }
 
   if (res.status === 401) {
     removeToken();

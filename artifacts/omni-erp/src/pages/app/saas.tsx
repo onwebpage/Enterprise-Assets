@@ -27,7 +27,10 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { formatINR } from '@/lib/currency';
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
+import { API_ORIGIN } from '@/lib/api';
+
+// API_ORIGIN is empty on the web (same-origin API) and the backend origin in the Android app.
+const BASE = API_ORIGIN || import.meta.env.BASE_URL.replace(/\/$/, '');
 const api = (path: string) => `${BASE}/api${path}`;
 
 // Auth-aware fetch — reads JWT from localStorage and adds Bearer header

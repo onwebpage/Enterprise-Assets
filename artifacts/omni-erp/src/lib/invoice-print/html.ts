@@ -116,10 +116,11 @@ function sheetCss(format: 'a4' | 'a5', model: InvoicePrintModel): string {
   .pay-text { min-width: 0; overflow-wrap: anywhere; ${a5 ? 'max-width: 38mm;' : ''} }
   .foot { margin-top: ${a5 ? '1.5mm' : '8mm'}; padding-top: ${a5 ? '1mm' : '3mm'}; border-top: 0.2mm solid #e2e8f0; color: #64748b; font-size: ${a5 ? '6.5pt' : '7.5pt'}; display: flex; justify-content: space-between; gap: 6mm; }
   .foot strong { color: #2563eb; }
+  .foot .brand-logo { display: inline-block; width: ${a5 ? '4mm' : '5mm'}; height: ${a5 ? '4mm' : '5mm'}; margin: 0 1mm; border-radius: 0.8mm; vertical-align: middle; }
   `;
 }
 
-function sheetBody(format: 'a4' | 'a5', model: InvoicePrintModel): string {
+function sheetBody(format: 'a4' | 'a5', model: InvoicePrintModel, brandLogo: string): string {
   const a5 = format === 'a5';
   const { company, customer } = model;
 
@@ -141,6 +142,20 @@ function sheetBody(format: 'a4' | 'a5', model: InvoicePrintModel): string {
     (customer.phone || customer.email) && `<div class="muted wrap">${esc([customer.phone, customer.email].filter(Boolean).join(' · '))}</div>`,
     customer.gstin && `<div><span class="label">GSTIN</span> ${esc(customer.gstin)}</div>`,
   ].filter(Boolean).join('');
+
+  // Ship To is printed only when the invoice has one: its own column on A4,
+  // a single compact line under Bill To on the half-sheet.
+  const shipTo = model.shipTo;
+  const shipToBlock = shipTo ? `
+      <div class="party">
+        <div class="label">Ship to</div>
+        <div class="party-name">${esc(shipTo.name)}</div>
+        ${shipTo.addressLines.map((line) => `<div class="muted wrap">${esc(line)}</div>`).join('')}
+        ${shipTo.phone ? `<div class="muted wrap">${esc(shipTo.phone)}</div>` : ''}
+      </div>` : '';
+  const shipToCompact = shipTo
+    ? `<div class="wrap"><span class="label">Ship to</span> ${esc([shipTo.name, ...shipTo.addressLines, shipTo.phone].filter(Boolean).join(', '))}</div>`
+    : '';
 
   const metaRows = [
     ['Invoice no.', model.invoiceNumber],
@@ -210,7 +225,9 @@ function sheetBody(format: 'a4' | 'a5', model: InvoicePrintModel): string {
         <div class="label">Bill to</div>
         <div class="party-name">${esc(customer.name)}</div>
         ${customerDetails}
+        ${a5 ? shipToCompact : ''}
       </div>
+      ${a5 ? '' : shipToBlock}
       ${a5 ? pay : ''}
       <div class="meta"><table>${metaRows}</table></div>
     </section>
@@ -233,7 +250,7 @@ function sheetBody(format: 'a4' | 'a5', model: InvoicePrintModel): string {
 
     <footer class="foot keep">
       <span>This is a computer-generated invoice.</span>
-      <span>Generated with <strong>${esc(model.brand)}</strong></span>
+      <span>Generated with ${brandLogo ? `<img class="brand-logo" src="${esc(brandLogo)}" alt="">` : ''}<strong>${esc(model.brand)}</strong></span>
     </footer>`;
 }
 
@@ -325,6 +342,7 @@ function thermalBody(model: InvoicePrintModel): string {
       ['Phone', customer.phone],
       ['GSTIN', customer.gstin],
       ['Place of supply', model.placeOfSupply],
+      ['Ship to', model.shipTo ? [model.shipTo.name, ...model.shipTo.addressLines, model.shipTo.phone].filter(Boolean).join(', ') : ''],
     ])}
     <hr class="rule">
     <div class="cols"><span>Item / Qty × Rate</span><span>Amount</span></div>
@@ -347,9 +365,15 @@ function thermalBody(model: InvoicePrintModel): string {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function renderInvoiceDocument(model: InvoicePrintModel, format: InvoicePrintFormat): string {
+export interface InvoiceDocumentOptions {
+  /** Data URL of the ZorvanI ERP logo for the footer of A4/A5 invoices (see getBrandLogoDataUrl). */
+  brandLogo?: string;
+}
+
+export function renderInvoiceDocument(model: InvoicePrintModel, format: InvoicePrintFormat, options: InvoiceDocumentOptions = {}): string {
   const css = format === 'thermal80' ? thermalCss() : sheetCss(format, model);
-  const body = format === 'thermal80' ? thermalBody(model) : sheetBody(format, model);
+  // The receipt stays text-only: thermal printers cannot reproduce the logo.
+  const body = format === 'thermal80' ? thermalBody(model) : sheetBody(format, model, options.brandLogo ?? '');
   return `<!doctype html>
 <html lang="en">
 <head>

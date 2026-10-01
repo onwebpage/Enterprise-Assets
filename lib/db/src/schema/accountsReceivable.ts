@@ -40,6 +40,27 @@ export const arCustomers = pgTable("ar_customers", {
 });
 
 /**
+ * ar_customer_shipping_addresses — delivery addresses saved against a customer.
+ * A customer can have any number; an invoice may optionally ship to one of them.
+ */
+export const arCustomerShippingAddresses = pgTable("ar_customer_shipping_addresses", {
+  id:            serial("id").primaryKey(),
+  orgId:         integer("org_id").references(() => organizations.id, { onDelete: "cascade" }),
+  customerId:    integer("customer_id").notNull().references(() => arCustomers.id, { onDelete: "cascade" }),
+  label:         text("label").notNull(),            // e.g. "Warehouse", "Head office"
+  recipientName: text("recipient_name"),             // defaults to the customer name when empty
+  address:       text("address").notNull(),
+  city:          text("city"),
+  country:       text("country"),
+  phone:         text("phone"),
+  createdAt:     timestamp("created_at").notNull().defaultNow(),
+  updatedAt:     timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const AR_SHIP_TO_SOURCES = ["billing", "saved"] as const;
+export type ARShipToSource = (typeof AR_SHIP_TO_SOURCES)[number];
+
+/**
  * ar_invoices — invoice headers for accounts receivable.
  * amountPaid is updated atomically when payments are recorded or deleted.
  */
@@ -58,6 +79,16 @@ export const arInvoices = pgTable("ar_invoices", {
   totalAmount:    numeric("total_amount",{ precision: 15, scale: 2 }).notNull().default("0"),
   amountPaid:     numeric("amount_paid", { precision: 15, scale: 2 }).notNull().default("0"),
   notes:          text("notes"),
+  // Optional Ship To. The address is copied onto the invoice when it is saved, so
+  // an issued invoice keeps its delivery address even if the customer's saved
+  // addresses change later. All columns are null when there is no Ship To.
+  shipToSource:    text("ship_to_source"),             // ARShipToSource
+  shipToAddressId: integer("ship_to_address_id").references(() => arCustomerShippingAddresses.id, { onDelete: "set null" }),
+  shipToName:      text("ship_to_name"),
+  shipToAddress:   text("ship_to_address"),
+  shipToCity:      text("ship_to_city"),
+  shipToCountry:   text("ship_to_country"),
+  shipToPhone:     text("ship_to_phone"),
   createdBy:      integer("created_by").references(() => users.id, { onDelete: "set null" }),
   createdAt:      timestamp("created_at").notNull().defaultNow(),
   updatedAt:      timestamp("updated_at").notNull().defaultNow(),
@@ -118,6 +149,26 @@ export const insertARCustomerSchema = z.object({
 
 export const updateARCustomerSchema = insertARCustomerSchema.partial();
 
+// Shipping addresses
+export const insertARShippingAddressSchema = z.object({
+  label:         z.string().trim().min(1).max(100),
+  recipientName: z.string().trim().max(200).nullable().optional(),
+  address:       z.string().trim().min(1).max(500),
+  city:          z.string().trim().max(100).nullable().optional(),
+  country:       z.string().trim().max(100).nullable().optional(),
+  phone:         z.string().trim().max(50).nullable().optional(),
+});
+
+/**
+ * Ship To on an invoice: null for none, the customer's billing address, or one
+ * of the customer's saved shipping addresses. The server copies the address.
+ */
+export const invoiceShipToSchema = z.union([
+  z.object({ source: z.literal("billing") }),
+  z.object({ source: z.literal("saved"), addressId: z.number().int().positive() }),
+]).nullable();
+export type InvoiceShipToInput = z.infer<typeof invoiceShipToSchema>;
+
 // Invoice lines
 export const insertARInvoiceLineSchema = z.object({
   description: z.string().min(1).max(500),
@@ -136,6 +187,7 @@ export const insertARInvoiceSchema = z.object({
   discountAmount: amountStr.optional().default("0"),
   taxAmount:     amountStr.optional().default("0"),
   notes:         z.string().max(1000).nullable().optional(),
+  shipTo:        invoiceShipToSchema.optional(),      // optional; omitted or null = no Ship To
   lines:         z.array(insertARInvoiceLineSchema).min(1, "At least 1 line required"),
 });
 
@@ -147,6 +199,7 @@ export const updateARInvoiceSchema = z.object({
   discountAmount: amountStr.optional(),
   taxAmount:  amountStr.optional(),
   notes:      z.string().max(1000).nullable().optional(),
+  shipTo:     invoiceShipToSchema.optional(),         // omitted = unchanged, null = remove
   lines:      z.array(insertARInvoiceLineSchema).min(1).optional(),
 });
 
@@ -166,6 +219,7 @@ export const updateARPaymentSchema = insertARPaymentSchema.partial();
 
 export type ARCustomer     = typeof arCustomers.$inferSelect;
 export type ARInvoice      = typeof arInvoices.$inferSelect;
+export type ARCustomerShippingAddress = typeof arCustomerShippingAddresses.$inferSelect;
 export type ARInvoiceLine  = typeof arInvoiceLines.$inferSelect;
 export type ARPayment      = typeof arPayments.$inferSelect;
 export type InsertARCustomer = z.infer<typeof insertARCustomerSchema>;

@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["./bridge.capacitor.ts", "../src/lib/native/**/*"],
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "@/*": ["../src/*"],
+      "@native-bridge": ["./bridge.capacitor.ts"]
+    }
+  }
+}

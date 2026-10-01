@@ -12,6 +12,7 @@ import {
   AR_INVOICE_STATUSES, useARCustomer, useARCustomers,
   type ARCustomer, type ARInvoice, type ARInvoiceFormValues, type ARInvoiceStatus,
 } from '@/hooks/useAccountsReceivable';
+import InvoiceShipToSection, { shipToChoiceToInput, type ShipToChoice, type ShipToSnapshot } from './InvoiceShipToSection';
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -61,6 +62,14 @@ function sanitizeDecimal(value: string, decimals: number): string {
 function trimNumber(value: string): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? String(parsed) : value;
+}
+
+/** Ship To selection for an invoice being edited: its saved choice, or none for a new invoice. */
+function initialShipTo(invoice: ARInvoice | null | undefined): ShipToChoice {
+  if (!invoice || !(invoice.shipToAddress || invoice.shipToName)) return { kind: 'none' };
+  if (invoice.shipToSource === 'billing') return { kind: 'billing' };
+  if (invoice.shipToSource === 'saved' && invoice.shipToAddressId) return { kind: 'saved', addressId: invoice.shipToAddressId };
+  return { kind: 'keep' };
 }
 
 const EMPTY_LINE = { description: '', quantity: '1', unitPrice: '' };
@@ -269,12 +278,22 @@ export default function InvoiceFormModal({ open, onClose, onSubmit, isSubmitting
   const { data: customerRes, isLoading: customerLoading } = useARCustomer(open && customerId > 0 ? customerId : null);
   const billTo = customerRes?.data ?? (pickedCustomer?.id === customerId ? pickedCustomer : null);
 
+  // Ship To is optional and belongs to the Bill To customer.
+  const [shipTo, setShipTo] = useState<ShipToChoice>({ kind: 'none' });
+  const shipToSnapshot: ShipToSnapshot | null = invoice && invoice.customerId === customerId && (invoice.shipToAddress || invoice.shipToName)
+    ? {
+        name: invoice.shipToName ?? null, address: invoice.shipToAddress ?? null, city: invoice.shipToCity ?? null,
+        country: invoice.shipToCountry ?? null, phone: invoice.shipToPhone ?? null,
+      }
+    : null;
+
   // Reset only when the modal opens or a different invoice is loaded — not on background refetches.
   const invoiceKey = invoice ? `${invoice.id}:${invoice.updatedAt}:${invoice.lines?.length ?? 0}` : 'new';
   useEffect(() => {
     if (!open) return;
     setPickerOpen(false);
     setPickedCustomer(null);
+    setShipTo(initialShipTo(invoice));
     if (invoice) {
       reset({
         customerId:    invoice.customerId,
@@ -308,6 +327,7 @@ export default function InvoiceFormModal({ open, onClose, onSubmit, isSubmitting
       discountAmount: values.discountAmount || '0',
       taxAmount: values.taxAmount || '0',
       notes: values.notes || null,
+      shipTo: shipToChoiceToInput(shipTo),
       lines: values.lines.map((l, i) => ({ description: l.description.trim(), quantity: l.quantity, unitPrice: l.unitPrice, sequence: i })),
     });
   }
@@ -366,6 +386,8 @@ export default function InvoiceFormModal({ open, onClose, onSubmit, isSubmitting
                   onOpenChange={setPickerOpen}
                   invalid={!!errors.customerId}
                   onSelect={(customer) => {
+                    // Saved shipping addresses belong to a customer, so a new customer starts with no Ship To.
+                    if (customer.id !== customerId) setShipTo({ kind: 'none' });
                     setPickedCustomer(customer);
                     setValue('customerId', customer.id, { shouldDirty: true, shouldValidate: true });
                   }}
@@ -410,6 +432,9 @@ export default function InvoiceFormModal({ open, onClose, onSubmit, isSubmitting
                 <p className="text-xs text-white/35">Select a customer above to fill in the billing details.</p>
               )}
             </section>
+
+            {/* Ship To (optional) */}
+            <InvoiceShipToSection customer={billTo} value={shipTo} onChange={setShipTo} snapshot={shipToSnapshot} />
 
             {/* Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

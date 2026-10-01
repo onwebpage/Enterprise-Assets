@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { Twitter, Linkedin, Github } from "lucide-react";
 import { legalLinks } from "@/lib/legal-links";
+import BrandLogo from "@/components/BrandLogo";
 
 const footerLinks = {
   Products: [
@@ -47,9 +48,7 @@ export function Footer() {
           {/* Brand & Newsletter */}
           <div className="col-span-2 md:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 mb-6 group">
-              <div className="w-7 h-7 rounded bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <div className="w-2.5 h-2.5 border border-white rounded-sm rotate-45" />
-              </div>
+              <BrandLogo className="w-7 h-7 rounded" />
               <span className="text-[18px] font-bold text-white tracking-tight">
                 ZorvanI ERP
               </span>

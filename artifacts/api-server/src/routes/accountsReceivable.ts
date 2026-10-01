@@ -7,13 +7,14 @@ import { Router } from "express";
 import { eq, and, ilike, or, sql, desc, inArray } from "drizzle-orm";
 import {
   db, permissions, roles,
-  arCustomers, arInvoices, arInvoiceLines, arPayments,
+  arCustomers, arInvoices, arInvoiceLines, arPayments, arCustomerShippingAddresses,
   organizations,
 } from "@workspace/db";
 import {
   insertARCustomerSchema, updateARCustomerSchema,
   insertARInvoiceSchema, updateARInvoiceSchema,
   insertARPaymentSchema, updateARPaymentSchema,
+  insertARShippingAddressSchema, type InvoiceShipToInput,
 } from "@workspace/db/schema";
 import { requireAuth, type AuthRequest } from "../middlewares/auth";
 import { requirePermission } from "../middlewares/requirePermission";
@@ -46,6 +47,62 @@ function deriveInvoiceStatus(totalAmount: string, amountPaid: string, currentSta
   if (paid <= 0) return currentStatus === "sent" ? "sent" : "sent";
   if (paid >= total) return "paid";
   return "partial";
+}
+
+/** Ship To columns on ar_invoices, all null when the invoice has no Ship To. */
+const NO_SHIP_TO = {
+  shipToSource: null as string | null,
+  shipToAddressId: null as number | null,
+  shipToName: null as string | null,
+  shipToAddress: null as string | null,
+  shipToCity: null as string | null,
+  shipToCountry: null as string | null,
+  shipToPhone: null as string | null,
+};
+
+const invoiceShipToColumns = {
+  shipToSource: arInvoices.shipToSource, shipToAddressId: arInvoices.shipToAddressId,
+  shipToName: arInvoices.shipToName, shipToAddress: arInvoices.shipToAddress,
+  shipToCity: arInvoices.shipToCity, shipToCountry: arInvoices.shipToCountry, shipToPhone: arInvoices.shipToPhone,
+};
+
+/**
+ * Turn the requested Ship To into the snapshot stored on the invoice. The address
+ * is always read from the database (the customer's billing address or one of their
+ * saved shipping addresses), never taken from the request body.
+ */
+async function resolveShipTo(
+  orgId: number, customerId: number, shipTo: InvoiceShipToInput | undefined,
+): Promise<{ values: typeof NO_SHIP_TO } | { error: string }> {
+  if (!shipTo) return { values: NO_SHIP_TO };
+
+  const [customer] = await db.select().from(arCustomers)
+    .where(and(eq(arCustomers.id, customerId), eq(arCustomers.orgId, orgId))).limit(1);
+  if (!customer) return { error: "Customer not found" };
+
+  if (shipTo.source === "billing") {
+    if (!customer.address?.trim()) return { error: "This customer has no billing address to ship to" };
+    return {
+      values: {
+        shipToSource: "billing", shipToAddressId: null, shipToName: customer.name,
+        shipToAddress: customer.address, shipToCity: customer.city, shipToCountry: customer.country, shipToPhone: customer.phone,
+      },
+    };
+  }
+
+  const [saved] = await db.select().from(arCustomerShippingAddresses)
+    .where(and(
+      eq(arCustomerShippingAddresses.id, shipTo.addressId),
+      eq(arCustomerShippingAddresses.customerId, customerId),
+      eq(arCustomerShippingAddresses.orgId, orgId),
+    )).limit(1);
+  if (!saved) return { error: "Shipping address not found for this customer" };
+  return {
+    values: {
+      shipToSource: "saved", shipToAddressId: saved.id, shipToName: saved.recipientName?.trim() || customer.name,
+      shipToAddress: saved.address, shipToCity: saved.city, shipToCountry: saved.country, shipToPhone: saved.phone,
+    },
+  };
 }
 
 async function nextInvoiceNumber(orgId: number): Promise<string> {
@@ -183,6 +240,72 @@ router.get("/customers/:id", requirePermission(MODULE, "view"), async (req: Auth
   }
 });
 
+// ── Customer shipping addresses ──────────────────────────────────────────────
+
+async function findCustomer(req: AuthRequest, id: number) {
+  const [row] = await db.select({ id: arCustomers.id }).from(arCustomers)
+    .where(and(eq(arCustomers.id, id), eq(arCustomers.orgId, req.user!.orgId!))).limit(1);
+  return row;
+}
+
+// GET /ar/customers/:id/shipping-addresses
+router.get("/customers/:id/shipping-addresses", requirePermission(MODULE, "view"), async (req: AuthRequest, res) => {
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    if (!(await findCustomer(req, id))) { res.status(404).json({ success: false, error: "Customer not found" }); return; }
+    const rows = await db.select().from(arCustomerShippingAddresses)
+      .where(and(eq(arCustomerShippingAddresses.customerId, id), eq(arCustomerShippingAddresses.orgId, req.user!.orgId!)))
+      .orderBy(arCustomerShippingAddresses.label, arCustomerShippingAddresses.id);
+    res.json({ success: true, data: rows });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to fetch shipping addresses" });
+  }
+});
+
+// POST /ar/customers/:id/shipping-addresses
+router.post("/customers/:id/shipping-addresses", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
+  const id = parseInt(req.params.id as string);
+  if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  const parsed = insertARShippingAddressSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
+    return;
+  }
+  try {
+    if (!(await findCustomer(req, id))) { res.status(404).json({ success: false, error: "Customer not found" }); return; }
+    const data = parsed.data;
+    const [row] = await db.insert(arCustomerShippingAddresses).values({
+      orgId: req.user!.orgId!, customerId: id, label: data.label,
+      recipientName: data.recipientName || null, address: data.address,
+      city: data.city || null, country: data.country || null, phone: data.phone || null,
+    }).returning();
+    res.status(201).json({ success: true, data: row });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to save shipping address" });
+  }
+});
+
+// DELETE /ar/customers/:id/shipping-addresses/:addressId
+// Invoices that already shipped to this address keep their copy of it.
+router.delete("/customers/:id/shipping-addresses/:addressId", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
+  const id = parseInt(req.params.id as string);
+  const addressId = parseInt(req.params.addressId as string);
+  if (isNaN(id) || isNaN(addressId)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
+  try {
+    const [deleted] = await db.delete(arCustomerShippingAddresses)
+      .where(and(
+        eq(arCustomerShippingAddresses.id, addressId),
+        eq(arCustomerShippingAddresses.customerId, id),
+        eq(arCustomerShippingAddresses.orgId, req.user!.orgId!),
+      )).returning({ id: arCustomerShippingAddresses.id });
+    if (!deleted) { res.status(404).json({ success: false, error: "Shipping address not found" }); return; }
+    res.json({ success: true, data: deleted });
+  } catch {
+    res.status(500).json({ success: false, error: "Failed to delete shipping address" });
+  }
+});
+
 // POST /ar/customers
 router.post("/customers", requirePermission(MODULE, "create"), async (req: AuthRequest, res) => {
   const parsed = insertARCustomerSchema.safeParse(req.body);
@@ -273,6 +396,7 @@ router.get("/invoices", requirePermission(MODULE, "view"), async (req: AuthReque
         status: arInvoices.status, subtotal: arInvoices.subtotal, discountAmount: arInvoices.discountAmount, taxAmount: arInvoices.taxAmount,
         totalAmount: arInvoices.totalAmount, amountPaid: arInvoices.amountPaid, notes: arInvoices.notes,
         createdBy: arInvoices.createdBy, createdAt: arInvoices.createdAt, updatedAt: arInvoices.updatedAt,
+        ...invoiceShipToColumns,
         customerName: arCustomers.name,
       })
         .from(arInvoices)
@@ -320,6 +444,7 @@ router.get("/invoices/:id", requirePermission(MODULE, "view"), async (req: AuthR
       status: arInvoices.status, subtotal: arInvoices.subtotal, discountAmount: arInvoices.discountAmount, taxAmount: arInvoices.taxAmount,
       totalAmount: arInvoices.totalAmount, amountPaid: arInvoices.amountPaid, notes: arInvoices.notes,
       createdBy: arInvoices.createdBy, createdAt: arInvoices.createdAt, updatedAt: arInvoices.updatedAt,
+      ...invoiceShipToColumns,
       customerName: arCustomers.name,
     })
       .from(arInvoices)
@@ -354,6 +479,10 @@ router.post("/invoices", requirePermission(MODULE, "create"), async (req: AuthRe
       .where(and(eq(arCustomers.id, data.customerId), eq(arCustomers.orgId, orgId))).limit(1);
     if (!cust) { res.status(422).json({ success: false, error: "Customer not found" }); return; }
 
+    // Ship To is optional: omitted or null saves the invoice without one.
+    const shipTo = await resolveShipTo(orgId, data.customerId, data.shipTo);
+    if ("error" in shipTo) { res.status(422).json({ success: false, error: shipTo.error }); return; }
+
     const invoiceNumber = data.invoiceNumber ?? (await nextInvoiceNumber(orgId));
 
     // Duplicate invoice number check
@@ -381,6 +510,7 @@ router.post("/invoices", requirePermission(MODULE, "create"), async (req: AuthRe
       subtotal: subtotal.toFixed(2), discountAmount: discountAmount.toFixed(2),
       taxAmount: taxAmount.toFixed(2), totalAmount: totalAmount.toFixed(2),
       amountPaid: "0.00", notes: data.notes ?? null, createdBy: req.user!.userId,
+      ...shipTo.values,
     }).returning();
 
     // Insert lines
@@ -420,7 +550,23 @@ router.put("/invoices/:id", requirePermission(MODULE, "edit"), async (req: AuthR
     const data = parsed.data;
     const updatePayload: Record<string, any> = { updatedAt: new Date() };
 
-    if (data.customerId) updatePayload.customerId = data.customerId;
+    const customerId = data.customerId ?? existing.customerId;
+    if (data.customerId && data.customerId !== existing.customerId) {
+      const [cust] = await db.select({ id: arCustomers.id }).from(arCustomers)
+        .where(and(eq(arCustomers.id, data.customerId), eq(arCustomers.orgId, orgId))).limit(1);
+      if (!cust) { res.status(422).json({ success: false, error: "Customer not found" }); return; }
+      updatePayload.customerId = data.customerId;
+    }
+
+    // Ship To: omitted = keep, null = remove, otherwise re-copy the chosen address.
+    if (data.shipTo !== undefined) {
+      const shipTo = await resolveShipTo(orgId, customerId, data.shipTo);
+      if ("error" in shipTo) { res.status(422).json({ success: false, error: shipTo.error }); return; }
+      Object.assign(updatePayload, shipTo.values);
+    } else if (customerId !== existing.customerId) {
+      // The old Ship To belonged to the previous customer.
+      Object.assign(updatePayload, NO_SHIP_TO);
+    }
     if (data.issueDate)  updatePayload.issueDate  = data.issueDate;
     if (data.dueDate)    updatePayload.dueDate     = data.dueDate;
     if (data.status)     updatePayload.status      = data.status;

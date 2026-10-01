@@ -14,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import BrandLogo from "@/components/BrandLogo";
 
 const industriesItems = [
   { icon: Factory, label: "Manufacturing", desc: "End-to-end production control" },
@@ -191,9 +192,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-md bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-              <div className="w-3.5 h-3.5 border-2 border-white rounded-sm rotate-45 group-hover:rotate-90 transition-transform duration-500 ease-out" />
-            </div>
+            <BrandLogo className="w-8 h-8 rounded-md shadow-lg shadow-primary/20" />
             <span className="text-[17px] font-bold tracking-tight text-white">
               ZorvanI ERP
             </span>

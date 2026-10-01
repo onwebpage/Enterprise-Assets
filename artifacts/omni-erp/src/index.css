@@ -192,29 +192,6 @@
     font-size: 0.75rem;
   }
 
-  .app-content .ai-assistant-page {
-    min-height: calc(100dvh - 3.5rem);
-    position: relative;
-  }
-
-  .app-content .ai-message-list {
-    padding: 1rem;
-    padding-bottom: 1.5rem;
-  }
-
-  .app-content .ai-composer {
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
-    padding: 0.75rem;
-    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-    background: rgba(5, 8, 22, 0.96);
-    backdrop-filter: blur(16px);
-  }
-
-  .app-content .ai-composer textarea {
-    max-height: 7rem;
-  }
 
   .app-content [role='tablist'],
   .app-content [data-radix-collection-item][role='tab'] {
@@ -524,5 +501,80 @@
 @layer utilities {
   .glassmorphism {
     @apply backdrop-blur-xl bg-white/[0.04] border border-white/[0.08];
+  }
+}
+
+/* ── App shell ────────────────────────────────────────────────────────────── */
+
+/* Fill the visible viewport. 100dvh excludes mobile browser toolbars, which
+   100vh does not; the first declaration is the fallback for older WebViews. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* The fixed bottom navigation is shown below the lg breakpoint (1024px), on
+   phones and tablets in either orientation. Its height is 4rem + a 1px border
+   + the device's bottom inset. */
+@media (max-width: 1023px) {
+  .app-content {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Screens that fill the space above the navigation and scroll internally. */
+  .app-content.app-content-fill {
+    overflow: hidden;
+    padding-bottom: calc(4rem + 1px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* AI Assistant: header, independently scrolling messages, composer pinned
+     directly above the bottom navigation. */
+  .app-content .ai-assistant-page {
+    height: 100%;
+    min-height: 0;
+    max-width: 100%;
+  }
+
+  .app-content .ai-chat-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .app-content .ai-message-list {
+    padding: 1rem;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    overflow-wrap: anywhere;
+  }
+
+  .app-content .ai-quick-actions {
+    padding-inline: 1rem;
+  }
+
+  .app-content .ai-composer {
+    padding: 0.75rem;
+    padding-left: calc(0.75rem + env(safe-area-inset-left, 0px));
+    padding-right: calc(0.75rem + env(safe-area-inset-right, 0px));
+    background: rgba(5, 8, 22, 0.96);
+  }
+
+  .app-content .ai-composer textarea {
+    max-height: 7rem;
+  }
+}
+
+/* Short screens (phones in landscape, or with the keyboard open): give the
+   conversation the room instead of the chrome. */
+@media (max-width: 1023px) and (max-height: 500px) {
+  .app-content .ai-chat-header {
+    padding-block: 0.375rem;
+  }
+
+  .app-content .ai-quick-actions,
+  .app-content .ai-composer > p {
+    display: none;
+  }
+
+  .app-content .ai-composer {
+    padding-block: 0.5rem;
   }
 }
