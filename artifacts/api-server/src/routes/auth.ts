@@ -210,9 +210,9 @@ router.post("/register", async (req, res) => {
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body as { email?: string; password?: string };
+    const { email, password, rememberMe } = req.body as { email?: string; password?: string; rememberMe?: boolean };
 
-    if (!email || !password) {
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || password.length === 0) {
       res.status(400).json({ success: false, error: "Email and password are required" });
       return;
     }
@@ -283,7 +283,7 @@ router.post("/login", async (req, res) => {
       roleId: user.roleId,
       orgId: user.orgId,
       sessionVersion: user.sessionVersion,
-    });
+    }, rememberMe === true ? "30d" : "24h");
 
     res.json({
       success: true,

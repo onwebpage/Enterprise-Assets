@@ -11,7 +11,7 @@ import {
   Shield, CreditCard as BillingIcon, Bell, Search, ChevronDown,
   ChevronRight, Menu, X, LogOut, User, HelpCircle, Sparkles,
   Command, Sun, Moon, Maximize2, Plus, ArrowUpRight, Check,
-  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch, Plug, MessageCircle
+  Building, Landmark, ClipboardList, Server, ListChecks, Coins, ShieldCheck, Wrench, Brain, Database, GitBranch, Plug, MessageCircle, QrCode, Barcode, Calculator, ChartNoAxesCombined, ArrowLeftRight, Files, Scissors, ImageIcon, FileSpreadsheet, KeyRound, Clock3
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +37,9 @@ const navGroups = [
     label: 'Finance',
     items: [
       { icon: DollarSign, label: 'Financial Accounting', path: '/app/finance', featureKey: 'finance' },
+      { icon: Calculator, label: 'GST Calculator', path: '/app/finance/gst-calculator', featureKey: 'finance' },
+      { icon: ChartNoAxesCombined, label: 'EMI Calculator', path: '/app/finance/emi-calculator', featureKey: 'finance' },
+      { icon: ArrowLeftRight, label: 'Currency Converter', path: '/app/finance/currency-converter', featureKey: 'finance' },
       { icon: Coins, label: 'Advanced Budget & Forecasting', path: '/app/budget-cost', featureKey: 'budget_cost' },
       { icon: Landmark,  label: 'Advanced Treasury Management', path: '/app/cash-treasury', featureKey: 'cash_treasury' },
       { icon: Landmark,  label: 'Accounts Receivable',  path: '/app/ar', featureKey: 'accounts_receivable' },
@@ -57,6 +60,7 @@ const navGroups = [
       { icon: ListChecks, label: 'Order Management', path: '/app/order-management', featureKey: 'order_management' },
       { icon: ShoppingCart, label: 'Purchase', path: '/app/purchase', featureKey: 'purchase' },
       { icon: Package, label: 'Inventory', path: '/app/inventory', featureKey: 'inventory' },
+      { icon: Barcode, label: 'Barcode Generator', path: '/app/inventory/barcode-generator', featureKey: 'inventory' },
       { icon: Package, label: 'Advanced WMS', path: '/app/wms' },
       { icon: Factory, label: 'Manufacturing', path: '/app/manufacturing', featureKey: 'manufacturing' },
       { icon: ShieldCheck, label: 'Quality Management', path: '/app/quality', featureKey: 'quality' },
@@ -70,6 +74,10 @@ const navGroups = [
       { icon: FolderKanban, label: 'Projects', path: '/app/projects', featureKey: 'projects' },
       { icon: UserCog, label: 'HR & Payroll', path: '/app/hr', featureKey: 'hr' },
       { icon: FileText, label: 'Documents', path: '/app/documents', featureKey: 'documents' },
+      { icon: Files, label: 'PDF Merger', path: '/app/documents/pdf-merger', featureKey: 'documents' },
+      { icon: Scissors, label: 'PDF Splitter', path: '/app/documents/pdf-splitter', featureKey: 'documents' },
+      { icon: ImageIcon, label: 'Image Compressor', path: '/app/documents/image-compressor', featureKey: 'documents' },
+      { icon: FileSpreadsheet, label: 'Excel to PDF Converter', path: '/app/documents/excel-to-pdf', featureKey: 'documents' },
     ]
   },
   {
@@ -99,6 +107,7 @@ const navGroups = [
       { icon: Shield, label: 'Roles & Permissions', path: '/app/roles' },
       { icon: ClipboardList, label: 'Audit Logs', path: '/app/audit-logs' },
       { icon: Settings, label: 'Settings', path: '/app/settings' },
+      { icon: KeyRound, label: 'Password Generator', path: '/app/settings/password-generator' },
       { icon: BillingIcon, label: 'Subscription & Billing', path: '/app/billing', featureKey: 'billing' },
     ]
   },
@@ -113,6 +122,13 @@ const navGroups = [
     items: [
       { icon: Plug, label: 'Social Media Integration', path: '/app/integrations', featureKey: 'social_media' },
       { icon: MessageCircle, label: 'WhatsApp', path: '/app/integrations/whatsapp', featureKey: 'social_media' },
+    ]
+  },
+  {
+    label: 'Tools',
+    items: [
+      { icon: QrCode, label: 'QR Code Generator', path: '/app/tools/qr-code-generator' },
+      { icon: Clock3, label: 'Time Zone Converter', path: '/app/tools/time-zone-converter' },
     ]
   },
   {

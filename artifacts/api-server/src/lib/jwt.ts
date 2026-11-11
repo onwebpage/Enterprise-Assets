@@ -1,4 +1,4 @@
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 
 const JWT_SECRET = process.env.SESSION_SECRET ?? "dev-secret-change-in-production";
 const JWT_EXPIRES_IN = "24h";
@@ -13,8 +13,8 @@ export interface JwtPayload {
   sessionVersion?: number;
 }
 
-export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+export function signToken(payload: JwtPayload, expiresIn: number | string = JWT_EXPIRES_IN): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresIn as SignOptions["expiresIn"] });
 }
 
 export function verifyToken(token: string): JwtPayload {

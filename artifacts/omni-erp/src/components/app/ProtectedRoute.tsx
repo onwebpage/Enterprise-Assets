@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import BrandLogo from '@/components/BrandLogo';
 
 export default function ProtectedRoute({ children, featureKey }: { children: ReactNode; featureKey?: string }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, sessionError, retrySession } = useAuth();
   const featureAccess = useQuery({
     queryKey: ['saas-feature-access'],
     queryFn: () => api.get<{ success: boolean; data: Record<string, boolean> }>('/saas/features/access').then(response => response.data),
@@ -20,6 +20,18 @@ export default function ProtectedRoute({ children, featureKey }: { children: Rea
         <div className="flex flex-col items-center gap-4">
           <BrandLogo className="w-10 h-10 rounded-xl shadow-lg shadow-primary/20 animate-pulse" />
           <p className="text-sm text-muted-foreground/50">Loading…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-md space-y-4 text-center">
+          <h1 className="text-xl font-semibold text-white">Can’t verify your session</h1>
+          <p role="alert" className="text-sm leading-6 text-white/55">{sessionError}</p>
+          <button type="button" onClick={retrySession} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">Try again</button>
         </div>
       </div>
     );

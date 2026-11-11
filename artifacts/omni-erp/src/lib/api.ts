@@ -13,7 +13,7 @@ export function getToken(): string | null {
 }
 
 export function setToken(token: string): void {
-  try { localStorage.setItem("auth_token", token); } catch {}
+  localStorage.setItem("auth_token", token);
 }
 
 export function removeToken(): void {
@@ -30,7 +30,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+  const isAuthEntry = path === "/auth/login" || path === "/auth/register";
+  const token = isAuthEntry ? null : getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string> ?? {}),
@@ -49,16 +50,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "Can't reach the server. Check your internet connection and try again.");
   }
 
-  if (res.status === 401) {
-    removeToken();
-    window.location.href = "/login";
-    throw new ApiError(401, "Unauthorized");
-  }
-
   const json = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new ApiError(res.status, json.error ?? `Request failed (${res.status})`);
+    const message = typeof json.error === "string" ? json.error : `Request failed (${res.status})`;
+    // A bad password is an expected login response, not an expired session.
+    // Preserve the API's useful message and keep the login form mounted.
+    if (res.status === 401 && !isAuthEntry) {
+      removeToken();
+      window.dispatchEvent(new Event("auth-session-revoked"));
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/signup") {
+        window.location.assign("/login");
+      }
+    }
+    throw new ApiError(res.status, message);
   }
 
   return json as T;

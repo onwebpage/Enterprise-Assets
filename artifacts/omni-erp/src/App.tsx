@@ -57,6 +57,17 @@ import MasterData from '@/pages/app/master-data';
 import MultiEntity from '@/pages/app/multi-entity';
 import SocialIntegrationsPage from '@/pages/app/social-integrations';
 import WhatsappPage from '@/pages/app/whatsapp';
+import QrCodeGenerator from '@/pages/app/qr-code-generator';
+import BarcodeGenerator from '@/pages/app/barcode-generator';
+import GSTCalculator from '@/pages/app/gst-calculator';
+import EMICalculator from '@/pages/app/emi-calculator';
+import CurrencyConverter from '@/pages/app/currency-converter';
+import PDFMerger from '@/pages/app/pdf-merger';
+import PDFSplitter from '@/pages/app/pdf-splitter';
+import ImageCompressor from '@/pages/app/image-compressor';
+import ExcelToPDF from '@/pages/app/excel-to-pdf';
+import PasswordGenerator from '@/pages/app/password-generator';
+import TimeZoneConverter from '@/pages/app/time-zone-converter';
 import { LegalPage } from '@/pages/legal';
 
 const queryClient = new QueryClient({
@@ -156,6 +167,18 @@ function AppRoutes() {
       <Route path="/app/documents">
         <ProtectedRoute featureKey="documents"><Documents /></ProtectedRoute>
       </Route>
+      <Route path="/app/documents/pdf-merger">
+        <ProtectedRoute featureKey="documents"><PDFMerger /></ProtectedRoute>
+      </Route>
+      <Route path="/app/documents/pdf-splitter">
+        <ProtectedRoute featureKey="documents"><PDFSplitter /></ProtectedRoute>
+      </Route>
+      <Route path="/app/documents/image-compressor">
+        <ProtectedRoute featureKey="documents"><ImageCompressor /></ProtectedRoute>
+      </Route>
+      <Route path="/app/documents/excel-to-pdf">
+        <ProtectedRoute featureKey="documents"><ExcelToPDF /></ProtectedRoute>
+      </Route>
       <Route path="/app/customer-portal">
         <ProtectedRoute featureKey="customer_portal"><CustomerPortal /></ProtectedRoute>
       </Route>
@@ -173,6 +196,9 @@ function AppRoutes() {
       </Route>
       <Route path="/app/settings">
         <ProtectedRoute><SettingsPage /></ProtectedRoute>
+      </Route>
+      <Route path="/app/settings/password-generator">
+        <ProtectedRoute><PasswordGenerator /></ProtectedRoute>
       </Route>
       <Route path="/app/billing">
         <ProtectedRoute featureKey="billing"><Billing /></ProtectedRoute>
@@ -218,6 +244,24 @@ function AppRoutes() {
       </Route>
       <Route path="/app/integrations/whatsapp">
         <ProtectedRoute featureKey="social_media"><WhatsappPage /></ProtectedRoute>
+      </Route>
+      <Route path="/app/tools/qr-code-generator">
+        <ProtectedRoute><QrCodeGenerator /></ProtectedRoute>
+      </Route>
+      <Route path="/app/tools/time-zone-converter">
+        <ProtectedRoute><TimeZoneConverter /></ProtectedRoute>
+      </Route>
+      <Route path="/app/inventory/barcode-generator">
+        <ProtectedRoute featureKey="inventory"><BarcodeGenerator /></ProtectedRoute>
+      </Route>
+      <Route path="/app/finance/gst-calculator">
+        <ProtectedRoute featureKey="finance"><GSTCalculator /></ProtectedRoute>
+      </Route>
+      <Route path="/app/finance/emi-calculator">
+        <ProtectedRoute featureKey="finance"><EMICalculator /></ProtectedRoute>
+      </Route>
+      <Route path="/app/finance/currency-converter">
+        <ProtectedRoute featureKey="finance"><CurrencyConverter /></ProtectedRoute>
       </Route>
 
       {/* Super Admin Panel — only requires admin token, independent of ERP login */}

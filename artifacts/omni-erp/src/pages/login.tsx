@@ -15,6 +15,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
@@ -25,7 +26,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(email.trim(), password, rememberMe);
       navigate('/app/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid email or password');
@@ -168,7 +169,7 @@ export default function Login() {
             </div>
 
             <label className="flex items-center gap-2.5 cursor-pointer group">
-              <input type="checkbox" className="w-4 h-4 rounded border-border/60 bg-white/[0.03] accent-primary cursor-pointer" />
+              <input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} className="w-4 h-4 rounded border-border/60 bg-white/[0.03] accent-primary cursor-pointer" />
               <span className="text-sm text-muted-foreground/60 group-hover:text-muted-foreground/80 transition-colors">
                 Keep me signed in for 30 days
               </span>
