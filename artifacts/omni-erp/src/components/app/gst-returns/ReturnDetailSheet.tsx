@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, Send, Edit, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Download, Edit, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   useGSTReturnEntries, useCreateGSTReturnEntry, useDeleteGSTReturnEntry,
-  useSubmitGSTReturn, useUpdateGSTReturn,
+  useUpdateGSTReturn,
   type GSTReturn, type GSTReturnStatus, type GSTReturnType, type GSTReturnEntry,
   type GSTReturnEntryFormValues,
 } from '@/hooks/useGSTReturns';
 import EntryFormModal from './EntryFormModal';
+import { downloadGSTJSON, validateGSTReturn } from '@/lib/gst-returns';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ const RETURN_LABELS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
   draft:   'bg-blue-500/15 text-blue-400 border-blue-500/25',
   pending: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-  filed:   'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  filed:   'bg-amber-500/15 text-amber-400 border-amber-500/25',
   overdue: 'bg-red-500/15 text-red-400 border-red-500/25',
   revised: 'bg-purple-500/15 text-purple-400 border-purple-500/25',
 };
@@ -80,7 +81,6 @@ export default function ReturnDetailSheet({ gstReturn: r, onClose, onEdit, canEd
   const { data: entriesData, isLoading: entriesLoading } = useGSTReturnEntries(r.id);
   const createEntry = useCreateGSTReturnEntry();
   const deleteEntry = useDeleteGSTReturnEntry();
-  const submitMut   = useSubmitGSTReturn();
   const updateMut   = useUpdateGSTReturn();
 
   const entries = entriesData?.data ?? [];
@@ -101,10 +101,12 @@ export default function ReturnDetailSheet({ gstReturn: r, onClose, onEdit, canEd
     catch {}
   }
 
-  async function handleFileReturn() {
+  function handleExport() {
     setActionError(null);
-    try { await submitMut.mutateAsync(r.id); }
-    catch (e: any) { setActionError(e?.message ?? 'Failed to file return'); }
+    const issues = validateGSTReturn(r, entries);
+    if (issues.length) { setActionError(issues.map(issue => `${issue.field}: ${issue.message}`).join(' ')); return; }
+    try { downloadGSTJSON(r, entries); }
+    catch (e: any) { setActionError(e?.message ?? 'Could not generate GST JSON'); }
   }
 
   async function handleStatusChange(newStatus: GSTReturnStatus) {
@@ -130,7 +132,7 @@ export default function ReturnDetailSheet({ gstReturn: r, onClose, onEdit, canEd
                   {RETURN_LABELS[r.returnType] ?? r.returnType.toUpperCase()}
                 </h3>
                 <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border capitalize', STATUS_STYLES[r.status])}>
-                  {r.status}
+                  {r.status === 'filed' ? 'Filed (unverified)' : r.status}
                 </span>
               </div>
               <p className="text-xs text-white/40">Period: {r.period} · Due: {r.dueDate}</p>
@@ -166,11 +168,12 @@ export default function ReturnDetailSheet({ gstReturn: r, onClose, onEdit, canEd
                 <TaxRow label="Net Payable"      value={fmtMoney(r.netPayable)} highlight />
               </div>
               {r.submissionDate && (
-                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-emerald-400">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Filed on {r.submissionDate}
+                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-amber-300/80">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  Submission date recorded: {r.submissionDate} (portal acceptance not recorded)
                 </div>
               )}
+              {r.status === 'filed' && <p className="mt-2 text-[11px] text-amber-300/70">This status predates GSTN response tracking and has not been confirmed by an official portal acceptance response.</p>}
             </div>
 
             {/* Actions */}
@@ -186,16 +189,14 @@ export default function ReturnDetailSheet({ gstReturn: r, onClose, onEdit, canEd
                 )}
 
                 <div className="flex flex-wrap gap-2">
-                  {/* File return */}
+                  {/* Export a locally validated GSTN payload; GSTN filing remains external. */}
                   {r.status !== 'filed' && (
-                    <Button size="sm" onClick={handleFileReturn} disabled={submitMut.isPending}
-                      className="bg-emerald-600 hover:bg-emerald-700 h-8 text-xs">
-                      {submitMut.isPending
-                        ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Filing…</>
-                        : <><Send className="w-3.5 h-3.5 mr-1.5" />File Return</>
-                      }
+                    <Button size="sm" onClick={handleExport}
+                      className="bg-[#2563EB] hover:bg-[#1d4ed8] h-8 text-xs">
+                      <Download className="w-3.5 h-3.5 mr-1.5" />Validate & Download JSON
                     </Button>
                   )}
+                  <p className="w-full text-[11px] text-white/35">Download validation is local. File this JSON on the GST portal; no GSTN/GSP credentials are configured here, so this app cannot claim portal acceptance.</p>
 
                   {/* Status transitions */}
                   {STATUS_FLOW[r.status as GSTReturnStatus] && (

@@ -36,6 +36,7 @@ export interface TaxRate {
   type: TaxRateType;
   rate: string;
   hsnSacCode: string | null;
+  hsnDescription: string | null;
   description: string | null;
   isActive: boolean;
   createdBy: number | null;
@@ -59,6 +60,10 @@ export interface GSTReturn {
   totalCess: string;
   totalTaxLiability: string;
   totalItc: string;
+  itcIgst: string;
+  itcCgst: string;
+  itcSgst: string;
+  itcCess: string;
   netPayable: string;
   notes: string | null;
   createdBy: number | null;
@@ -77,6 +82,12 @@ export interface GSTReturnEntry {
   partyGstin: string | null;
   partyName: string | null;
   placeOfSupply: string | null;
+  productName: string | null;
+  hsnSacCode: string | null;
+  hsnDescription: string | null;
+  uqc: string | null;
+  quantity: string | null;
+  taxRate: string | null;
   taxableValue: string;
   cgstAmount: string;
   sgstAmount: string;
@@ -156,6 +167,7 @@ export interface TaxRateFormValues {
   type?: TaxRateType;
   rate: string;
   hsnSacCode?: string | null;
+  hsnDescription?: string | null;
   description?: string | null;
   isActive?: boolean;
 }
@@ -173,6 +185,10 @@ export interface GSTReturnFormValues {
   totalIgst?: string;
   totalCess?: string;
   totalItc?: string;
+  itcIgst?: string;
+  itcCgst?: string;
+  itcSgst?: string;
+  itcCess?: string;
   notes?: string | null;
 }
 
@@ -184,6 +200,12 @@ export interface GSTReturnEntryFormValues {
   partyGstin?: string | null;
   partyName?: string | null;
   placeOfSupply?: string | null;
+  productName?: string | null;
+  hsnSacCode?: string | null;
+  hsnDescription?: string | null;
+  uqc?: string | null;
+  quantity?: string | null;
+  taxRate?: string | null;
   taxableValue?: string;
   cgstAmount?: string;
   sgstAmount?: string;

@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, RefreshCw, Send, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, RefreshCw, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
-  useGSTReturns, useCreateGSTReturn, useUpdateGSTReturn, useDeleteGSTReturn, useSubmitGSTReturn,
+  useGSTReturns, useCreateGSTReturn, useUpdateGSTReturn, useDeleteGSTReturn,
   useGSTPermissions, useGSTReturnEntries, useCreateGSTReturnEntry, useDeleteGSTReturnEntry,
   type GSTReturn, type GSTReturnFormValues, type GSTReturnStatus, type GSTReturnType,
   type GSTReturnEntry,
@@ -16,7 +16,7 @@ import GSTDeleteDialog from './GSTDeleteDialog';
 const STATUS_COLORS: Record<GSTReturnStatus, string> = {
   draft:   'bg-blue-500/12 text-blue-400 border-blue-500/25',
   pending: 'bg-amber-500/12 text-amber-400 border-amber-500/25',
-  filed:   'bg-emerald-500/12 text-emerald-400 border-emerald-500/25',
+  filed:   'bg-amber-500/12 text-amber-400 border-amber-500/25',
   overdue: 'bg-red-500/12 text-red-400 border-red-500/25',
   revised: 'bg-purple-500/12 text-purple-400 border-purple-500/25',
 };
@@ -139,7 +139,6 @@ export default function GSTReturnsTab() {
   const createMut = useCreateGSTReturn();
   const updateMut = useUpdateGSTReturn();
   const deleteMut = useDeleteGSTReturn();
-  const submitMut = useSubmitGSTReturn();
 
   const returns    = list?.data ?? [];
   const total      = list?.total ?? 0;
@@ -168,10 +167,6 @@ export default function GSTReturnsTab() {
     catch (e: any) { setDeleteError(e?.message ?? 'Failed to delete return'); }
   }
 
-  async function handleSubmit(r: GSTReturn) {
-    try { await submitMut.mutateAsync(r.id); }
-    catch {}
-  }
 
   const STATUSES: GSTReturnStatus[] = ['draft', 'pending', 'filed', 'overdue', 'revised'];
 
@@ -251,17 +246,11 @@ export default function GSTReturnsTab() {
                   <td className="px-4 py-3 text-sm font-bold text-white tabular-nums">{fmtMoney(r.netPayable)}</td>
                   <td className="px-4 py-3">
                     <span className={cn('inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium border capitalize', STATUS_COLORS[r.status as GSTReturnStatus])}>
-                      {r.status}
+                      {r.status === 'filed' ? 'Filed (unverified)' : r.status}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {perms.canEdit && r.status !== 'filed' && (
-                        <button onClick={() => handleSubmit(r)} disabled={submitMut.isPending}
-                          className="p-1.5 rounded hover:bg-emerald-500/10 text-white/30 hover:text-emerald-400 transition-colors" title="File Return">
-                          <Send className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                       {perms.canEdit && (
                         <button onClick={() => { setFormError(null); setEditReturn(r); }}
                           className="p-1.5 rounded hover:bg-white/[0.07] text-white/30 hover:text-white/70 transition-colors" title="Edit">

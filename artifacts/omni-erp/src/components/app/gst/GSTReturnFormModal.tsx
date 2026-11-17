@@ -25,6 +25,10 @@ const schema = z.object({
   totalIgst:         amtStr,
   totalCess:         amtStr,
   totalItc:          amtStr,
+  itcIgst:           amtStr,
+  itcCgst:           amtStr,
+  itcSgst:           amtStr,
+  itcCess:           amtStr,
   notes:             z.string().max(1000).nullable().optional(),
 });
 type FormValues = z.infer<typeof schema>;
@@ -69,7 +73,7 @@ export default function GSTReturnFormModal({ open, onClose, onSubmit, isSubmitti
       returnType: 'gstr3b', period: '', dueDate: today,
       submissionDate: '', status: 'draft', gstin: '',
       totalTaxableValue: '0', totalCgst: '0', totalSgst: '0',
-      totalIgst: '0', totalCess: '0', totalItc: '0', notes: '',
+      totalIgst: '0', totalCess: '0', totalItc: '0', itcIgst: '0', itcCgst: '0', itcSgst: '0', itcCess: '0', notes: '',
     },
   });
 
@@ -83,12 +87,12 @@ export default function GSTReturnFormModal({ open, onClose, onSubmit, isSubmitti
         gstin: gstReturn.gstin ?? '',
         totalTaxableValue: gstReturn.totalTaxableValue, totalCgst: gstReturn.totalCgst,
         totalSgst: gstReturn.totalSgst, totalIgst: gstReturn.totalIgst, totalCess: gstReturn.totalCess,
-        totalItc: gstReturn.totalItc, notes: gstReturn.notes ?? '',
+        totalItc: gstReturn.totalItc, itcIgst: gstReturn.itcIgst ?? '0', itcCgst: gstReturn.itcCgst ?? '0', itcSgst: gstReturn.itcSgst ?? '0', itcCess: gstReturn.itcCess ?? '0', notes: gstReturn.notes ?? '',
       } : {
         returnType: 'gstr3b', period: '', dueDate: today,
         submissionDate: '', status: 'draft', gstin: '',
         totalTaxableValue: '0', totalCgst: '0', totalSgst: '0',
-        totalIgst: '0', totalCess: '0', totalItc: '0', notes: '',
+        totalIgst: '0', totalCess: '0', totalItc: '0', itcIgst: '0', itcCgst: '0', itcSgst: '0', itcCess: '0', notes: '',
       });
     }
   }, [open, gstReturn, reset, today]);
@@ -152,7 +156,7 @@ export default function GSTReturnFormModal({ open, onClose, onSubmit, isSubmitti
           <div>
             <label className={labelCls}>Status</label>
             <div className="flex flex-wrap items-center gap-2">
-              {GST_RETURN_STATUSES.map((s) => (
+              {GST_RETURN_STATUSES.filter((s) => s !== 'filed').map((s) => (
                 <button key={s} type="button" onClick={() => setValue('status', s)}
                   className={cn('px-3 py-1.5 rounded-lg border text-xs font-semibold capitalize transition-all',
                     watchedStatus === s ? STATUS_COLORS[s] : 'border-white/[0.06] bg-transparent text-white/30 hover:text-white/50')}>
@@ -171,7 +175,7 @@ export default function GSTReturnFormModal({ open, onClose, onSubmit, isSubmitti
                 { field: 'totalSgst'         as const, label: 'Total SGST' },
                 { field: 'totalIgst'         as const, label: 'Total IGST' },
                 { field: 'totalCess'         as const, label: 'Total Cess' },
-                { field: 'totalItc'          as const, label: 'Input Tax Credit' },
+                { field: 'totalItc'          as const, label: 'Total Input Tax Credit' },
               ].map(({ field, label }) => (
                 <div key={field}>
                   <label className={labelCls}>{label}</label>
@@ -179,6 +183,16 @@ export default function GSTReturnFormModal({ open, onClose, onSubmit, isSubmitti
                 </div>
               ))}
             </div>
+            <p className="text-xs font-semibold text-white/40 uppercase tracking-wide mt-4 mb-3">GSTR-3B ITC Breakdown</p>
+            <div className="grid grid-cols-4 gap-3">
+              {[
+                { field: 'itcIgst' as const, label: 'ITC IGST' },
+                { field: 'itcCgst' as const, label: 'ITC CGST' },
+                { field: 'itcSgst' as const, label: 'ITC SGST' },
+                { field: 'itcCess' as const, label: 'ITC Cess' },
+              ].map(({ field, label }) => <div key={field}><label className={labelCls}>{label}</label><Input {...register(field)} placeholder="0.00" className={inputCls} /></div>)}
+            </div>
+            <p className="text-[11px] text-white/30 mt-2">Enter the tax-head split used in GSTR-3B Table 4. The total ITC field is retained for the return summary.</p>
           </div>
 
           <div>

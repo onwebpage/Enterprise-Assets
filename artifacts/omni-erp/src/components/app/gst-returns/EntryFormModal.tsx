@@ -45,6 +45,12 @@ const BLANK = {
   partyGstin: '',
   partyName: '',
   placeOfSupply: '',
+  productName: '',
+  hsnSacCode: '',
+  hsnDescription: '',
+  uqc: '',
+  quantity: '1',
+  taxRate: '',
   taxableValue: '',
   cgstAmount: '',
   sgstAmount: '',
@@ -73,6 +79,12 @@ export default function EntryFormModal({ open, returnId, returnType, onClose, on
       partyGstin:     form.partyGstin     || null,
       partyName:      form.partyName      || null,
       placeOfSupply:  form.placeOfSupply  || null,
+      productName: form.productName || null,
+      hsnSacCode: form.hsnSacCode || null,
+      hsnDescription: form.hsnDescription || null,
+      uqc: form.uqc || null,
+      quantity: form.quantity || null,
+      taxRate: form.taxRate || null,
       taxableValue:   form.taxableValue   || '0',
       cgstAmount:     form.cgstAmount     || '0',
       sgstAmount:     form.sgstAmount     || '0',
@@ -156,6 +168,19 @@ export default function EntryFormModal({ open, returnId, returnType, onClose, on
                 <Input value={form.placeOfSupply} onChange={(e) => set('placeOfSupply', e.target.value)}
                   placeholder="Karnataka (29)" className={inputCls} />
               </Field>
+            </div>
+          </div>
+
+          {/* Tax amounts */}
+          <div>
+            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-3">Product & HSN Details</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="Product / Service" required><Input value={form.productName} onChange={(e) => set('productName', e.target.value)} placeholder="Consulting service" className={inputCls} /></Field>
+              <Field label="HSN / SAC Code" required><Input value={form.hsnSacCode} onChange={(e) => set('hsnSacCode', e.target.value)} placeholder="998313" className={inputCls} /></Field>
+              <Field label="HSN / SAC Description" required><Input value={form.hsnDescription} onChange={(e) => set('hsnDescription', e.target.value)} placeholder="Information technology services" className={inputCls} /></Field>
+              <Field label="UQC" required><Input value={form.uqc} onChange={(e) => set('uqc', e.target.value.toUpperCase())} placeholder="OTH / NOS / KGS" className={inputCls} /></Field>
+              <Field label="Quantity" required><Input type="number" min="0.0001" step="0.0001" value={form.quantity} onChange={(e) => set('quantity', e.target.value)} className={inputCls} /></Field>
+              <Field label="GST Rate (%)" required><Input type="number" min="0" step="0.01" value={form.taxRate} onChange={(e) => set('taxRate', e.target.value)} placeholder="18" className={inputCls} /></Field>
             </div>
           </div>
 

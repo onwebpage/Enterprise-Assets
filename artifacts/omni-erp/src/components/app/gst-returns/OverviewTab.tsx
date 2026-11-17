@@ -100,16 +100,16 @@ export default function OverviewTab({ onNavigate }: OverviewTabProps) {
     {
       label: 'Total Returns',
       value: isLoading ? '—' : String(s?.totalReturns ?? 0),
-      sub: `${s?.filedCount ?? 0} filed`,
+      sub: `${s?.filedCount ?? 0} marked filed (unverified)`,
       icon: FileText,
       accent: 'bg-[#2563EB]/20 text-[#60a5fa]',
     },
     {
-      label: 'Filed',
+      label: 'Marked filed (unverified)',
       value: isLoading ? '—' : String(s?.filedCount ?? 0),
-      sub: 'Successfully submitted',
-      icon: CheckCircle,
-      accent: 'bg-emerald-500/15 text-emerald-400',
+      sub: 'No GSTN acceptance response recorded',
+      icon: AlertCircle,
+      accent: 'bg-amber-500/15 text-amber-400',
     },
     {
       label: 'Pending / Draft',
@@ -161,7 +161,7 @@ export default function OverviewTab({ onNavigate }: OverviewTabProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/[0.05]">
-                  {['Return Type', 'Total', 'Filed', 'Pending', 'Overdue', 'Tax Liability'].map((h) => (
+                  {['Return Type', 'Total', 'Marked filed*', 'Pending', 'Overdue', 'Tax Liability'].map((h) => (
                     <th key={h} className="text-left text-[10px] font-semibold text-white/30 uppercase tracking-wide px-5 py-2.5">{h}</th>
                   ))}
                 </tr>
@@ -178,7 +178,7 @@ export default function OverviewTab({ onNavigate }: OverviewTabProps) {
                     </td>
                     <td className="px-5 py-3 text-sm text-white/50 tabular-nums">{row.count}</td>
                     <td className="px-5 py-3">
-                      <StatusPill value={row.filed} color={row.filed > 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.04] text-white/25'} />
+                      <StatusPill value={row.filed} color={row.filed > 0 ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-white/25'} />
                     </td>
                     <td className="px-5 py-3">
                       <StatusPill value={row.pending} color={row.pending > 0 ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-white/25'} />

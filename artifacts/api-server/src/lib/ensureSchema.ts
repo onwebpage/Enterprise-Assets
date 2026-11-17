@@ -9,6 +9,16 @@ export async function ensureAuthSchema(): Promise<void> {
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS tenant_id integer;
     ALTER TABLE organizations ADD COLUMN IF NOT EXISTS upi_id text;
     ALTER TABLE IF EXISTS ar_invoices ADD COLUMN IF NOT EXISTS discount_amount numeric(15,2) DEFAULT 0 NOT NULL;
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS product_name text;
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS hsn_sac_code text;
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS hsn_description text;
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS uqc text;
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS quantity numeric(15,4);
+    ALTER TABLE IF EXISTS gst_return_entries ADD COLUMN IF NOT EXISTS tax_rate numeric(8,4);
+    ALTER TABLE IF EXISTS gst_returns ADD COLUMN IF NOT EXISTS itc_igst numeric(15,2) NOT NULL DEFAULT 0;
+    ALTER TABLE IF EXISTS gst_returns ADD COLUMN IF NOT EXISTS itc_cgst numeric(15,2) NOT NULL DEFAULT 0;
+    ALTER TABLE IF EXISTS gst_returns ADD COLUMN IF NOT EXISTS itc_sgst numeric(15,2) NOT NULL DEFAULT 0;
+    ALTER TABLE IF EXISTS gst_returns ADD COLUMN IF NOT EXISTS itc_cess numeric(15,2) NOT NULL DEFAULT 0;
     DO $$
     BEGIN
       -- Customer shipping addresses + optional Ship To on invoices (only once the AR tables exist).

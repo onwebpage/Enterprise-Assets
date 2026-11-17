@@ -356,6 +356,10 @@ router.post("/returns", requirePermission(MODULE, "create"), async (req: AuthReq
     res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
     return;
   }
+  if (parsed.data.status === "filed" || parsed.data.submissionDate) {
+    res.status(422).json({ success: false, error: "A return can only be marked filed and assigned a submission date after a confirmed GSTN/GSP acceptance response." });
+    return;
+  }
   try {
     const orgId = req.user!.orgId!;
     const data  = parsed.data;
@@ -377,7 +381,13 @@ router.post("/returns", requirePermission(MODULE, "create"), async (req: AuthReq
     const sgst    = parseFloat(data.totalSgst    ?? "0");
     const igst    = parseFloat(data.totalIgst    ?? "0");
     const cess    = parseFloat(data.totalCess    ?? "0");
-    const itc     = parseFloat(data.totalItc     ?? "0");
+    const itcIgst = parseFloat(data.itcIgst ?? "0");
+    const itcCgst = parseFloat(data.itcCgst ?? "0");
+    const itcSgst = parseFloat(data.itcSgst ?? "0");
+    const itcCess = parseFloat(data.itcCess ?? "0");
+    const componentItc = itcIgst + itcCgst + itcSgst + itcCess;
+    const declaredItc = parseFloat(data.totalItc ?? "0");
+    const itc = componentItc > 0 || declaredItc === 0 ? componentItc : declaredItc;
     const taxLiab = cgst + sgst + igst + cess;
     const netPay  = Math.max(0, taxLiab - itc);
 
@@ -386,6 +396,7 @@ router.post("/returns", requirePermission(MODULE, "create"), async (req: AuthReq
       orgId,
       totalCgst: cgst.toFixed(2), totalSgst: sgst.toFixed(2),
       totalIgst: igst.toFixed(2), totalCess: cess.toFixed(2),
+      itcIgst: itcIgst.toFixed(2), itcCgst: itcCgst.toFixed(2), itcSgst: itcSgst.toFixed(2), itcCess: itcCess.toFixed(2),
       totalTaxLiability: taxLiab.toFixed(2),
       totalItc: itc.toFixed(2),
       netPayable: netPay.toFixed(2),
@@ -406,6 +417,10 @@ router.put("/returns/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
     res.status(422).json({ success: false, error: "Validation failed", details: parsed.error.issues });
     return;
   }
+  if (parsed.data.status === "filed" || parsed.data.submissionDate) {
+    res.status(422).json({ success: false, error: "A return can only be marked filed and assigned a submission date after a confirmed GSTN/GSP acceptance response." });
+    return;
+  }
   try {
     const orgId = req.user!.orgId!;
     const [existing] = await db.select().from(gstReturns)
@@ -421,7 +436,13 @@ router.put("/returns/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
     const sgst    = parseFloat(String(data.totalSgst    ?? existing.totalSgst));
     const igst    = parseFloat(String(data.totalIgst    ?? existing.totalIgst));
     const cess    = parseFloat(String(data.totalCess    ?? existing.totalCess));
-    const itc     = parseFloat(String(data.totalItc     ?? existing.totalItc));
+    const itcIgst = parseFloat(String(data.itcIgst ?? existing.itcIgst));
+    const itcCgst = parseFloat(String(data.itcCgst ?? existing.itcCgst));
+    const itcSgst = parseFloat(String(data.itcSgst ?? existing.itcSgst));
+    const itcCess = parseFloat(String(data.itcCess ?? existing.itcCess));
+    const componentItc = itcIgst + itcCgst + itcSgst + itcCess;
+    const declaredItc = parseFloat(String(data.totalItc ?? existing.totalItc));
+    const itc = componentItc > 0 || declaredItc === 0 ? componentItc : declaredItc;
     const taxLiab = cgst + sgst + igst + cess;
     const netPay  = Math.max(0, taxLiab - itc);
 
@@ -429,6 +450,7 @@ router.put("/returns/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
       ...data,
       totalCgst: cgst.toFixed(2), totalSgst: sgst.toFixed(2),
       totalIgst: igst.toFixed(2), totalCess: cess.toFixed(2),
+      itcIgst: itcIgst.toFixed(2), itcCgst: itcCgst.toFixed(2), itcSgst: itcSgst.toFixed(2), itcCess: itcCess.toFixed(2),
       totalTaxLiability: taxLiab.toFixed(2),
       totalItc: itc.toFixed(2),
       netPayable: netPay.toFixed(2),
@@ -444,7 +466,7 @@ router.put("/returns/:id", requirePermission(MODULE, "edit"), async (req: AuthRe
   }
 });
 
-// POST /gst/returns/:id/submit — file / submit a return
+// POST /gst/returns/:id/submit — requires an authorized GSTN/GSP connection.
 router.post("/returns/:id/submit", requirePermission(MODULE, "edit"), async (req: AuthRequest, res) => {
   const id = parseInt(req.params.id as string);
   if (isNaN(id)) { res.status(400).json({ success: false, error: "Invalid id" }); return; }
@@ -453,15 +475,7 @@ router.post("/returns/:id/submit", requirePermission(MODULE, "edit"), async (req
     const [existing] = await db.select().from(gstReturns)
       .where(and(eq(gstReturns.id, id), eq(gstReturns.orgId, orgId))).limit(1);
     if (!existing) { res.status(404).json({ success: false, error: "GST return not found" }); return; }
-    if (existing.status === "filed") {
-      res.status(409).json({ success: false, error: "Return is already filed" });
-      return;
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    const [updated] = await db.update(gstReturns)
-      .set({ status: "filed", submissionDate: today, updatedAt: new Date() })
-      .where(eq(gstReturns.id, id)).returning();
-    res.json({ success: true, data: updated });
+    res.status(503).json({ success: false, error: "Direct GST portal filing is unavailable: no authorized GSTN/GSP integration is configured. The return has not been filed." });
   } catch {
     res.status(500).json({ success: false, error: "Failed to submit GST return" });
   }
